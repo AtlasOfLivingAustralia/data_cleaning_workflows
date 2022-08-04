@@ -11,6 +11,8 @@ Below I have split up the `download_ALA_bytaxon` workflow into chunks. I provide
 
 I think the major difference between the NESP bugs and current galah workflow is that NESP bugs supplies a species likes from AFD `afd_taxonomy$PHYLUM` to query ALA, wheras galah just filters by ALL INVERTEBRATES and then downloads the occurences. I can certainly query ALA via galah with the same species lis and see how close the output is and where the discrepancies are with NESP bugs workflow
 
+Some of the latter parts of this workflow involves collapsing down the lists of download (organised by phylum).  I think this was a product for parallel processing using `future` so I didn't write streamlined parts for these sections as output depends on user and galah provides one long tibble for all phylum.
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, 
                       eval = FALSE)
@@ -419,11 +421,10 @@ invert_2022 |> mutate(verbatimEventDate = lubridate::dmy(verbatimEventDate),
 ```
 
 
-
 ### Merge downloaded data
 
 Arthropods is a big data set so its being treated as a data.table obj
-Looks like counts are merged in
+Looks like counts are reformatted from list to a data frame and the class of each variable is assigned to coltypes
 
 ```{r}
 ala <- list.files(file.path(ala_dir), include.dirs = FALSE, full.names = TRUE)
@@ -444,6 +445,10 @@ rm(f)
 ```
 
 ### Merge in remaining datasets
+
+Here the code deals with everything except Arthopods.
+By merging I think its just collapsing down the lists of each phylum
+Some code to deal with mismatched column classes from different phylum, I suspect this might not be an issue if its in one giant tibble in the eventual download, but requires testing and but splitting phylums into lists
 
 ```{r}
 for (i in 2:length(ala)) {
@@ -499,11 +504,6 @@ write.csv(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Dat
 #### EXTRA
 
 ```{r}
-
-```
-
-
-
 # ## Explore ALA fields
 # ala_fields("occurrence", as_is=TRUE)
 # names(ala_fields("occurrence"))
@@ -516,4 +516,9 @@ write.csv(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Dat
 ala_fields("assertions",as_is=TRUE)
 write.csv(ala_fields("assertions",as_is=TRUE), file = "./output/assertions.csv")
 ```
+
+```{r}
+invert_2022 |> select(assertions)
+```
+
 
