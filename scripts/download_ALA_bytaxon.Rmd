@@ -7,7 +7,9 @@ editor_options:
 ---
 
 source: "scripts/download_ALA_bytaxon.Rmd"
-Below I have split up the `download_ALA_bytaxon` workflow into chunks. I provided a streamlined / `galah`-friendly version directly below the original NESP code.I've also included some notes under each heading.
+Below I have split up the `download_ALA_bytaxon` workflow into chunks. I provided a streamlined / `galah`-friendly version directly below the original NESP code.I've also included some notes under each heading and as # comments throughout.
+
+I think the major difference between the NESP bugs and current galah workflow is that NESP bugs supplies a species likes from AFD `afd_taxonomy$PHYLUM` to query ALA, wheras galah just filters by ALL INVERTEBRATES and then downloads the occurences. I can certainly query ALA via galah with the same species lis and see how close the output is and where the discrepancies are with NESP bugs workflow
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, 
@@ -151,11 +153,33 @@ galah_call() |>
   atlas_counts() # Get a list of different bases of record
 
 # I suspect "EnvironmentalDNA","GenomicDNA" has been collapsed in to Material_Sample. 
-# Will double check on this
+# Will double check on this - slacked Ely Wallis 4.Aug
 
 specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
                    "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
 
+# This is equivalent to n.all
+galah_call() |>
+  galah_filter(
+    taxonConceptID == galah_identify("Animalia")$identifier, 
+    taxonConceptID != galah_identify("Chordata")$identifier, # Filters NOT Chordata
+  ) |> 
+  galah_group_by(phylum) |> 
+  atlas_counts()
+
+
+# This is equivalent to n.obs
+galah_call() |>
+  galah_filter(
+    taxonConceptID == galah_identify("Animalia")$identifier, 
+    taxonConceptID != galah_identify("Chordata")$identifier, # Filters NOT Chordata
+    basisOfRecord == "HUMAN_OBSERVATION" # Filters to human observed
+  ) |> 
+  galah_group_by(phylum) |> 
+  atlas_counts()
+
+
+# This is equivalent to n.spec
 galah_call() |>
   galah_filter(
     taxonConceptID == galah_identify("Animalia")$identifier, 
@@ -225,7 +249,7 @@ end.time - start.time
 
 ### galah alternative to downloading data
 
-Just searching each field from the `fields` vector above here https://biocache.ala.org.au/fields to make a new vector that works with the current API system
+Just searching each field from the `fields` vector above here https://biocache.ala.org.au/fields to make a new vector that works with the current API system. I think you can parallelise this step? Will check with Martin about this!
 
 ```{r}
 # Configuring the ALA download
@@ -258,7 +282,7 @@ fields_v2 <-  c("id","dataResourceUid","dataResourceName",
              "raw_decimalLatitude","raw_decimalLongitude",
              "decimalLatitude","decimalLongitude",
              "coordinatePrecision","coordinateUncertaintyInMeters",
-             "country","stateProvince", #Assumption state = locality
+             "country","stateProvince", #Assumption state = locality as oppose to conservation status
              "cl959","cl21","cl1048",
              "minimumElevationInMeters", "maximumElevationInMeters", # "min_elevation_d","max_elevation_d", not sure what _d represents, my best guess is minimumElevationInMeters and maximumElevationInMeters
              "minimumDepthInMeters", "maximumDepthInMeters",  # not sure what _d represents min_depth_d","max_depth_d",
@@ -286,6 +310,7 @@ galah_call() |>
   galah_select(fields_v2, assertions) |> 
   atlas_occurrences() -> invert_2022
 
+saveRDS(invert_2022, "output/invert_2022.rds")
 ```
 
 
@@ -303,7 +328,7 @@ for (i in 2:length(ala)) {
           all(dat_cols==names(f)))
 }
 
-all(fields %in% names(f$data)) ## beacuse names are different even if fields correspond
+all(fields %in% names(f$data)) ## because names are different even if fields correspond
 fields[which(fields %!in% names(f$data))]
 
 
@@ -323,9 +348,82 @@ for (i in 2:length(ala)) {
 }
 ```
 
+
+### Quick checks of the download
+
+Just want to address some of the comments above, e.g. "I don't know what the difference between X and Y
+
+```{r}
+invert_2022
+
+invert_2022 |> 
+  group_by(phylum) |> 
+  summarise(n_obs = n())
+
+# Not sure what is the difference between institutionID and institutionUid
+invert_2022 |> select(institutionID, institutionUid) |> print(n = 50)
+# Mostly empty, I think okay to remove as Uid seems to convey the same grouping levels but tidier but left as is for now
+
+# Not sure what is difference between raw_locality, locality
+invert_2022 |> select(raw_locality, locality) # It didn't download raw_locality despite it being on the field search site!
+
+# Which fields didn't get downloaded from fields_v2
+setdiff(fields_v2, colnames(invert_2022))
+
+# "id"                   "institutionID"        "license"              "raw_scientificName"   "raw_locality"        
+#  "raw_geodeticDatum"    "raw_decimalLatitude"  "raw_decimalLongitude" "raw_basisOfRecord"   
+
+# Which vars did we download thats not in field_v2
+setdiff(colnames(invert_2022),fields_v2)
+
+# "recordID"                 "dctermsLicense"           "verbatimScientificName"   "locality1"               
+# "verbatimCoordinateSystem" "verbatimLatitude"         "verbatimLongitude"        "verbatimBasisOfRecord"   
+# "assertions"               "recordID1"  
+
+# Not sure why some have suffix1?
+invert_2022 |> select(ends_with("1"))
+#Looks like they are mostly double ups, requesting for raw_locality will give you the same output https://biocache.ala.org.au/fields?filter=locality
+all.equal(invert_2022$locality, invert_2022$locality1)
+all.equal(invert_2022$recordID, invert_2022$recordID1)
+
+# We can remove these duplicates
+invert_2022 |> select(-c(locality1, recordID1)) -> invert_2022
+
+# I think there must be some sort of alias built in, you can request a certain field but what is returned are the DwC names. raw is equivalent to verbatim for example (https://biocache.ala.org.au/fields?filter=latitude)
+```
+
+### Some data cleaning steps that are in get_ala_taxondata.R
+```{r}
+invert_2022_test <- invert_2022
+invert_2022_test$decimalLatitude[sample(nrow(invert_2022_test),5)] <-NA # replace 5 obs with NA for a test
+
+# Excluding rows with no coordinate data (test)
+invert_2022_test |> filter(is.na(decimalLatitude) ) |> nrow() # 5 rows are detected gets excluded
+
+invert_2022_test |> filter(! is.na(decimalLatitude) & ! is.na(decimalLongitude) &
+                             ! is.na(verbatimLatitude) & ! is.na(verbatimLongitude)) #nrow = 128
+
+# Excluding rows with no coordinate data
+invert_2022 |> filter(! is.na(decimalLatitude) & ! is.na(decimalLongitude) &
+                             ! is.na(verbatimLatitude) & ! is.na(verbatimLongitude)) -> invert_2022
+
+
+# Treating date as date and coordinates as numeric
+invert_2022 |> mutate(verbatimEventDate = lubridate::dmy(verbatimEventDate),
+                      decimalLatitude = as.numeric(decimalLatitude),
+                      decimalLongitude = as.numeric(decimalLongitude),
+                      verbatimLatitude = as.numeric(verbatimLatitude),
+                      verbatimLongitude = as.numeric(verbatimLongitude)
+                      )
+
+```
+
+
+
 ### Merge downloaded data
 
-Arthropods is a big dataset so its been treated as a data.table obj
+Arthropods is a big data set so its being treated as a data.table obj
+Looks like counts are merged in
 
 ```{r}
 ala <- list.files(file.path(ala_dir), include.dirs = FALSE, full.names = TRUE)
