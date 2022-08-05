@@ -6,7 +6,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-source: "scripts/download_ALA_bytaxon.Rmd"
 Below I have split up the `download_ALA_bytaxon` workflow into chunks. I provided a streamlined / `galah`-friendly version directly below the original NESP code.I've also included some notes under each heading and as # comments throughout.
 
 I think the major difference between the NESP bugs and current galah workflow is that NESP bugs supplies a species likes from AFD `afd_taxonomy$PHYLUM` to query ALA, wheras galah just filters by ALL INVERTEBRATES and then downloads the occurences. I can certainly query ALA via galah with the same species lis and see how close the output is and where the discrepancies are with NESP bugs workflow
