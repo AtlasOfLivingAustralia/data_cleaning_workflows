@@ -7,7 +7,7 @@ editor_options:
 ---
 
 ```{r }
-pacman::p_load(dplyr, janitor)
+pacman::p_load(dplyr, janitor, galah)
 
 ## Set working environment ####
 data_path <- "data"
@@ -139,19 +139,17 @@ afd_species[d1,"COMPLETE_NAME"]
 afd_species[d2,"COMPLETE_NAME"]
 ```
 
-
 ```{r}
 message(cat("#duplicates in COMPLETE_NAME (including first appearance) : ", dim(temp)))
 message("duplicated COMPLETE_NAME: ")
 temp$COMPLETE_NAME
+
+# readr::write_csv(temp, "./output/afd_completename_repeats.csv")
 ```
 
-message(cat("#duplicates in COMPLETE_NAME (including first appearance) : ", dim(temp)))
-message("duplicated COMPLETE_NAME: ")
-temp$COMPLETE_NAME
-# readr::write_csv(temp, "./output/afd_completename_repeats.csv")
-
 ## Resolve duplicates from ALA list *in consultation with JM*
+
+```{r}
 ## using TAXON_GUID from afd_completename_repeats_JRM.csv
 # afd_species <- unique(afd_species$COMPLETE_NAME)
 removed_dups <- c("b05771ae-bda7-497a-87c4-b55a0ebc4ca1",
@@ -161,8 +159,19 @@ removed_dups <- c("b05771ae-bda7-497a-87c4-b55a0ebc4ca1",
                   "0bb19498-874f-4c6c-a637-124ec9878130")
 
 afd_species <- afd_species[which(afd_species$TAXON_GUID %!in% removed_dups),]
-readr::write_csv(afd_species, "./outputs/afd_species_clean.csv")
+#readr::write_csv(afd_species, "./outputs/afd_species_clean.csv")
+```
 
+Looks like this is a manual exclusion of some duplicates but not all of them? 5/17
+
+These are the ones excluded
+
+```{r}
+afd_species |> filter(TAXON_GUID %in% removed_dups)
+```
+
+
+```{r}
 ## Checks
 sp_words <- sapply(strsplit(as.character(afd_species$VALID_NAME), " "), length)
 length(afd_species$VALID_NAME[which(sp_words == 5)])
@@ -171,8 +180,34 @@ length(afd_species$VALID_NAME[which(sp_words == 3)])
 length(afd_species$VALID_NAME[which(sp_words == 2)])
 length(afd_species$VALID_NAME[which(sp_words == 1)])
 
+
 ## Checks
 length(afd_species$VALID_NAME[grep("\"", afd_species$VALID_NAME, fixed = TRUE)])
 length(afd_species$VALID_NAME[grep("\'", afd_species$VALID_NAME, fixed = TRUE)])
+```
+
+## galah code to obtain a species list of invertebrates from ALA
+
+https://atlasoflivingaustralia.github.io/galah/articles/download_data.html#species-lists
+
+```{r}
+invert_species <- galah_call() |>
+  galah_filter(
+    taxonConceptID == galah_identify("Animalia")$identifier, 
+    taxonConceptID != galah_identify("Chordata")$identifier) |>  # Filters NOT Chordata
+  atlas_species()
+```
+
+# Want to see overlap/similar with InvertAus cleaned list
+
+```{r}
+# Quite a difference in number!
+afd_species$VALID_NAME |> length() - invert_species |> nrow() 
+
+# Species that exist in the AFD and not in the ALA query
+setdiff(afd_species$VALID_NAME, invert_species$species) 
+
+# Species that exist on ALA and not in AFD list, are these synonyms?
+setdiff(invert_species$species, afd_species$VALID_NAME) 
 ```
 
