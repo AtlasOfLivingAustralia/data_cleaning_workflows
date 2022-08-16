@@ -202,7 +202,7 @@ invert_species <- galah_call() |>
 
 ```{r}
 # Quite a difference in number!
-afd_species$VALID_NAME |> length() - invert_species |> nrow() 
+afd_species$VALID_NAME |> length() - invert_species |> nrow()  # 30583
 
 # Species that exist in the AFD and not in the ALA query
 setdiff(afd_species$VALID_NAME, invert_species$species) 

@@ -131,6 +131,11 @@ write.csv(taxon.counts, file.path(output_dir, "taxon_counts.csv"))
 
 ### galah alternative for getting counts for each Invertebrate Phylum
 
+I suspect "EnvironmentalDNA","GenomicDNA" has been collapsed in to Material_Sample. 
+Will double check on this - slacked Ely Wallis 4.Aug
+Ely confirmed this is a case but ALA has added contentTypes to further delineate these categories, how exactly is not clear, so I am adding contentTypes as a field to investigate
+
+
 ```{r}
 invert_phyla_counts <- galah_call() |>
   galah_filter(
@@ -153,8 +158,6 @@ galah_call() |>
   galah_group_by(basisOfRecord) |> 
   atlas_counts() # Get a list of different bases of record
 
-# I suspect "EnvironmentalDNA","GenomicDNA" has been collapsed in to Material_Sample. 
-# Will double check on this - slacked Ely Wallis 4.Aug
 
 specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
                    "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
@@ -269,6 +272,7 @@ specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN",
 fields_v2 <-  c("id","dataResourceUid","dataResourceName",
              "institutionID","institutionUid", "institutionName", # Not sure what is the difference between ID and Uid
              "collectionID", "collectionUid","collectionName",
+             "contentTypes", # Adding this to check on how Material_sample is further categorised as contentTypes
              "license", #"catalogue_number", can't find equivalent
              "taxonConceptID",
              "raw_scientificName" ,"raw_vernacularName", # "raw_taxon_name" can't find equivalent, my guess is raw_scientificName
@@ -311,7 +315,19 @@ galah_call() |>
   galah_select(fields_v2, assertions) |> 
   atlas_occurrences() -> invert_2022
 
-saveRDS(invert_2022, "output/invert_2022.rds")
+# saveRDS(invert_2022, "output/invert_2022.rds")
+invert_2022 <- readRDS("output/invert_2022.rds")
+
+## Doing the mass download
+
+galah_call() |> 
+  galah_filter(
+    taxonConceptID == galah_identify("Animalia")$identifier, 
+    taxonConceptID != galah_identify("Chordata")$identifier, # Filters NOT Chordata
+    basisOfRecord == specimen_only # Filters to specimen only
+  ) |> 
+  galah_select(fields_v2, assertions) |> 
+  atlas_occurrences() -> invert_all
 ```
 
 
