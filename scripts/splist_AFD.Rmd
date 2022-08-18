@@ -46,6 +46,7 @@ Here the `remove_improper_names.R` function:
 species_record <- remove_improper_names(as.character(all_species),
                                allow.higher.taxa = FALSE,
                                allow.subspecies = TRUE)
+
 sum(is.na(species_record$updated_list))
 str(species_record)
 
@@ -55,6 +56,21 @@ afd_species <- afd_species[which(afd_species$VALID_NAME %in% species),]
   ## Note:  mismatch between length(species) and dim(afd_species), 
   ##        possibly due to duplicates being removed.
 ```
+
+Using other version of `remove_improper_names_v2`
+
+```{r}
+species_record <- remove_improper_names_v2(as.character(all_species),
+                               allow.higher.taxa = FALSE,
+                               allow.subspecies = TRUE)
+
+is.na(species_record$updated_list) |> table() # I don't expect the function to produce the updated_list with any NAs so I don't think its neccesary to use na.omit here :) 
+str(species_record$updated_list) 
+
+# Filter records
+afd_species |> dplyr::filter(VALID_NAME %in% species_record$updated_list) 
+```
+
 
 ### Remove invasive species 
 Source: https://lists.ala.org.au/speciesListItem/list/dr9884#list
