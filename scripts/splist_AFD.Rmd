@@ -15,6 +15,7 @@ output_dir  <-  "output"
 
 ## Functions ####
 source("scripts/remove_improper_names.R")
+source("scripts/remove_improper_names_v2.R") # Version Fonti created
 '%!in%' <- function(x,y)!('%in%'(x,y))
 ```
 
