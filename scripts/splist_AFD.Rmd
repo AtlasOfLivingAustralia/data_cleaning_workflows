@@ -61,7 +61,7 @@ afd_species <- afd_species[which(afd_species$VALID_NAME %in% species),]
 Using other version of `remove_improper_names_v2`
 
 ```{r}
-species_record <- remove_improper_names_v2(as.character(all_species),
+species_record_v2 <- remove_improper_names_v2(as.character(all_species),
                                allow.higher.taxa = FALSE,
                                allow.subspecies = TRUE)
 
@@ -88,7 +88,7 @@ message("AFD species in GRIIS - Global Register of Introduced and Invasive Speci
 afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)]
 
 message("Removing AFD species in GRIIS ...")
-afd_species <- afd_species[which(! afd_species$VALID_NAME %in% griis_species$Supplied.Name),]
+afd_species <- afd_species[which(! afd_species$VALID_NAME %in% griis_species$Supplied.Name),] #none
 ```
 
 ## Counts for special characters in species names
@@ -147,7 +147,7 @@ I don't exactly know what the second part of filtering statement is doing as it 
 
 > duplicated(afd_species$COMPLETE_NAME[length(afd_species$COMPLETE_NAME):1])
 
-What I don't understand are the indices as it is just a sequence [111305:1] which should match the entirety of `afd_species$COMPLETE_NAME` but the output names are different between the 
+What I don't understand are the indices as it is just a sequence [111238:1] which should match the entirety of `afd_species$COMPLETE_NAME` but the output names are different between the 
 
 ```{r}
 temp <- afd_species[which(
@@ -156,12 +156,13 @@ temp <- afd_species[which(
       length(afd_species$COMPLETE_NAME):1])
   [length(afd_species$COMPLETE_NAME):1]),]
 ```
+Below is Fonti's code to figure this out
 
 ```{r}
 d1 <- which(duplicated(afd_species$COMPLETE_NAME))
 
 d2 <- which(duplicated(afd_species$COMPLETE_NAME[length(afd_species$COMPLETE_NAME):1]))  
-which(duplicated(afd_species$COMPLETE_NAME[111305:1])) 
+which(duplicated(afd_species$COMPLETE_NAME[111238:1])) 
 
 afd_species[d1,"COMPLETE_NAME"]
 afd_species[d2,"COMPLETE_NAME"]
