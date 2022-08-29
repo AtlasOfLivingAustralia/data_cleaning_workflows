@@ -175,16 +175,17 @@ afd_species[d1,"COMPLETE_NAME"]
 afd_species[d2,"COMPLETE_NAME"]
 
 # I suspect the goal is flag both the first occurrence and subsequent occurrences of duplicates
-( x <- c(1:5, 3:7, 0:8) )
-x [duplicated(x) | duplicated(x, fromLast=TRUE)] # This will flag both first occurrence and subsequence duplicates
+# ( x <- c(1:5, 3:7, 0:8) )
+# x [duplicated(x) | duplicated(x, fromLast=TRUE)] 
 
-# Applying to species names 
+# Applying to species names, This will flag both first occurrence and subsequent duplicates
 afd_species$COMPLETE_NAME[duplicated(afd_species$COMPLETE_NAME) | duplicated(afd_species$COMPLETE_NAME, fromLast=TRUE)]
 
 ```
 
-
 ## Resolve duplicates from ALA list *in consultation with JM*
+
+Removal or flagging of duplicates by `TAXON_GUID`
 
 ```{r}
 ## using TAXON_GUID from afd_completename_repeats_JRM.csv
@@ -199,17 +200,23 @@ afd_species <- afd_species[which(afd_species$TAXON_GUID %!in% removed_dups),]
 #readr::write_csv(afd_species, "./outputs/afd_species_clean.csv")
 ```
 
-Looks like this is a manual exclusion of some duplicates but not all of them? 5/17
+Looks like some duplicates but not all of them? 5/17
 
 These are the ones excluded
 
 ```{r}
-afd_species |> filter(TAXON_GUID %in% removed_dups)
+afd_species |> filter(TAXON_GUID %in% removed_dups) |> pull(COMPLETE_NAME)
+
+temp$COMPLETE_NAME
 ```
 
 
+## Various checks
+
+Checks or tallies of species according to the number of words in `VALID_NAME`
+
 ```{r}
-## Checks
+
 sp_words <- sapply(strsplit(as.character(afd_species$VALID_NAME), " "), length)
 length(afd_species$VALID_NAME[which(sp_words == 5)])
 length(afd_species$VALID_NAME[which(sp_words == 4)])
@@ -222,6 +229,13 @@ length(afd_species$VALID_NAME[which(sp_words == 1)])
 length(afd_species$VALID_NAME[grep("\"", afd_species$VALID_NAME, fixed = TRUE)])
 length(afd_species$VALID_NAME[grep("\'", afd_species$VALID_NAME, fixed = TRUE)])
 ```
+
+stringr equivalent
+
+```{r}
+str_count(afd_species$VALID_NAME, pattern = "\\S+") |> janitor::tabyl()
+```
+
 
 ## galah code to obtain a species list of invertebrates from ALA
 
