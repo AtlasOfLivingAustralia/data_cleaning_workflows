@@ -7,7 +7,7 @@ editor_options:
 ---
 
 ```{r }
-pacman::p_load(dplyr, janitor, galah)
+pacman::p_load(dplyr, janitor, galah, stringr)
 
 ## Set working environment ####
 data_path <- "data"
@@ -65,7 +65,7 @@ species_record <- remove_improper_names_v2(as.character(all_species),
                                allow.subspecies = TRUE)
 
 is.na(species_record$updated_list) |> table() # I don't expect the function to produce the updated_list with any NAs so I don't think its neccesary to use na.omit here :) 
-str(species_record$updated_list) 
+str(species_record$updated_list) # Data was read in as chr, I don't
 
 # Filter records
 afd_species |> dplyr::filter(VALID_NAME %in% species_record$updated_list) 
@@ -92,7 +92,7 @@ afd_species <- afd_species[which(! afd_species$VALID_NAME %in% griis_species$Sup
 
 ## Counts for special characters in species names
 
-This section tallies names that contain special characters, but doesn't do anything with me
+This section tallies names that contain special characters, but doesn't do anything with them
 
 ```{r}
 length(afd_species$VALID_NAME[grep("\"", afd_species$VALID_NAME, fixed = TRUE)])
@@ -100,6 +100,17 @@ length(afd_species$VALID_NAME[grep("\'", afd_species$VALID_NAME, fixed = TRUE)])
 length(afd_species$VALID_NAME[grep("(", afd_species$VALID_NAME, fixed = TRUE)])
 length(afd_species$VALID_NAME[grep("[", afd_species$VALID_NAME, fixed = TRUE)])
 ```
+
+A stringr, readable alternative
+```{r}
+stringr::str_count(afd_species$VALID_NAME, pattern = regex("\\\"")) |> sum()
+# stringr::str_subset(afd_species$VALID_NAME, pattern = regex("\\\"")) # Double checking we are counting the right ones
+
+stringr::str_count(afd_species$VALID_NAME, pattern = regex("'")) |> sum()
+stringr::str_count(afd_species$VALID_NAME, pattern = regex("\\(")) |> sum() 
+stringr::str_count(afd_species$VALID_NAME, pattern = regex("\\[")) |> sum() 
+```
+
 
 ## Identify duplicates 
 

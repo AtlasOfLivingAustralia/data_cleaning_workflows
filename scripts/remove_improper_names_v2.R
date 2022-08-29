@@ -1,27 +1,15 @@
----
-title: "Cleaning AFD checklist"
-date: "2022-08-04"
-output: html_document
-editor_options: 
-  chunk_output_type: console
----
+#' Remove improper names using stringr
+#'
+#' @param name_vector vector of species names
+#' @param allow.higher.taxa logical, if TRUE species with single word names are excluded as they are likely within species suffix
+#' @param improper.species.list logical, if TRUE a list of improper species will be returned
+#'
+#' @return list containing improper species, updated species list excluding improper species and incomplete species list
 
-## Function to clean a character vector of species names
-Improper names replaced with NA
-Returns an updated species list and a list of removed species
-
-
-```{r}
-name_vector <- all_species
-```
-
-## The main function is below
-
-```{r}
 remove_improper_names_v2 <- function(name_vector,
-                                  allow.higher.taxa = FALSE,
-                                  allow.subspecies = TRUE,
-                                  improper.species.list = TRUE){
+                                     allow.higher.taxa = FALSE,
+                                     allow.subspecies = TRUE,
+                                     improper.species.list = TRUE){
   
   message("Cleaning checklist for improper species names...")
   
@@ -37,53 +25,53 @@ remove_improper_names_v2 <- function(name_vector,
   
   ## Particular tax modifiers, text, symbol, formatting patterns that we want to flag/remove from final list
   regex_pattern <- c("Unplaced", 
-                   "\\?",
-                   "\\sex\\s",
-                   "sp\\.", 
-                   "Sp\\.", 
-                   "spp\\.",
-                   "aff\\.",
-                   "cf\\.", 
-                   "indet\\.", 
-                   "indet\\s", 
-                   "\\ssp$",
-                   "aff\\s",
-                   "\\ssp\\s",
-                   "cf\\s", 
-                   "\\sor\\s", 
-                   "\\[", 
-                   "sensu",
-                   "species$",
-                   "sens\\.", 
-                   "-$", 
-                   "\\s-\\s", 
-                   "/", 
-                   "s\\.", 
-                   "etc\\.",
-                   "\\sx$", 
-                   "Unidentifi",
-                   "spec\\.", 
-                   "affin\\.", 
-                   "species\\s",
-                   "taxon", 
-                   "spec\\.nov\\.",
-                   "cf\\,", 
-                   "\\sand\\s",
-                   "\\swith\\s")
-
+                     "\\?",
+                     "\\sex\\s",
+                     "sp\\.", 
+                     "Sp\\.", 
+                     "spp\\.",
+                     "aff\\.",
+                     "cf\\.", 
+                     "indet\\.", 
+                     "indet\\s", 
+                     "\\ssp$",
+                     "aff\\s",
+                     "\\ssp\\s",
+                     "cf\\s", 
+                     "\\sor\\s", 
+                     "\\[", 
+                     "sensu",
+                     "species$",
+                     "sens\\.", 
+                     "-$", 
+                     "\\s-\\s", 
+                     "/", 
+                     "s\\.", 
+                     "etc\\.",
+                     "\\sx$", 
+                     "Unidentifi",
+                     "spec\\.", 
+                     "affin\\.", 
+                     "species\\s",
+                     "taxon", 
+                     "spec\\.nov\\.",
+                     "cf\\,", 
+                     "\\sand\\s",
+                     "\\swith\\s")
+  
   ## Record improper species names as identified by taxa modifiers or particular text patterns
   if (improper.species.list){
     improper_species <- stringr::str_subset(string = name_vector, 
-                                   pattern = regex(paste(regex_pattern, collapse = "|"))) 
+                                            pattern = stringr::regex(paste(regex_pattern, collapse = "|"))) 
   }
   
   ##  Remove all names with taxa modifiers (this list keeps subspecies and variety)
   name_vector_proper <- stringr::str_subset(string = name_vector, 
-                                            pattern = regex(paste(regex_pattern, collapse = "|")),
+                                            pattern = stringr::regex(paste(regex_pattern, collapse = "|")),
                                             negate = TRUE) # Setting this as true it will return non-matching names
   
   ## Record names with less than or equal to one word
-  incomplete_nms <- str_count(string = name_vector_proper, pattern = "\\w+") <= 1
+  incomplete_nms <- stringr::str_count(string = name_vector_proper, pattern = "\\w+") <= 1
   
   sp_incomplete <- name_vector_proper[incomplete_nms]
   
@@ -98,12 +86,6 @@ remove_improper_names_v2 <- function(name_vector,
   
   ## record number of records with less than or equal to one word
   sp_incomplete_n <- length(sp_incomplete)
-  
-  # ## [Optional] Remove subspecies and variety suffices
-  # if (!allow.subspecies){
-  #   name_vector <- stringr::word(name_vector, 1,2)
-  #   ##   this line keeps only the first two words of every non-NA name
-  # }
   
   if (length(improper_species) != 0){
     message(cat("# Improper names (indicated by NAs) in updated species list: "),
@@ -120,7 +102,7 @@ remove_improper_names_v2 <- function(name_vector,
             (length(improper_species) + sp_incomplete_n)/originalN)
     message(cat("Is #species retained = #species in raw list - #species removed? : "),
             length(name_vector_proper) == (length(name_vector_raw) -
-                                      (length(improper_species)+ sp_incomplete_n)))
+                                             (length(improper_species)+ sp_incomplete_n)))
     
   }else {
     message("No improper species found in checklist!")
@@ -130,5 +112,3 @@ remove_improper_names_v2 <- function(name_vector,
               improper_species = improper_species,
               incomplete_species = sp_incomplete))
 }
-```
-

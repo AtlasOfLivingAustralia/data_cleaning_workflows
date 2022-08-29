@@ -260,8 +260,7 @@ Just searching each field from the `fields` vector above here https://biocache.a
 galah_config(email = "fonti.kar@gmail.com", 
              atlas = "Australia",
              download_reason_id = 10, # testing
-             cache_directory = "data/cache" 
-             )
+             cache_directory = "data/cache")
 
 # Limiting my download to a specific year for now
 
@@ -463,7 +462,7 @@ rm(f)
 
 Here the code deals with everything except Arthopods.
 By merging I think its just collapsing down the lists of each phylum
-Some code to deal with mismatched column classes from different phylum, I suspect this might not be an issue if its in one giant tibble in the eventual download, but requires testing and but splitting phylums into lists
+Some code to deal with mismatched column classes from different phylum, I suspect this might not be an issue if its in one giant tibble in the eventual download, but requires testing and splitting phylums into lists
 
 ```{r}
 for (i in 2:length(ala)) {
