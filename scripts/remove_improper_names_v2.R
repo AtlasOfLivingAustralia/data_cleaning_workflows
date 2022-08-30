@@ -3,7 +3,9 @@
 #' @param name_vector vector of species names
 #' @param allow.higher.taxa logical, if TRUE species with single word names are excluded as they are likely within species suffix
 #' @param improper.species.list logical, if TRUE a list of improper species will be returned
-#'
+#' @details This function 1)  removes trailing white spaces, 2) flags and removes specis with specific taxonomic modifiers, 
+#' text, symbol, formatting patterns in their name (improper species), 3) flags and removes species that one have one word in their name (incomplete species) 
+#' 
 #' @return list containing improper species, updated species list excluding improper species and incomplete species list
 
 remove_improper_names_v2 <- function(name_vector,
@@ -23,7 +25,7 @@ remove_improper_names_v2 <- function(name_vector,
   
   originalN <- length(name_vector)
   
-  ## Particular tax modifiers, text, symbol, formatting patterns that we want to flag/remove from final list
+  ## Tax modifiers, text, symbol, formatting patterns that we want to flag/remove from final list
   regex_pattern <- c("Unplaced", 
                      "\\?",
                      "\\sex\\s",

@@ -1,0 +1,156 @@
+---
+title: "AFD checklist"
+author: "Payal Bal, Fonti Kar"
+date: "2022-08-30"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r }
+#install.packages("pacman")
+pacman::p_load(dplyr, janitor, galah, stringr)
+
+## Functions 
+source("scripts/remove_improper_names_v2.R") # Version Fonti created
+```
+
+### Australian Faunal Directory taxonomy
+
+```{r}
+afd_species <- read.csv("output/afd_splist_full.csv")
+all_species <- afd_species$VALID_NAME 
+```
+
+### Remove improper names 
+
+```{r}
+species_record <- remove_improper_names_v2(all_species,
+                                           allow.higher.taxa = FALSE,
+                                           allow.subspecies = TRUE)
+
+#Double checking if there are any NAs in updated list
+is.na(species_record$updated_list) |> table() 
+
+# Filter records based on updated list
+afd_species |> 
+  dplyr::filter(VALID_NAME %in% species_record$updated_list) -> afd_species
+```
+
+### Remove invasive species 
+
+*ALA still working to update this section on removing invasive/introduce species
+Code below is written by Payal
+
+```{r ##}
+griis_species <- read.csv("data/GRIIS_Global_Register_of_Introduced_and_Invasive_Species_Australia.csv")
+
+message(cat("number of AFD species listed in GRIIS: "),
+        length(which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)))
+
+message("AFD species in GRIIS - Global Register of Introduced and Invasive Species - Australia: ")
+afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)]
+
+message("Removing AFD species in GRIIS ...")
+afd_species <- afd_species[which(! afd_species$VALID_NAME %in% griis_species$Supplied.Name),]
+```
+
+## Identifying duplicates 
+
+This section identify duplicates at the level of: 
+- row
+- `VALID_NAME`
+- `COMPLETE_NAME`
+
+The number of species > the number of _unique_ species implies that there are duplicates.
+JM: use `COMPLETE_NAME` for finding duplicates
+
+
+```{r}
+## List duplicates comparing all columns
+afd_species[duplicated(afd_species),] 
+
+## Look for duplicates in specific columns
+sum(is.na(afd_species$VALID_NAME)) # Count number of NA in VALID_NAME
+length(afd_species$VALID_NAME) # Total species
+length(unique(afd_species$VALID_NAME)) # Total unique VALID_NAME
+length(unique(afd_species$COMPLETE_NAME)) # Total unique COMPLETE_NAME
+```
+
+## Duplicates in COMPLETE_NAME (excluding first appearance)
+
+```{r}
+message(cat("Number of duplicated COMPLETE_NAME (excluding first appearance): "), 
+        length(afd_species$COMPLETE_NAME[duplicated(afd_species$COMPLETE_NAME)]))
+message("duplicated COMPLETE_NAME: ")
+afd_species$COMPLETE_NAME[duplicated(afd_species$COMPLETE_NAME)]
+```
+
+## Duplicates in COMPLETE_NAME (*including* first appearance)
+
+```{r}
+
+afd_species$COMPLETE_NAME[duplicated(afd_species$COMPLETE_NAME) | duplicated(afd_species$COMPLETE_NAME, fromLast=TRUE)] -> dup_temp
+
+message(cat("#duplicates in COMPLETE_NAME (including first appearance) : ", length(dup_temp)))
+message("duplicated COMPLETE_NAME: ")
+dup_temp$COMPLETE_NAME
+
+# readr::write_csv(temp, "output/afd_completename_repeats.csv")
+
+```
+
+## Resolve duplicates from ALA list *in consultation with JM*
+
+Removal or flagging of duplicates by `TAXON_GUID` 
+
+ALA hasn't don
+
+```{r}
+## using TAXON_GUID from afd_completename_repeats_JRM.csv
+# afd_species <- unique(afd_species$COMPLETE_NAME)
+removed_dups <- c("b05771ae-bda7-497a-87c4-b55a0ebc4ca1",
+                  "03acc9d4-a209-4bf0-9972-bc7d35d56aea",
+                  "83d18631-e160-42ad-8332-89e4b8ba82b6",
+                  "c05506f8-0188-4850-8136-7b45ea35638e",
+                  "0bb19498-874f-4c6c-a637-124ec9878130")
+
+afd_species <- afd_species[which(afd_species$TAXON_GUID %!in% removed_dups),]
+#readr::write_csv(afd_species, "./outputs/afd_species_clean.csv")
+```
+
+Looks like some duplicates but not all of them are removed 5/17
+
+These are the ones excluded
+
+```{r}
+afd_species |> filter(TAXON_GUID %in% removed_dups) |> pull(COMPLETE_NAME)
+
+temp$COMPLETE_NAME
+```
+
+
+## Various checks and tallies
+
+Checks or tallies of species according to the number of words and particular formatting patterns in `VALID_NAME`
+
+Note: '\' is an escape operator for various special characters
+
+```{r}
+## Counts for number of words
+str_count(afd_species$VALID_NAME, pattern = "\\S+") |> janitor::tabyl()
+
+## Counts for special characters in species names
+stringr::str_count(afd_species$VALID_NAME, pattern = regex("\\\"")) |> sum() # Counting occurrences for \"
+stringr::str_count(afd_species$VALID_NAME, pattern = regex("'")) |> sum() # Counting occurrences for '
+stringr::str_count(afd_species$VALID_NAME, pattern = regex("\\(")) |> sum() 
+stringr::str_count(afd_species$VALID_NAME, pattern = regex("\\[")) |> sum() 
+```
+
+
+
+
