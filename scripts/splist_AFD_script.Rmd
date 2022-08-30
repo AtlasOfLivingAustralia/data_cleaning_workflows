@@ -133,7 +133,6 @@ afd_species |> filter(TAXON_GUID %in% removed_dups) |> pull(COMPLETE_NAME)
 temp$COMPLETE_NAME
 ```
 
-
 ## Various checks and tallies
 
 Checks or tallies of species according to the number of words and particular formatting patterns in `VALID_NAME`
