@@ -20,7 +20,7 @@ pacman::p_load(tidyverse, worrms)
 Read in AFD list
 
 ```{r}
-afd_taxonomy <- read.csv("output/afd_species_clean.csv")
+afd_taxonomy <- read_csv("output/afd_species_clean.csv")
 afd_species <- unique(afd_taxonomy$VALID_NAME) 
 ```
 
@@ -49,6 +49,29 @@ x[which(x %in% marine_sp)] # Seems to work well!
 afd_species_ls <- wm_records_names(afd_species[1:100]) |> bind_rows()
 ```
 
+```{r}
+## Code for for loop to query their API - slow, 1hr 
+afd_species <- unique(afd_taxonomy$VALID_NAME) 
+
+afd_species_chunks <- split(afd_species, ceiling(seq_along(afd_species)/120))
+
+for (i in 1:length(afd_species_chunks)) {
+  
+message(cat("Working on", names(afd_species_chunks)[i], "/", length(afd_species_chunks)))
+  
+try(worrms::wm_records_names(afd_species_chunks[[i]]) -> tmp)
+    
+    tmp |> bind_rows() -> afd_marine
+    
+    if(nrow(afd_marine) > 0){
+    filenm <- paste0("output/rds/afd_marine", "_", names(afd_species_chunks)[i], ".rds")
+  
+    saveRDS(afd_marine, filenm)
+  }
+  
+}
+```
+
 ## Workflow to exclude marine species from AFD checklist
 
 ```{r}
@@ -58,4 +81,35 @@ afd_species_ls |> pull(scientificname) -> marine_afd
 afd_taxonomy |> filter(! VALID_NAME %in% marine_afd) -> afd_taxonomy_nomarine
 ```
 
+## Read in all the .rds and bind
 
+```{r}
+dir <- "output/rds/"
+files <- list.files("output/rds/") 
+files |> length()
+filenms <- paste0(dir, files)
+
+#myfiles = lapply(filenms, readRDS)
+
+myfiles <- purrr::map(filenms, 
+                     readRDS) |> bind_rows()
+
+#write.csv(myfiles, )
+myfiles <- read.csv("output/afd_marine_sp.csv")
+
+```
+
+## Exclude marine species found by WoRMs by VALID_NAME
+
+```{r}
+myfiles$scientificname |> length()
+myfiles$valid_name |> length()
+
+(myfiles$scientificname == myfiles$valid_name) |> janitor::tabyl()
+
+afd_taxonomy |> filter(! VALID_NAME %in% myfiles$scientificname) # 90,230
+afd_taxonomy |> filter(! VALID_NAME %in% myfiles$valid_name) # 92,730
+
+afd_taxonomy$VALID_NAME
+```
+ 

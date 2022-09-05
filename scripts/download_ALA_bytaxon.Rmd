@@ -314,6 +314,16 @@ galah_call() |>
   galah_select(fields_v2, assertions) |> 
   atlas_occurrences() -> invert_2022
 
+galah_call() |> 
+  galah_filter(
+    year == 2022,
+    taxonConceptID == galah_identify("Animalia")$identifier, 
+    taxonConceptID != galah_identify("Chordata")$identifier, # Filters NOT Chordata
+    basisOfRecord == specimen_only # Filters to specimen only
+  ) |> 
+  galah_select(group = "assertions") |> 
+  atlas_occurrences() #-> invert_2022
+
 # saveRDS(invert_2022, "output/invert_2022.rds")
 invert_2022 <- readRDS("output/invert_2022.rds")
 
