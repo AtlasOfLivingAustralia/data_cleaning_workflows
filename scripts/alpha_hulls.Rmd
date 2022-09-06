@@ -1,0 +1,369 @@
+---
+title: "Computing alpha hulls"
+author: "Fonti Kar"
+date: "2022-09-05"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      eval = FALSE,
+                      include = FALSE)
+
+pacman::p_load(tidyverse, alphahull, sp, igraph, concaveman, rgdal, sf)
+
+# source("./scripts/conr_iucn_eval.R")
+# source("./scripts/species_polygons.R")
+```
+
+Resources on alpha hulls: 
+- https://www.r-bloggers.com/2012/12/flexibly-outlining-a-set-of-points-with-alphahull/
+- https://yihui.org/en/2010/04/alphahull-an-r-package-for-alpha-convex-hull/
+- https://rpubs.com/geospacedman/alphasimple
+- https://github.com/babichmorrowc/hull2spatial
+- https://github.com/joelgombin/concaveman
+- https://stackoverflow.com/questions/72449104/converting-alpha-hulls-to-spatial-polygon
+- https://cran.r-project.org/web/packages/alphahull/alphahull.pdf
+
+## Investigating data from IA
+
+```{r}
+ala_df <- read_csv("./output/data_invertebrates_ALAonly.csv")
+
+str(ala_df)
+
+ala_df |> 
+  filter(spfile == "aaaaba_fossicollis_20749")  -> test_ala
+```
+
+## Testing out example code from ConR package - abort!
+
+```{r, eval = FALSE}
+data(dataset.ex)
+data(land)
+## Not run: 
+Results <- IUCN.eval(dataset.ex, country_map=land,
+                     alpha = 2,
+                     method.range = "alpha.hull",
+                     write_file_option = "csv", 
+                     export_shp = TRUE, ## to get SpatialPolygonsDataFrame in output
+                     write_results = TRUE,
+                     write_shp = FALSE, ## to write shapefile files to folder
+                     SubPop = FALSE,
+                     DrawMap = FALSE,
+                     showWarnings = FALSE)
+
+xResults <- IUCN.eval(dataset.ex, 
+                     country_map=land, Cell_size_locations=10,
+                     Resol_sub_pop = 5, Cell_size_AOO = 4, method_locations="sliding scale")
+```
+
+## Testing out code in this blog post
+
+https://babichmorrowc.github.io/post/2019-03-18-alpha-hull/
+
+This convex hull (drawn in magenta) is an example of an α-shape: all convex hulls are α-shapes, but not all α-shapes are convex hulls. An α-shape doesn’t have to be convex – the lines making up the border of the shape can create concave edges relative to the points in the dataset.
+
+```{r}
+# Plotting a convex hull (smallest convex shape that can be drawn around a group of objects)
+
+data(iris)
+iris_sepals <- iris[,1:2]
+# remove duplicate datapoints
+iris_sepals <- iris_sepals[!duplicated(paste(iris_sepals$Sepal.Length, iris_sepals$Sepal.Width)), ]
+
+# find points that lie on the convex hull
+convexhull <- chull(iris_sepals)
+# plot the data points
+plot(iris_sepals, pch = 19, col = "darkseagreen")
+hull_pts <- c(convexhull, convexhull[1]) #Add first point to the vector again to join the polygon
+
+# plot the convex hull
+lines(iris_sepals[hull_pts, ], col = "magenta")
+```
+
+## Manipulating the alpha parameter
+
+Alpha shapes are created using the ashape function from the alphahull package. As you can see, increasing the α value makes the shape closer and closer to the convex hull, while low values of α make the shape more concave.
+
+
+```{r}
+# create a three-paneled figure
+par(mfrow = c(1,3))
+
+# create three different alpha shapes
+alphashape_0.5 <- ashape(iris_sepals, alpha = 0.5)
+alphashape_1 <- ashape(iris_sepals, alpha = 1)
+alphashape_2 <- ashape(iris_sepals, alpha = 2)
+
+# plot alpha = 0.5
+plot(iris_sepals, pch = 19, col = "darkseagreen")
+plot(alphashape_0.5, col = "magenta", add = TRUE)
+# plot alpha = 1
+plot(iris_sepals, pch = 19, col = "darkseagreen")
+plot(alphashape_1, col = "magenta", add = TRUE)
+# plot alpha = 2
+plot(iris_sepals, pch = 19, col = "darkseagreen")
+plot(alphashape_2, col = "magenta", add = TRUE)
+
+par(mfrow = c(1,1))
+```
+
+## Converting a shape to polygon
+
+```{r}
+ashape2poly <- function(ashape){
+  # Convert node numbers into characters
+  ashape$edges[,1] <- as.character(ashape$edges[,1])
+  ashape_graph <- graph_from_edgelist(ashape$edges[,1:2], directed = FALSE)
+  if (!is.connected(ashape_graph)) {
+    stop("Graph not connected")
+  }
+  if (any(degree(ashape_graph) != 2)) {
+    stop("Graph not circular")
+  }
+  if (clusters(ashape_graph)$no > 1) {
+    stop("Graph composed of more than one circle")
+  }
+  # Delete one edge to create a chain
+  cut_graph <- ashape_graph - E(ashape_graph)[1]
+  # Find chain end points
+  ends = names(which(degree(cut_graph) == 1))
+  path = get.shortest.paths(cut_graph, ends[1], ends[2])$vpath[[1]]
+  # this is an index into the points
+  pathX = as.numeric(V(ashape_graph)[path]$name)
+  # join the ends
+  pathX = c(pathX, pathX[1])
+  return(pathX)
+}
+
+
+alphapoly_1 <- ashape2poly(alphashape_1)
+plot(iris_sepals, pch = 19, col = "darkseagreen")
+# show the original alpha shape
+plot(alphashape_1, lwd = 5, col = "gray", add = TRUE)
+# plot the new polygon
+lines(iris_sepals[alphapoly_1, ], col = "magenta")
+```
+
+## Converting alpha arc to lines
+
+To deal with alpha curvature,  the following function converts the arcs between points in the hull to a series of very short line segments in order to approximate the curve.
+
+```{r}
+# function to convert an arc into line segments
+# given the center of the arc, the radius, the vector, and the angle (radians)
+arc2line <- function(center, r, vector, theta, npoints = 100) {
+  # Get the angles at the extremes of the arcs
+  angles <- anglesArc(vector, theta)
+  # Generate sequence of angles along the arc to determine the points
+  seqang <- seq(angles[1], angles[2], length = npoints)
+  # Generate x coordinates for points along the arc
+  x <- center[1] + r * cos(seqang)
+  # Generate y coordinates for points along the arc
+  y <- center[2] + r * sin(seqang)
+  coords.xy <- cbind(x,y)
+  line <- Line(coords = coords.xy)
+  return(line)
+}
+```
+
+## Hulls to lines
+Using the previous function, the following function takes an alpha-hull and convert it into a set of `SpatialLines` objects. The function uses the arc2line function from above to convert each arc in the alpha-hull into a series of lines, before adding each of these sets of lines together. 
+
+```{r}
+ahull2lines <- function(hull){
+  arclist <- hull$arcs
+  lines <- list()
+  for (i in 1:nrow(arclist)) {
+    # Extract the attributes of arc i
+    center_i <- arclist[i, 1:2]
+    radius_i <- arclist[i, 3]
+    vector_i <- arclist[i, 4:5]
+    theta_i <- arclist[i, 6]
+    # Convert arc i into a Line object
+    line_i <- arc2line(center = center_i, r = radius_i, vector = vector_i, theta = theta_i)
+    list_length <- length(lines)
+    if(list_length > 0){
+      # If a line has already been added to the list of lines
+      # Define last_line_coords as the coordinates of the last line added to the list before the ith line
+      last_line_coords <- lines[[list_length]]@coords
+    }
+    if(i == 1){
+      # Add the first line to the list of lines
+      lines[[i]] <- line_i
+    } else if(isTRUE(all.equal(line_i@coords[1,], last_line_coords[nrow(last_line_coords),]))){
+      # If the first coordinate in the ith line is equal to the last coordinate in the previous line
+      # then those lines should be connected
+      # Row bind the coordinates for the ith line to the coordinates of the previous line in the list
+      lines[[list_length]]@coords <- rbind(last_line_coords, line_i@coords[2:nrow(line_i@coords),])
+    } else {
+      # If the first coordinate in the ith line does not match the last coordinate in the previous line
+      # then the ith line represents a new line
+      # Add the ith line to the list as a new element
+      lines[[length(lines) + 1]] <- line_i
+    }
+  }
+  # Convert the list of lines to a Line object
+  lines <- Lines(lines, ID = 'l')
+  # Convert the Line object to a SpatialLines object
+  sp_lines <- SpatialLines(list(lines))
+  return(sp_lines)
+}
+```
+
+```{r}
+alphahull_1 <- ahull(iris_sepals, alpha = 1)
+
+plot(iris_sepals, pch = 19, col = "darkseagreen")
+plot(alphahull_1, col = "magenta", add = TRUE)
+lines_1 <- ahull2lines(alphahull_1)
+# the result is a SpatialLines object
+class(lines_1)
+## [1] "SpatialLines"
+## attr(,"package")
+## [1] "sp"
+
+plot(iris_sepals, pch = 19, col = "darkseagreen")
+# show the original alpha shape
+plot(alphahull_1, lwd = 5, col = "gray", add = TRUE)
+# plot the new polygon
+plot(lines_1, col = "magenta", add = TRUE)
+```
+
+```{r}
+spLines2poly <- function(sp_lines){
+  # Extract the lines slot
+  lines_slot <- sp_lines@lines[[1]]
+  # Create a list of booleans indicating whether a given Line represents a polygon
+  poly_bool <- sapply(lines_slot@Lines, function(x){
+    coords <- lines_slot@Lines[[1]]@coords
+    # Check if the first coordinate in the line is the same as the last
+    all.equal(coords[1,], coords[nrow(coords),])
+  })
+  # Pull out the lines that form polygons
+  poly_lines <- sp_lines[poly_bool]
+  poly_lines_slot <- poly_lines@lines
+  # Create SpatialPolygons
+  sp_polys <- SpatialPolygons(list(Polygons(lapply(poly_lines_slot, function(x) {
+    Polygon(slot(slot(x, "Lines")[[1]], "coords"))
+  }), ID = "1")))
+  return(sp_polys)
+}
+```
+
+```{r}
+SpPoly_1 <- spLines2poly(lines_1)
+class(SpPoly_1)
+## [1] "SpatialPolygons"
+## attr(,"package")
+## [1] "sp"
+
+plot(iris_sepals, pch = 19, col = "darkseagreen")
+# show the original alpha shape
+plot(alphahull_1, lwd = 5, col = "gray", add = TRUE)
+# plot the new polygon
+plot(SpPoly_1, border = "magenta", add = TRUE)
+```
+
+```{r}
+ahull2poly <- function(hull){
+  # Convert the alpha hull to SpatialLines
+  hull2SpatialLines <- ahull2lines(hull)
+  # Convert SpatialLines to SpatialPolygon
+  SpatialLines2SpatialPolygon <- spLines2poly(hull2SpatialLines)
+  return(SpatialLines2SpatialPolygon)
+}
+```
+
+```{r}
+hullpoly_1 <- ahull2poly(alphahull_1)
+class(hullpoly_1)
+## [1] "SpatialPolygons"
+## attr(,"package")
+## [1] "sp"
+
+plot(iris_sepals, pch = 19, col = "darkseagreen")
+# show the original alpha shape
+plot(alphahull_1, lwd = 5, col = "gray", add = TRUE)
+# plot the new polygon
+plot(hullpoly_1, border = "orange", add = TRUE)
+```
+
+## Just install the `hull2spatial` package to do this
+
+```{r}
+remotes::install_github("babichmorrowc/hull2spatial")
+
+library(hull2spatial)
+
+alphahull_1 <- ahull(iris_sepals, alpha = 1)
+hullpoly_1 <- hull2spatial::ahull2poly(alphahull_1)
+plot(hullpoly_1, border = "magenta", add = TRUE)
+
+# Save the polygon as a shapefile
+# Code from here: https://gis.stackexchange.com/questions/61633/convert-a-spatial-polygon-object-to-data-frame-using-r
+spp <-SpatialPolygonsDataFrame(hullpoly_1,
+                               data=as.data.frame(iris_sepals[1,1]))
+writeOGR(spp,"output","testShape",driver="ESRI Shapefile") 
+
+# Seems to work with WARNING
+# Warning message:
+# In writeOGR(spp, "output", "testShape", driver = "ESRI Shapefile") :
+#   Field names abbreviated for ESRI Shapefile driver
+```
+
+## Testing code from here using 'sf':
+https://stackoverflow.com/questions/72449104/converting-alpha-hulls-to-spatial-polygon
+
+```{r}
+ala_df |> 
+  group_by(spfile) |> 
+  summarise(n_obs = length(spfile)) |> 
+  arrange(- n_obs) |> 
+  print(n = 100)
+
+ala_df |> 
+  filter(spfile == "diphyoropa_saturni_7493")  -> test_ala
+
+test_ala  
+
+# Deduplication
+test_ala |> 
+  filter(! duplicated(longitude) | duplicated(latitude))  |> 
+  select(latitude, longitude) -> data
+
+plot(dat)
+dat.ashape <- ashape(data, alpha = 5) 
+plot(dat.ashape)
+
+# Not sure why there is this step
+coords <- dat.ashape$x[dat.ashape$alpha.extreme,]
+
+# Closing the loop
+coords <- rbind(coords, coords[1,]) 
+
+dat.sf <- st_multipoint(coords, dim = "XY")
+
+tst <- dat.sf %>%
+  st_cast('POLYGON')
+
+plot(dat.ashape) # Nope this doens't work
+plot(tst, add=T, col=adjustcolor('red', alpha.f=.3), col.line='red', border=2)
+```
+
+## Testing concaveman
+
+https://gis.stackexchange.com/questions/302107/defining-convex-hull-of-clouds-of-points-using-r/302110#302110
+
+```{r}
+dat.sf <- st_as_sf(data, coords=c("latitude","longitude"), crs = st_crs(4326))
+polygon <- concaveman(dat.sf)
+
+plot(dat.sf, pch=16)
+plot(polygon, add=T, col=adjustcolor('red', alpha.f=.3), col.line='red', border=2) 
+```
+
+

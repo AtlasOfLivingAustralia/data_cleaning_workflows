@@ -10,7 +10,9 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-
+Resources: 
+https://www.marinespecies.org/aphia.php?p=webservice&type=r
+https://mmisw.org/ont/ioos/marine_biogeography
 ```{r}
 # install.packages("worrms") https://docs.ropensci.org/worrms/index.html
 
@@ -49,6 +51,15 @@ x[which(x %in% marine_sp)] # Seems to work well!
 afd_species_ls <- wm_records_names(afd_species[1:100]) |> bind_rows()
 ```
 
+## Workflow to exclude marine species from AFD checklist
+
+```{r}
+afd_species_ls |> pull(scientificname) -> marine_afd
+
+## Excluding the marine species in VALID_NAME
+afd_taxonomy |> filter(! VALID_NAME %in% marine_afd) -> afd_taxonomy_nomarine
+```
+
 ```{r}
 ## Code for for loop to query their API - slow, 1hr 
 afd_species <- unique(afd_taxonomy$VALID_NAME) 
@@ -72,14 +83,6 @@ try(worrms::wm_records_names(afd_species_chunks[[i]]) -> tmp)
 }
 ```
 
-## Workflow to exclude marine species from AFD checklist
-
-```{r}
-afd_species_ls |> pull(scientificname) -> marine_afd
-
-## Excluding the marine species in VALID_NAME
-afd_taxonomy |> filter(! VALID_NAME %in% marine_afd) -> afd_taxonomy_nomarine
-```
 
 ## Read in all the .rds and bind
 
@@ -96,7 +99,6 @@ myfiles <- purrr::map(filenms,
 
 #write.csv(myfiles, )
 myfiles <- read.csv("output/afd_marine_sp.csv")
-
 ```
 
 ## Exclude marine species found by WoRMs by VALID_NAME
