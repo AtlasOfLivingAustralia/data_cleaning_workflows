@@ -26,6 +26,7 @@ Resources on alpha hulls:
 - https://github.com/joelgombin/concaveman
 - https://stackoverflow.com/questions/72449104/converting-alpha-hulls-to-spatial-polygon
 - https://cran.r-project.org/web/packages/alphahull/alphahull.pdf
+- https://rpubs.com/geospacedman/alphasimple
 
 ## Investigating data from IA
 

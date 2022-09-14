@@ -1,0 +1,292 @@
+---
+title: "Creating alpha-hulls in `galah`"
+author: "Margot Schneider, Fonti Kar"
+date: "`r Sys.Date()`"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      eval = TRUE,
+                      include = TRUE)
+
+remotes::install_github("babichmorrowc/hull2spatial")
+
+pacman::p_load(galah, tidyverse, alphahull, sp, sf, ozmaps, dplyr, hull2spatial, patchwork)
+
+galah_config(email = "fonti.kar@gmail.com", 
+             atlas = "Australia",
+             download_reason_id = 10 # testing
+             )
+```
+
+### Creating $\alpha$-hulls in `galah`
+
+- What is convex polygon/alpha shape/alpha hull?
+- What are they for in spatial analyses?
+  - Estimating EOO link to Marsh et al 2021 and point to their cool plot
+  - Compare areas over time link to Takach et al 2020 and point to their cool plot
+- What is the distinction between convex polygons and alpha hulls
+- Here's how you make with data via `galah`
+  - Plot: use all records
+  - Plot: Use specimen only
+
+#### A demonstration with `iris` dataset
+
+MARGOT: You can use these simple plots to explain what these different hulls are if you think that would help the blog! I think it is a good idea :) 
+
+```{r}
+data(iris)
+iris_sepals <- iris[,1:2]
+
+# remove duplicate datapoints
+iris_sepals <- iris_sepals[!duplicated(paste(iris_sepals$Sepal.Length, iris_sepals$Sepal.Width)), ]
+
+# a convex hull
+convexhull <- chull(iris_sepals)
+
+# create the outline of the hull
+hull_pts <- c(convexhull, convexhull[1])
+
+# plot the points and convex hull
+ggplot() + 
+  geom_point(data = iris_sepals, aes(Sepal.Length, Sepal.Width), colour = "darkseagreen") + 
+  geom_polygon(data = iris_sepals[hull_pts, ], aes(Sepal.Length, Sepal.Width), fill = NA, colour = "black") + 
+  theme_bw()
+```
+
+Here is a function to extract the polygon from an `ashape` object from the `alphahull` R package
+
+```{r}
+extract_polygons <- function(alpha_shape_obj)
+{
+  if(class(alpha_shape_obj) != "ashape") stop("extract_polygons requires an ashape")
+  edge.df <- as.data.frame(alpha_shape_obj$edges)
+  groups <- ns <- xs <- ys <- numeric(nrow(edge.df))
+  m <- cbind(edge.df[[1]], edge.df[[2]])
+  group <- 1
+  repeat {
+    i <- which(groups == 0)[1]
+    if (length(i) == 0 | is.na(i)) break()
+    j <- n <- 1
+    repeat {
+      groups[i] <- group
+      ns[i] <- n
+      if(j == 1) xs[i] <- edge.df$x1[i] else xs[i] <- edge.df$x2[i]
+      if(j == 1) ys[i] <- edge.df$y1[i] else ys[i] <- edge.df$y2[i]
+      next_ind <- which((m[, j] == m[i, j] | m[, (j %% 2 + 1)] == m[i, j]) & groups == 0)
+      if (length(next_ind) == 0) break()
+      j <- which(m[next_ind,] == m[i, j]) %% 2 + 1
+      i <- next_ind
+      n <- n + 1
+    }
+    group <- group + 1
+  }
+  data.frame(x = xs, y = ys, group = as.factor(groups))[order(groups, ns), ]
+}
+```
+
+
+```{r}
+# Create alpha shapes
+alphashape_0.5 <- ashape(iris_sepals, alpha = 0.5)
+alphashape_1 <- ashape(iris_sepals, alpha = 1)
+alphashape_2 <- ashape(iris_sepals, alpha = 2)
+
+# Extract polgyons 
+a_0.5<- extract_polygons(alphashape_0.5)
+a_1<- extract_polygons(alphashape_1)
+a_2<- extract_polygons(alphashape_2)
+
+a05 <- ggplot() + 
+  geom_point(data = iris_sepals, aes(Sepal.Length, Sepal.Width), colour = "darkseagreen") + 
+  geom_polygon(data = a_0.5, aes(x, y), fill = NA, colour = "black") + 
+  labs(title = "a = 0.5") +
+  theme_bw()
+
+a1 <- ggplot() + 
+  geom_point(data = iris_sepals, aes(Sepal.Length, Sepal.Width), colour = "darkseagreen") + 
+  geom_polygon(data = a_1, aes(x, y), fill = NA, colour = "black") + 
+  labs(title = "a = 1") +
+  theme_bw()
+
+a2 <- ggplot() + 
+  geom_point(data = iris_sepals, aes(Sepal.Length, Sepal.Width), colour = "darkseagreen") + 
+  geom_polygon(data = a_2, aes(x, y), fill = NA, colour = "black") + 
+  labs(title = "a = 2") +
+  theme_bw()
+
+a05 + a1 + a2
+```
+
+### Okay lets try do this `galah`
+
+Getting all records for a species of Damsel fly
+
+```{r}
+galah_call() |> 
+  galah_identify("Austroargiolestes calcaris") |> 
+  galah_select(group = "basic") |> 
+   atlas_occurrences() -> dfly
+```
+
+### Data cleaning steps
+
+```{r}
+# Quick tally of number of duplicates in decimalLongitude and decimalLatitude
+duplicated(dfly$decimalLongitude)  |> table()
+duplicated(dfly$decimalLatitude)  |> table()
+
+# Deduplication
+dfly |> 
+  filter(! duplicated(decimalLongitude) & ! duplicated(decimalLatitude)) -> dfly_ddup
+
+# Exclude NA in coordinates
+dfly_ddup |>  
+  filter(! is.na(decimalLongitude) & ! is.na(decimalLatitude) ) -> dfly_clean
+```
+
+## Compute and plot alpha shape of occurrences
+
+```{r}
+dfly_clean |> 
+  select(decimalLongitude, decimalLatitude) |> 
+  ashape(alpha = 2) -> dfly_ashape
+
+# Extract the ashape as a polygon
+extract_polygons(dfly_ashape) -> dfly_ashape_df
+
+# Getting a polygon of Australia and set it to the specific coordinate system
+aus <- st_transform(ozmaps::ozmap_country, 4326)
+
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  + 
+  geom_point(data = dfly_clean, aes(decimalLongitude, decimalLatitude), colour = "black", size = 0.8) + 
+   geom_polygon(data = dfly_ashape_df, aes(x, y), fill = "orange", colour = "black", alpha = 0.5) + 
+  coord_sf(xlim=c(142, 152),ylim=c(-32,-44)) +
+  labs(title = "Alpha shape", x = "Longtitude (DD)", y = "Latitude (DD)") + # DD means decimal degrees here
+  theme_bw() -> dfly_ashape_p
+
+dfly_ashape_p
+```
+
+## Compute and plot alpha hull of occurrences
+
+Alpha hulls are a bit trickier due to their arcs. We rely on an R package `hull2spatial` that converts `ahull`. We will also be relying on the R packages `sf` for plotting purposes
+
+### Turn ALA occurrence data into sf 
+
+```{r}
+dfly_clean |> 
+  st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), crs = 4326) -> dfly_sf
+```
+
+### Compute an alpha hull for our occurrences
+
+```{r}
+dfly_clean |> 
+  select(decimalLongitude, decimalLatitude) |> 
+  ahull(alpha = 2) -> dfly_ahull
+```
+
+### Transform our `ahull` object into a `sp` object
+
+```{r}
+hull2spatial::ahull2poly(dfly_ahull) -> dfly_sp_df
+```
+
+### Then transform `sp` object into a `sf` object
+
+```{r}
+dfly_sp_df |> 
+  st_as_sf() -> dfly_sf_ahull
+
+# Set the coordinate system using `aus` object
+dfly_sf_ahull %>% st_set_crs(st_crs(aus)) -> dfly_sf_ahull
+```
+
+```{r}
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_sf(data = dfly_sf, colour = "black", size = 0.5) +  
+  geom_sf(data = dfly_sf_ahull, fill = "orange", alpha = 0.5) +
+  coord_sf(xlim=c(142, 152),ylim=c(-32,-44)) +
+  labs(title = "Alpha hull", x = "Longtitude (DD)", y = "Latitude (DD)") + 
+  theme_bw() -> dfly_ahull_p
+
+dfly_ahull_p
+```
+
+### Side by side of alpha shape and alpha hull
+
+```{r}
+dfly_ashape_p + dfly_ahull_p
+```
+
+## Compute alpa hulls using records that were based on specimens only
+
+Note the huge drop in the number of records!
+
+```{r}
+# Create a vector containing specimen records only for filtering
+specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
+                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
+
+galah_call() |> 
+  galah_identify("Austroargiolestes calcaris") |> 
+  galah_filter(basisOfRecord == specimen_only) |> 
+  galah_select(group = "basic") |> 
+   atlas_occurrences() -> dfly_specionly
+```
+
+### Repeat the process again
+
+```{r}
+# Deduplication
+dfly_specionly |> 
+  filter(! duplicated(decimalLongitude) & ! duplicated(decimalLatitude)) -> dflysp_ddup
+
+# Exclude NA in coordinates
+dflysp_ddup |>  
+  filter(! is.na(decimalLongitude) & ! is.na(decimalLatitude) ) -> dflysp_clean
+
+# Turn ALA occurrence data into sf 
+dflysp_clean |> 
+  st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), crs = 4326) -> dflysp_sf
+
+# Compute an alpha hull for our specimen only occurrences
+dflysp_clean |> 
+  select(decimalLongitude, decimalLatitude) |> 
+  ahull(alpha = 2) -> dflysp_ahull
+
+# Transform our `ahull` object into a `sp` object and then into a `sf` object
+hull2spatial::ahull2poly(dflysp_ahull) |> 
+  st_as_sf() -> dflysp_sf_ahull
+
+# Set the coordinate system using `aus` object
+dflysp_sf_ahull %>% st_set_crs(st_crs(aus)) -> dflysp_sf_ahull
+
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_sf(data = dflysp_sf, colour = "black", size = 0.5) +  
+  geom_sf(data = dflysp_sf_ahull, fill = "orange", alpha = 0.5) +
+  coord_sf(xlim=c(142, 152),ylim=c(-32,-44)) +
+  labs(title = "Specimen only \nalpha hull", x = "Longtitude (DD)", y = "Latitude (DD)") + 
+  theme_bw() -> dflysp_ahull_p
+
+dflysp_ahull_p
+```
+
+### All of them together
+
+```{r}
+combined <- dfly_ashape_p + dfly_ahull_p + dflysp_ahull_p
+
+combined + plot_annotation(
+  title = expression(italic("Austroargiolestes calcaris"))
+)
+```
+
+
