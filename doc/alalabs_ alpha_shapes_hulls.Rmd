@@ -12,9 +12,9 @@ knitr::opts_chunk$set(echo = TRUE,
                       eval = TRUE,
                       include = TRUE)
 
-remotes::install_github("babichmorrowc/hull2spatial")
+pacman::p_load(remotes, galah, tidyverse, alphahull, sp, sf, ozmaps, dplyr, hull2spatial, patchwork)
 
-pacman::p_load(galah, tidyverse, alphahull, sp, sf, ozmaps, dplyr, hull2spatial, patchwork)
+remotes::install_github("babichmorrowc/hull2spatial")
 
 galah_config(email = "fonti.kar@gmail.com", 
              atlas = "Australia",
