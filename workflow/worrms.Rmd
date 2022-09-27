@@ -83,7 +83,6 @@ try(worrms::wm_records_names(afd_species_chunks[[i]]) -> tmp)
 }
 ```
 
-
 ## Read in all the .rds and bind
 
 ```{r}
@@ -97,8 +96,8 @@ filenms <- paste0(dir, files)
 myfiles <- purrr::map(filenms, 
                      readRDS) |> bind_rows()
 
-#write.csv(myfiles, )
-myfiles <- read.csv("output/afd_marine_sp.csv")
+#write.csv(myfiles, "output/worrms_marine_splist.csv")
+myfiles <- read.csv("output/worrms_marine_splist.csv")
 ```
 
 ## Exclude marine species found by WoRMs by VALID_NAME

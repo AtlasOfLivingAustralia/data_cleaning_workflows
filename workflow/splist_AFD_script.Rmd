@@ -33,7 +33,7 @@ species_record <- remove_improper_names_v2(all_species,
                                            allow.higher.taxa = FALSE,
                                            allow.subspecies = TRUE)
 
-#Double checking if there are any NAs in updated list
+# Double checking if there are any NAs in updated list
 is.na(species_record$updated_list) |> table() 
 
 # Filter records based on updated list

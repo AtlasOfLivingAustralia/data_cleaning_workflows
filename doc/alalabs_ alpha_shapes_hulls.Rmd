@@ -2,14 +2,12 @@
 title: "Creating spatial polygons"
 author: "Margot Schneider, Fonti Kar"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  html_document:
+    code_folding: hide
 editor_options: 
   chunk_output_type: console
 ---
-
-In conservation ecology, convex hulls and alpha hulls are used to [quantify IUCN metrics such as, Area of Occupancy and Extent of Occurrence](https://www.ala.org.au/spatial-portal-help/aoo/) to describe the distribution of a particular species. Typically, convex and alpha hulls are used when dealing with **data deficient species** as opposed to Species Distribution Models which requires a large number of observations.
-
-Here we'll walk you through how to create your own convex and alpha hulls using ALA data and showcase some **recent research** that applies these to better understand biodiversity conservation. These spatial visualizations generated are a great alternative to plotting point based species occurrence records!
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, 
@@ -26,9 +24,15 @@ galah_config(email = "fonti.kar@gmail.com",
              )
 ```
 
+In conservation ecology, convex hulls and alpha hulls are used to [quantify IUCN metrics such as, Area of Occupancy and Extent of Occurrence](https://www.ala.org.au/spatial-portal-help/aoo/) to describe the distribution of a particular species. Typically, convex and alpha hulls are used when dealing with **data deficient species**.
+
+Here, we will walk you through how to create and plot your own convex and alpha hulls using ALA data. We will also showcase some **recent research** that puts these spatial polygons to use for biodiversity conservation. These spatial visualizations are a great alternative to plotting point based species occurrence records!
+
 We'll start by installing/loading some R packages which we'll need:
 
 ```{r, eval = FALSE}
+#install.packages("pacman")
+
 pacman::p_load(remotes, galah, tidyverse, alphahull, sp, sf, ozmaps, patchwork)
 ```
 
@@ -42,27 +46,27 @@ Here's a convex hull surround the data points in the `iris` data set.
 data(iris)
 iris_sepals <- iris[,1:2]
 
-# remove duplicate data points
+# Remove duplicate data points
 iris_sepals <- iris_sepals[!duplicated(paste(iris_sepals$Sepal.Length, iris_sepals$Sepal.Width)), ]
 
-# compute a convex hull
+# Compute a convex hull
 convexhull <- chull(iris_sepals)
 
-# create the outline of the hull but joining the hull vector together 
+# Create the outline of the hull by joining the hull vector together 
 hull_pts <- c(convexhull, convexhull[1])
 ```
 
 ```{r, out.width = '50%'}
-# plot the points and convex hull
+# Plot the points and convex hull
 ggplot() + 
   geom_point(data = iris_sepals, aes(Sepal.Length, Sepal.Width), colour = "darkseagreen") + 
   geom_polygon(data = iris_sepals[hull_pts, ], aes(Sepal.Length, Sepal.Width), fill = NA, colour = "black") + 
   theme_bw()
 ```
 
-A convex hull is actually a simplified form of an alpha shape. Unlike the convex hull, alpha shapes have a alpha parameter that controls the level of detail, or how tightly the boundary fits around the point set.
+A convex hull is actually a simplified form of an alpha shape. Alpha shapes have an alpha parameter that controls the level of detail, or how tightly the boundary fits around the point set.
 
-Here are some alpha shapes with increasing values for alpha with the `iris` data set.
+Here are some alpha shapes of the `iris` data set, with increasing values of alpha.
 
 ```{r, include=FALSE}
 # Create alpha shapes
@@ -121,7 +125,7 @@ a2 <- ggplot() +
   theme_bw()
 ```
 
-Notice as the alpha value gets larger, the more simplified the alpha shape becomes
+Notice as the alpha value gets larger, the more simplified the alpha shape becomes.
 
 ```{r, fig.width=15, fig.height=5}
 a05 + a1 + a2
@@ -137,7 +141,7 @@ Now that we have the basics covered, lets try apply these concepts using occurre
 
 </center>
 
-We'll use `galah` to access records from the Atlas of Living Australia. Note that you will need to first set up your own [ALA configuration locally](http://galah.ala.org.au/articles/download_data.html?q=config#configuring-galah) using `galah_config` before this step.
+We'll use `galah` to access records from the Atlas of Living Australia. Note that you will need to first set up your own [ALA configuration locally](http://galah.ala.org.au/articles/download_data.html?q=config#configuring-galah) using `galah_config` before fetching records.
 
 ```{r, cache=TRUE, results='hide'}
 galah_call() |> 
@@ -149,7 +153,7 @@ galah_call() |>
 
 ### Data cleaning steps
 
-It's important to make sure you've removed **all duplicates and missing values** from the data in order to plot your polygons.
+It's important to remove **all duplicates and missing values** from the data in order to plot your polygons.
 
 ```{r}
 # De-duplication
@@ -163,7 +167,7 @@ dfly_ddup |>
 
 ### Convex hull of ALA occurences
 
-```{r, out.width = '90%'}
+```{r, out.width = '90%', class.source = "fold-show"}
 # 1. Compute convex hull
 dfly_clean |> 
   select(decimalLongitude, decimalLatitude) |>  
@@ -172,10 +176,10 @@ dfly_clean |>
 # 2. Create the outline of the hull but joining the hull vector together
 dfly_chull_pts <- c(dfly_chull, dfly_chull[1])
 
-# 3. Getting a polygon of Australia and set it to the specific coordinate system
+# 3. Getting a polygon of Australia and set it to a specific coordinate system
 aus <- st_transform(ozmaps::ozmap_country, 4326)
 
-# 4. Plot the occurences and convex hull
+# 4. Plot the occurrences and convex hull
 ggplot() + 
   geom_sf(data = aus, colour = "black", fill = "white")  + 
   geom_point(data = dfly_clean, aes(decimalLongitude, decimalLatitude), colour = "black", size = 0.8) + 
@@ -189,9 +193,9 @@ dfly_chull_p
 
 ### Alpha shape of ALA occurences
 
-Next, we can plot an alpha shape for our Powdered flatwing onto a map! We've set **alpha = 2** as this is commonly used in the research papers we've seen but choose an alpha value that best suits your needs.
+Next, we can create a map with an alpha shape with Powdered flatwing data! We've set **alpha = 2** as this value is commonly used in the research papers we've seen but choose an alpha value that best suits your needs.
 
-We will need to use this customised function named `extract_polygons` for extracting the polygon outline from an `ashape` object as a plottable data frame. 
+We will need to use a customised function named `extract_polygons` for extracting the polygon outline from an `ashape` object so we can plot it in  `ggplot2` later.
 
 ```{r}
 extract_polygons <- function(alpha_shape_obj)
@@ -222,7 +226,7 @@ extract_polygons <- function(alpha_shape_obj)
 }
 ```
 
-```{r, out.width = '90%'}
+```{r, out.width = '90%', class.source = "fold-show"}
 # 1. Compute convex hull
 dfly_clean |> 
   select(decimalLongitude, decimalLatitude) |> 
@@ -253,7 +257,7 @@ Alpha hulls are another extension of alpha shapes, they are unique because of th
 remotes::install_github("babichmorrowc/hull2spatial")
 ```
 
-```{r}
+```{r, class.source = "fold-show"}
 # 1. Turn ALA occurrence data into a `sf` object
 dfly_clean |> 
   st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), crs = 4326) -> dfly_sf
@@ -294,7 +298,7 @@ Often citizen science data are excluded from scientific analyses due to it's poo
 
 We are going to repeat the above steps for generating an alpha hull excluding citizen science data. Remember you still need to clean this data set as above
 
-```{r, cache=TRUE, results='hide'}
+```{r, cache=TRUE, results='hide', class.source = "fold-show"}
 # Create a vector excluding human observations
 institution_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
                    "MACHINE_OBSERVATION", "MATERIAL_SAMPLE", "OBSERVATION")
@@ -333,7 +337,7 @@ hull2spatial::ahull2poly(dflysp_ahull) |>
 dflysp_sf_ahull %>% st_set_crs(st_crs(aus)) -> dflysp_sf_ahull
 ```
 
-```{r, out.width = '90%'}
+```{r, out.width = '90%', class.source = "fold-show"}
 ggplot() + 
   geom_sf(data = aus, colour = "black", fill = "white")  +
   geom_sf(data = dflysp_sf, colour = "black", size = 0.5) +  
@@ -365,7 +369,7 @@ Ok, so now you know how to create convex hulls, alpha shapes and alpha hulls usi
 
 Recently, [Dr. Marsh and colleages](https://onlinelibrary.wiley.com/doi/full/10.1111/geb.13550) used alpha hulls to calculate the impact the 2020 mega bush fires on invertebrates in southern Australia. Data for invertebrates are inherently sparse so alpha hulls can be helpful when you only have a handful of records to work with.
 
-[Dr. Takach and their team](https://onlinelibrary.wiley.com/doi/10.1111/ddi.13145) used alpha hulls to understand how the Australian tropical savanna mammal distributions have changed over time. For example, distributions can shrink or expand due to habitat loss or in response to changing climate. Takach et al., (2020) found that the [Black-Footed Tree Rat *Mesembriomys gouldii*](https://biocache.ala.org.au/occurrences/c6e1ff2d-ac80-4cc1-806c-6107e8e24617) experienced a range contraction.
+[Dr. Takach and their team](https://onlinelibrary.wiley.com/doi/10.1111/ddi.13145) used alpha hulls to understand how the Australian tropical savanna mammal distributions have changed over time. For example, distributions can shrink or expand due to habitat loss or in response to changing climate. Dr. Takach found that the [Black-Footed Tree Rat *Mesembriomys gouldii*](https://biocache.ala.org.au/occurrences/c6e1ff2d-ac80-4cc1-806c-6107e8e24617) experienced a range contraction.
 
 <center>
 
