@@ -131,7 +131,11 @@ a05 + a1 + a2
 
 Now that we have the basics covered, lets try apply these concepts using occurrence records of a damsel fly, *Austroargiolestes calcaris* also known as the [Powdered Flatwing](https://biocache.ala.org.au/occurrences/a8e7c852-6a1d-4d8a-9976-4d476d13c856).
 
-<center>![A Powdered Flatwing perched on a plant](../static/damsel/Austroargiolestes_calcaris_1.jpeg){width="7.9cm"}</center>
+<center>
+
+![A Powdered Flatwing perched on a plant by Reiner Richter CC-BY 4.0](../static/polygons/Austroargiolestes_calcaris_1.jpeg){width="7.9cm"}
+
+</center>
 
 We'll use `galah` to access records from the Atlas of Living Australia. Note that you will need to first set up your own [ALA configuration locally](http://galah.ala.org.au/articles/download_data.html?q=config#configuring-galah) using `galah_config` before this step.
 
@@ -365,7 +369,7 @@ Recently, [Dr. Marsh and colleages](https://onlinelibrary.wiley.com/doi/full/10.
 
 <center>
 
-![A Black-Footed Tree Rat perched on a branch](../static/polygons/Mesembriomys_gouldii_1.jpeg){width="7.9cm"}
+![A Black-Footed Tree Rat perched on a branch by Colin Trainor CC-BY-NC 4.0 ](../static/polygons/Mesembriomys_gouldii_1.jpeg){width="7.9cm"}
 
 </center>
 
