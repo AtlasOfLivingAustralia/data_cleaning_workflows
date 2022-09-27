@@ -30,7 +30,7 @@ Here, we will walk you through how to create and plot your own convex and alpha 
 
 We'll start by installing/loading some R packages which we'll need:
 
-```{r, eval = FALSE}
+```{r, eval = FALSE, class.source = "fold-show"}
 #install.packages("pacman")
 
 pacman::p_load(remotes, galah, tidyverse, alphahull, sp, sf, ozmaps, patchwork)
@@ -38,9 +38,7 @@ pacman::p_load(remotes, galah, tidyverse, alphahull, sp, sf, ozmaps, patchwork)
 
 ### First, a demonstration with `iris` data set
 
-A convex hull is defined as the smallest polygon that encloses all the points in the data set. Put simply, its a way to draw around all the points with as few lines as possible! 
-
-Here's a convex hull surround the data points in the `iris` data set. 
+A convex hull is defined as the smallest polygon that encloses all the points in the data set. Put simply, its a way to draw around all the points with as few lines as possible! Here's one convex hull that is surrounding the data points in the `iris` data set. 
 
 ```{r, include=FALSE}
 data(iris)
@@ -66,7 +64,7 @@ ggplot() +
 
 A convex hull is actually a simplified form of an alpha shape. Alpha shapes have an alpha parameter that controls the level of detail, or how tightly the boundary fits around the point set.
 
-Here are some alpha shapes of the `iris` data set, with increasing values of alpha.
+Here are some alpha shapes of the `iris` data set, with increasing values of alpha. Notice as the alpha value gets larger, the more simplified the alpha shape becomes.
 
 ```{r, include=FALSE}
 # Create alpha shapes
@@ -125,15 +123,13 @@ a2 <- ggplot() +
   theme_bw()
 ```
 
-Notice as the alpha value gets larger, the more simplified the alpha shape becomes.
-
 ```{r, fig.width=15, fig.height=5}
 a05 + a1 + a2
 ```
 
 ### Lets try to do this with `galah`
 
-Now that we have the basics covered, lets try apply these concepts using occurrence records of a damsel fly, *Austroargiolestes calcaris* also known as the [Powdered Flatwing](https://biocache.ala.org.au/occurrences/a8e7c852-6a1d-4d8a-9976-4d476d13c856).
+Now that we have the basics covered, lets try apply these concepts using occurrence records of a damsel fly, *Austroargiolestes calcaris*, also known as the [Powdered Flatwing](https://biocache.ala.org.au/occurrences/a8e7c852-6a1d-4d8a-9976-4d476d13c856).
 
 <center>
 
@@ -141,7 +137,7 @@ Now that we have the basics covered, lets try apply these concepts using occurre
 
 </center>
 
-We'll use `galah` to access records from the Atlas of Living Australia. Note that you will need to first set up your own [ALA configuration locally](http://galah.ala.org.au/articles/download_data.html?q=config#configuring-galah) using `galah_config` before fetching records.
+We'll use `galah` to access records from the [Atlas of Living Australia](https://www.ala.org.au/). Note that you will need to first set up your own [ALA configuration locally](http://galah.ala.org.au/articles/download_data.html?q=config#configuring-galah) using `galah_config` before fetching records.
 
 ```{r, cache=TRUE, results='hide'}
 galah_call() |> 
@@ -153,7 +149,7 @@ galah_call() |>
 
 ### Data cleaning steps
 
-It's important to remove **all duplicates and missing values** from the data in order to plot your polygons.
+It's important to remove **all duplicates and missing values** in order to plot your polygons.
 
 ```{r}
 # De-duplication
