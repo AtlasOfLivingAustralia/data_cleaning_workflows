@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r }
 #install.packages("pacman")
-pacman::p_load(dplyr, janitor, galah, stringr, tidyverse, glue)
+pacman::p_load(dplyr, janitor, galah, stringr, tidyverse, arrow, stringr)
 
 ## Functions 
 source("scripts/remove_improper_names_v2.R") # Version Fonti created
@@ -61,34 +61,95 @@ afd_species <- afd_species[which(! afd_species$VALID_NAME %in% griis_species$Sup
 
 ### Remove Marine species
 
-###  First option
+###  Using World Register of Marine Speices
+
+### Using CAAB
 
 Using CAAB data: https://www.cmar.csiro.au/data/caab/
 
 ```{r}
+# Read in data
 caab_species <- read_csv("data/caab_dump_latest.csv")
 
-caab_species |> mutate(scientific_name = paste0(GENUS," ", SPECIES)) |> pull(scientific_name)
+# Create scientific name
+caab_species |> mutate(scientific_name = ifelse(! is.na(SPECIES),
+                                                paste0(GENUS," ", SPECIES),
+                                                NA)) -> caab_species
 
+# Overlap 
+intersect(all_species, caab_species) # ZERO
 
-
+afd_species |> filter(VALID_NAME %in% caab_species) # ZER0 
 ```
 
 
-Using Interim Register of Marine and Nonmarine **Genera** https://marlin.csiro.au/geonetwork/srv/eng/catalog.search#/metadata/249c9716-3224-497e-98fc-ee0f8fd04373
+### Using Interim Register of Marine and Nonmarine **Genera** https://marlin.csiro.au/geonetwork/srv/eng/catalog.search#/metadata/249c9716-3224-497e-98fc-ee0f8fd04373
 
 ```{r}
-irmng_taxa <- read_csv("data/irmng_taxon.csv")
-names(irmng_taxa)
+irmng_taxa <- read_csv_arrow("data/irmng_taxon.csv")
 
 irmng_taxa |> 
   filter(!is.na(genus)) |> 
   pull(genus) -> irmng_genus
 
 # Overlap with AFD
+genus_pattern <- fixed(paste(irmng_genus, collapse = "|"))
+grep(pattern = paste(irmng_genus, collapse = "|"), ) 
 
+matches <- str_subset(string = all_species, pattern = genus_pattern) # No matches
+```
 
-stringr::str_detect(stringr::regex(paste(irmng_genus, collapse = "|")), all_species) |> janitor::tabyl()
+### Using World Register of Marine species
+
+```{r}
+worms <- read_csv("output/worrms_marine_splist.csv")
+names(worms)
+
+## Exclude marine species found by WoRMs by VALID_NAME
+
+is.na(worms$scientificname) |> table()
+is.na(worms$valid_name) |> table()
+
+## Do valid name match scientific name?
+(worms$valid_name == worms$scientificname) |> janitor::tabyl()
+
+## Which names don't match? I suggest cross-checking with AFD using both scientific and valid for these marine species
+worms |> 
+  filter(! valid_name == scientificname) |> 
+  select(valid_name, scientificname) 
+
+## First which species are excluded because they are marine 
+afd_species |> 
+  filter(VALID_NAME %in% worms$valid_name) |>
+  select(VALID_NAME) ->  excluded_mar_species
+  
+nrow(excluded_mar_species) # 18,494
+
+## Exclude these species 
+afd_species |> 
+  filter(! VALID_NAME %in% worms$valid_name) -> afd_species_nomarine
+
+# Checking
+nrow(afd_species_nomarine) + nrow( excluded_mar_species) == nrow(afd_species)
+
+# Further exclusion uing scientificname
+## Which species are excluded by scientificname
+afd_species_nomarine |> 
+  filter(VALID_NAME %in% worms$scientificname) |> 
+  select(VALID_NAME) -> excluded_mar_species_scientificname
+
+## Further exclude excluded_mar_species_scientificname
+afd_species_nomarine |> 
+  filter(! VALID_NAME %in% worms$scientificname) -> afd_species_nomarine_snm
+
+nrow(afd_species_nomarine_snm) + nrow( excluded_mar_species) + nrow(excluded_mar_species_scientificname) == nrow(afd_species)
+
+### Reporting 
+message(paste("Found ", nrow(excluded_mar_species), " marine species by validname in WoRMS"))
+message(paste("After exclusion by validname, a further", nrow(excluded_mar_species_scientificname), "marine species were found by scientificname in WoRMS"))
+message(paste("The total number of AFD species remaining following complete exclusion is ", nrow(afd_species_nomarine_snm)))
+```
+ 
 
 ```
 
