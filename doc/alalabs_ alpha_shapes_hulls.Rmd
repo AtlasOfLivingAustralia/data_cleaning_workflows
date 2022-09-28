@@ -95,11 +95,11 @@ ggplot() +
 dfly_chull_p
 ```
 
-### Alpha shape of ALA occurences
+### Alpha shapes of ALA occurences
 
 A convex hull is actually a simplified form of an *alpha shape*. Alpha shapes have an *alpha parameter* that controls the level of detail, or how tightly the boundary fits around the point set.
 
-Lets make some alpha shapes for the Powdered Flatwing with increasing values of alpha. We will use a customised function named `extract_polygons` for extracting the polygon outline from an `ashape` object so we can plot it with `ggplot2`.
+Lets make some alpha shapes for the Powdered Flatwing with increasing values of alpha. We will use the `purrr` R package and a customised function named `extract_polygons` for extracting the polygon outline from an `ashape` object so we can plot it with `ggplot2`.
 
 ```{r extract_polygons, class.source = "fold-show"}
 extract_polygons <- function(alpha_shape_obj)
