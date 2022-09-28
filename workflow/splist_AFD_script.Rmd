@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r }
 #install.packages("pacman")
-pacman::p_load(dplyr, janitor, galah, stringr)
+pacman::p_load(dplyr, janitor, galah, stringr, tidyverse, glue)
 
 ## Functions 
 source("scripts/remove_improper_names_v2.R") # Version Fonti created
@@ -22,7 +22,7 @@ source("scripts/remove_improper_names_v2.R") # Version Fonti created
 ### Australian Faunal Directory taxonomy
 
 ```{r}
-afd_species <- read.csv("output/afd_splist_full.csv")
+afd_species <- read_csv("output/afd_splist_full.csv")
 all_species <- afd_species$VALID_NAME 
 ```
 
@@ -43,8 +43,8 @@ afd_species |>
 
 ### Remove invasive species 
 
-*ALA still working to update this section on removing invasive/introduce species
-Code below is written by Payal
+Notes: *ALA still working to update this section on removing invasive/introduce species
+Code below is written by Payal. In the next version of the `galah`, I believe we can access the GRIIS list directly through `galah`
 
 ```{r ##}
 griis_species <- read.csv("data/GRIIS_Global_Register_of_Introduced_and_Invasive_Species_Australia.csv")
@@ -58,6 +58,40 @@ afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_species$Supplied.
 message("Removing AFD species in GRIIS ...")
 afd_species <- afd_species[which(! afd_species$VALID_NAME %in% griis_species$Supplied.Name),]
 ```
+
+### Remove Marine species
+
+###  First option
+
+Using CAAB data: https://www.cmar.csiro.au/data/caab/
+
+```{r}
+caab_species <- read_csv("data/caab_dump_latest.csv")
+
+caab_species |> mutate(scientific_name = paste0(GENUS," ", SPECIES)) |> pull(scientific_name)
+
+
+
+```
+
+
+Using Interim Register of Marine and Nonmarine **Genera** https://marlin.csiro.au/geonetwork/srv/eng/catalog.search#/metadata/249c9716-3224-497e-98fc-ee0f8fd04373
+
+```{r}
+irmng_taxa <- read_csv("data/irmng_taxon.csv")
+names(irmng_taxa)
+
+irmng_taxa |> 
+  filter(!is.na(genus)) |> 
+  pull(genus) -> irmng_genus
+
+# Overlap with AFD
+
+
+stringr::str_detect(stringr::regex(paste(irmng_genus, collapse = "|")), all_species) |> janitor::tabyl()
+
+```
+
 
 ## Identifying duplicates 
 
@@ -104,11 +138,11 @@ dup_temp$COMPLETE_NAME
 
 ```
 
-## Resolve duplicates from ALA list *in consultation with JM*
+## Resolve duplicates from ALA list 
 
 Removal or flagging of duplicates by `TAXON_GUID` 
 
-ALA hasn't don
+ALA hasn't contributed here, these were completed *in consultation with JM*
 
 ```{r}
 ## using TAXON_GUID from afd_completename_repeats_JRM.csv
@@ -125,7 +159,7 @@ afd_species <- afd_species[which(afd_species$TAXON_GUID %!in% removed_dups),]
 
 Looks like some duplicates but not all of them are removed 5/17
 
-These are the ones excluded
+These are the ones excluded:
 
 ```{r}
 afd_species |> filter(TAXON_GUID %in% removed_dups) |> pull(COMPLETE_NAME)

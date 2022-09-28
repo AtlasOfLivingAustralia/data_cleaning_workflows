@@ -36,108 +36,13 @@ We'll start by installing/loading some R packages which we'll need:
 pacman::p_load(remotes, galah, tidyverse, alphahull, sp, sf, ozmaps, patchwork)
 ```
 
-### First, a demonstration with `iris` data set
+### An eye-catching example
 
-A convex hull is defined as the smallest polygon that encloses all the points in the data set. Put simply, its a way to draw around all the points with as few lines as possible! Here's one convex hull that is surrounding the data points in the `iris` data set. 
+We will use occurrence records of an endemic damselfly, *Austroargiolestes calcaris*, commonly known as the [Powdered Flatwing](https://bie.ala.org.au/species/https://biodiversity.org.au/afd/taxa/2d944503-2f03-48ec-8a8a-b78bc2b674af) to illustrate the various spatial polygon you can make
 
-```{r, include=FALSE}
-data(iris)
-iris_sepals <- iris[,1:2]
+<center>![A Powdered Flatwing perched on a plant by Reiner Richter CC-BY 4.0](../static/polygons/Austroargiolestes_calcaris_1.jpeg){width="7.9cm"}</center>
 
-# Remove duplicate data points
-iris_sepals <- iris_sepals[!duplicated(paste(iris_sepals$Sepal.Length, iris_sepals$Sepal.Width)), ]
-
-# Compute a convex hull
-convexhull <- chull(iris_sepals)
-
-# Create the outline of the hull by joining the hull vector together 
-hull_pts <- c(convexhull, convexhull[1])
-```
-
-```{r, out.width = '50%'}
-# Plot the points and convex hull
-ggplot() + 
-  geom_point(data = iris_sepals, aes(Sepal.Length, Sepal.Width), colour = "darkseagreen") + 
-  geom_polygon(data = iris_sepals[hull_pts, ], aes(Sepal.Length, Sepal.Width), fill = NA, colour = "black") + 
-  theme_bw()
-```
-
-A convex hull is actually a simplified form of an alpha shape. Alpha shapes have an alpha parameter that controls the level of detail, or how tightly the boundary fits around the point set.
-
-Here are some alpha shapes of the `iris` data set, with increasing values of alpha. Notice as the alpha value gets larger, the more simplified the alpha shape becomes.
-
-```{r, include=FALSE}
-# Create alpha shapes
-alphashape_0.5 <- ashape(iris_sepals, alpha = 0.5)
-alphashape_1 <- ashape(iris_sepals, alpha = 1)
-alphashape_2 <- ashape(iris_sepals, alpha = 2)
-
-extract_polygons <- function(alpha_shape_obj)
-{
-  if(class(alpha_shape_obj) != "ashape") stop("extract_polygons requires an ashape")
-  edge.df <- as.data.frame(alpha_shape_obj$edges)
-  groups <- ns <- xs <- ys <- numeric(nrow(edge.df))
-  m <- cbind(edge.df[[1]], edge.df[[2]])
-  group <- 1
-  repeat {
-    i <- which(groups == 0)[1]
-    if (length(i) == 0 | is.na(i)) break()
-    j <- n <- 1
-    repeat {
-      groups[i] <- group
-      ns[i] <- n
-      if(j == 1) xs[i] <- edge.df$x1[i] else xs[i] <- edge.df$x2[i]
-      if(j == 1) ys[i] <- edge.df$y1[i] else ys[i] <- edge.df$y2[i]
-      next_ind <- which((m[, j] == m[i, j] | m[, (j %% 2 + 1)] == m[i, j]) & groups == 0)
-      if (length(next_ind) == 0) break()
-      j <- which(m[next_ind,] == m[i, j]) %% 2 + 1
-      i <- next_ind
-      n <- n + 1
-    }
-    group <- group + 1
-  }
-  data.frame(x = xs, y = ys, group = as.factor(groups))[order(groups, ns), ]
-}
-
-# Extract polygons 
-a_0.5<- extract_polygons(alphashape_0.5)
-a_1<- extract_polygons(alphashape_1)
-a_2<- extract_polygons(alphashape_2)
-
-a05 <- ggplot() + 
-  geom_point(data = iris_sepals, aes(Sepal.Length, Sepal.Width), colour = "darkseagreen") + 
-  geom_polygon(data = a_0.5, aes(x, y), fill = NA, colour = "black") + 
-  labs(title = "a = 0.5") +
-  theme_bw()
-
-a1 <- ggplot() + 
-  geom_point(data = iris_sepals, aes(Sepal.Length, Sepal.Width), colour = "darkseagreen") + 
-  geom_polygon(data = a_1, aes(x, y), fill = NA, colour = "black") + 
-  labs(title = "a = 1") +
-  theme_bw()
-
-a2 <- ggplot() + 
-  geom_point(data = iris_sepals, aes(Sepal.Length, Sepal.Width), colour = "darkseagreen") + 
-  geom_polygon(data = a_2, aes(x, y), fill = NA, colour = "black") + 
-  labs(title = "a = 2") +
-  theme_bw()
-```
-
-```{r, fig.width=15, fig.height=5}
-a05 + a1 + a2
-```
-
-### Lets try to do this with `galah`
-
-Now that we have the basics covered, lets try apply these concepts using occurrence records of a damsel fly, *Austroargiolestes calcaris*, also known as the [Powdered Flatwing](https://biocache.ala.org.au/occurrences/a8e7c852-6a1d-4d8a-9976-4d476d13c856).
-
-<center>
-
-![A Powdered Flatwing perched on a plant by Reiner Richter CC-BY 4.0](../static/polygons/Austroargiolestes_calcaris_1.jpeg){width="7.9cm"}
-
-</center>
-
-We'll use `galah` to access records from the [Atlas of Living Australia](https://www.ala.org.au/). Note that you will need to first set up your own [ALA configuration locally](http://galah.ala.org.au/articles/download_data.html?q=config#configuring-galah) using `galah_config` before fetching records.
+Lets use `galah` to access records from the [Atlas of Living Australia](https://www.ala.org.au/). Note that you will need to first set up your own [ALA configuration locally](http://galah.ala.org.au/articles/download_data.html?q=config#configuring-galah) using `galah_config` before fetching records.
 
 ```{r, cache=TRUE, results='hide'}
 galah_call() |> 
@@ -147,11 +52,11 @@ galah_call() |>
    atlas_occurrences() -> dfly
 ```
 
-### Data cleaning steps
+### Essential data cleaning 
 
-It's important to remove **all duplicates and missing values** in order to plot your polygons.
+We need to first remove **all duplicates and missing values**,, before we can launch into plotting our data,
 
-```{r}
+```{r, class.source = "fold-show"}
 # De-duplication
 dfly |> 
   filter(! duplicated(decimalLongitude) & ! duplicated(decimalLatitude)) -> dfly_ddup
@@ -162,6 +67,9 @@ dfly_ddup |>
 ```
 
 ### Convex hull of ALA occurences
+
+A convex hull is defined as the smallest polygon that encloses all the points in the data set. Put simply, its a way to draw around all the points with as few lines as possible! Here's are the key steps to computing and plotting a convex hull that surrounds the occurrences of the Powdered Flatwing.
+
 
 ```{r, out.width = '90%', class.source = "fold-show"}
 # 1. Compute convex hull
@@ -181,7 +89,7 @@ ggplot() +
   geom_point(data = dfly_clean, aes(decimalLongitude, decimalLatitude), colour = "black", size = 0.8) + 
   geom_polygon(data = dfly_clean[dfly_chull_pts, ], aes(decimalLongitude, decimalLatitude), fill = "orange", colour = "black", alpha = 0.5) + 
   coord_sf(xlim=c(142, 152),ylim=c(-32,-44)) +
-  labs(title = "Convex hull", x = "Longtitude (DD)", y = "Latitude (DD)") +
+  labs(title = "Convex hull", x = "Longtitude (DD)", y = "Latitude (DD)") + ## DD here stands for decimal degrees
   theme_bw() -> dfly_chull_p
 
 dfly_chull_p
@@ -189,11 +97,11 @@ dfly_chull_p
 
 ### Alpha shape of ALA occurences
 
-Next, we can create a map with an alpha shape with Powdered flatwing data! We've set **alpha = 2** as this value is commonly used in the research papers we've seen but choose an alpha value that best suits your needs.
+A convex hull is actually a simplified form of an *alpha shape*. Alpha shapes have an *alpha parameter* that controls the level of detail, or how tightly the boundary fits around the point set.
 
-We will need to use a customised function named `extract_polygons` for extracting the polygon outline from an `ashape` object so we can plot it in  `ggplot2` later.
+Lets make some alpha shapes for the Powdered Flatwing with increasing values of alpha. We will use a customised function named `extract_polygons` for extracting the polygon outline from an `ashape` object so we can plot it with `ggplot2`.
 
-```{r}
+```{r extract_polygons, class.source = "fold-show"}
 extract_polygons <- function(alpha_shape_obj)
 {
   if(class(alpha_shape_obj) != "ashape") stop("extract_polygons requires an ashape")
@@ -222,31 +130,50 @@ extract_polygons <- function(alpha_shape_obj)
 }
 ```
 
-```{r, out.width = '90%', class.source = "fold-show"}
-# 1. Compute convex hull
-dfly_clean |> 
-  select(decimalLongitude, decimalLatitude) |> 
-  ashape(alpha = 2) -> dfly_ashape
+```{r, fig.width=12, fig.height=6, class.source = "fold-show"}
+# 1. Compute alpha shapes and store in list column within a tibble
+tibble(
+  alpha_value = c(1, 2, 5),
+  ashape_ls = map(.x = c(1, 2, 5),
+               .f = ~ dfly_clean |> 
+                 select(decimalLongitude, decimalLatitude) |> 
+                 ashape(alpha = .x)) 
+) -> dfly_ashapes
 
-# 2. Extract the `ashape` as a polygon data set
-extract_polygons(dfly_ashape) -> dfly_ashape_df
 
-# 3. Plot the occurences and convex hull
-ggplot() + 
-  geom_sf(data = aus, colour = "black", fill = "white")  + 
-  geom_point(data = dfly_clean, aes(decimalLongitude, decimalLatitude), colour = "black", size = 0.8) + 
-   geom_polygon(data = dfly_ashape_df, aes(x, y), fill = "orange", colour = "black", alpha = 0.5) + 
-  coord_sf(xlim=c(142, 152),ylim=c(-32,-44)) +
-  ggtitle("Alpha shape") +
-  labs(x = "Longtitude (DD)", y = "Latitude (DD)") + # DD means decimal degrees here
-  theme_bw() -> dfly_ashape_p
+# 2. Extract polygons 
+dfly_ashapes |> 
+  mutate(ashape_polygons = map(.x = ashape_ls,
+                               .f = extract_polygons)) -> dfly_ashapes
 
-dfly_ashape_p
+# 3. Plot alpha shapes with occurrence points
+
+##  A function to compose map 
+plot_ashape_fun <- function(polygon_data, title){
+  p <- ggplot() + 
+    geom_sf(data = aus, colour = "black", fill = "white")  +
+    geom_point(data = dfly_clean, aes(decimalLongitude, decimalLatitude), size = 0.5) + 
+    geom_polygon(data = polygon_data, aes(x, y), fill = "orange", colour = "black", alpha = 0.5) +
+    coord_sf(xlim=c(142, 152),ylim=c(-32,-44)) +
+    ggtitle(paste("a = ", as.character(title))) +
+    labs(x = "Longtitude (DD)", y = "Latitude (DD)") + 
+    theme_bw(base_size = 12)
+}
+
+dfly_ashapes |> 
+  mutate(ashape_maps = map2(.x = ashape_polygons,
+                            .y = alpha_value,
+                            .f = ~ plot_ashape_fun(.x , .y)) 
+         ) -> dfly_ashapes
+
+wrap_plots(dfly_ashapes$ashape_maps)
 ```
+
+Notice as the alpha value gets larger, the more simplified the alpha shape becomes.
 
 ### Alpha hull of ALA occurrences
 
-Alpha hulls are another extension of alpha shapes, they are unique because of their arched edges. We rely on an R package `hull2spatial` that converts `ahull` into ggplot-friendly objects. You can install this package using:
+Alpha hulls are another extension of alpha shapes, they are unique because of their arched edges. We rely on an R package `hull2spatial` developed by Cecina Babich Morrow. Check out their [blog post](https://babichmorrowc.github.io/post/2019-03-18-alpha-hull/) on how the package was made. The package allows us to converts `ahull` objects into ggplot-friendly objects. You can install this package using:
 
 ```{r, eval = FALSE}
 # install.packages("remotes)
@@ -281,16 +208,16 @@ ggplot() +
   geom_sf(data = dfly_sf, colour = "black", size = 0.5) +  
   geom_sf(data = dfly_sf_ahull, fill = "orange", alpha = 0.5) +
   coord_sf(xlim=c(142, 152),ylim=c(-32,-44)) +
-  ggtitle("Alpha shape") +
+  ggtitle("Alpha hull") +
   labs(x = "Longtitude (DD)", y = "Latitude (DD)") + 
   theme_bw() -> dfly_ahull_p
 
 dfly_ahull_p
 ```
 
-### Alpha hull of ALA occurrences using records excluding human observations
+### Alpha hull of ALA occurrences using specimen data
 
-Often citizen science data are excluded from scientific analyses due to it's poor data quality. You'll notice that when we exclude citizen science data for the Powdered Flatwing our number of records drop significantly. Although  we've lost more than half our records we can still compute and plot alpha hulls - this is the beauty of them!
+Often citizen science data are excluded from scientific analyses due to it's poor data quality. You'll notice that when we exclude citizen science data for the Powdered Flatwing our number of records drop significantly. Although we've lost more than half our records we can still compute and plot alpha hulls - this is the beauty of them!
 
 We are going to repeat the above steps for generating an alpha hull excluding citizen science data. Remember you still need to clean this data set as above
 
@@ -346,32 +273,15 @@ ggplot() +
 dflysp_ahull_p
 ```
 
-### Putting them all together
-
-Let's plot our polygons together so you can see the difference between them!
-
-```{r, fig.width=12, fig.height=8}
-combined <- dfly_ashape_p + dfly_ahull_p + dflysp_ahull_p
-
-combined + 
-  plot_annotation(
-  title = expression(italic("Austroargiolestes calcaris"))
-  ) & theme(plot.title = element_text(size = 16))
-```
-
 ### Alpha hulls in Biodiversity Research
 
-Ok, so now you know how to create convex hulls, alpha shapes and alpha hulls using data from `galah`, what application does this have?
+Ok, so now we can create convex hulls, alpha shapes and alpha hulls using data from `galah` in R, what application does this have?
 
 Recently, [Dr. Marsh and colleages](https://onlinelibrary.wiley.com/doi/full/10.1111/geb.13550) used alpha hulls to calculate the impact the 2020 mega bush fires on invertebrates in southern Australia. Data for invertebrates are inherently sparse so alpha hulls can be helpful when you only have a handful of records to work with.
 
 [Dr. Takach and their team](https://onlinelibrary.wiley.com/doi/10.1111/ddi.13145) used alpha hulls to understand how the Australian tropical savanna mammal distributions have changed over time. For example, distributions can shrink or expand due to habitat loss or in response to changing climate. Dr. Takach found that the [Black-Footed Tree Rat *Mesembriomys gouldii*](https://biocache.ala.org.au/occurrences/c6e1ff2d-ac80-4cc1-806c-6107e8e24617) experienced a range contraction.
 
-<center>
-
-![A Black-Footed Tree Rat perched on a branch by Colin Trainor CC-BY-NC 4.0 ](../static/polygons/Mesembriomys_gouldii_1.jpeg){width="7.9cm"}
-
-</center>
+<center>![A Black-Footed Tree Rat perched on a branch by Colin Trainor CC-BY-NC 4.0](../static/polygons/Mesembriomys_gouldii_1.jpeg){width="7.9cm"}</center>
 
 The research paper didn't supply visualiations of their alpha hulls, so here we've plotted what the range reduction looks like using all records available vs. only records after the year 2000 for the Black-Footed Tree Rat using the workflow we've outlined above.
 
@@ -461,4 +371,3 @@ ggplot() +
 
 combinedtree_rat_ahull_p 
 ```
-
