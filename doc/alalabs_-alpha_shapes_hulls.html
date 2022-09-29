@@ -587,16 +587,16 @@ values of alpha. In order to do this we first need to use the
 an<code>ashape</code> object we can use our Powdered Flatwing data to
 make and plot those alpha shapes! To do this we’ll 1. compute our alpha
 shapes and store them within a tibble. 2. extract our polygons 3. plot
-our alpha shapes wth occurence points, just like we did for the convex
+our alpha shapes with occurrence points, just like we did for the convex
 hull above!</p>
 <p>You’ll notice from the 3 plots below that as the alpha value gets
 larger, the more simplified the alpha shape becomes.You also might have
 noticed that alpha = 2 and alpha = 5 are very similar, this won’t always
-be the case, it’s going to vary based on the distribution of your
-data.<strong>Alpha = 2</strong> is what we’ve most commonly come across
-in research, and is the value recommended by the IUCN for various forms
-of species vulnerability analysis. This doesn’t mean other alpha values
-are useless, it just depends what you want to use it for!</p>
+be the case, it’s going to vary based on the distribution of your data.
+<strong>Alpha = 2</strong> is what we’ve most commonly come across in
+research, and is the value recommended by the IUCN for various forms of
+species vulnerability analysis. This doesn’t mean other alpha values are
+useless, it just depends what you want to use it for!</p>
 <pre class="r fold-show"><code># 1. Compute alpha shapes and store in list column within a tibble
 tibble(
   alpha_value = c(1, 2, 5),
@@ -637,15 +637,25 @@ wrap_plots(dfly_ashapes$ashape_maps)</code></pre>
 </div>
 <div id="alpha-hull-of-ala-occurrences" class="section level3">
 <h3>Alpha hull of ALA occurrences</h3>
-<p>Alpha hulls are another extension of alpha shapes, they are unique
-because of their arched edges. We rely on an R package
-<code>hull2spatial</code> developed by Cecina Babich Morrow. Check out
-their <a href="https://babichmorrowc.github.io/post/2019-03-18-alpha-hull/">blog
-post</a> on how the package was made. The package allows us to converts
+<p>Alpha hulls have arched edges, they are an extension of alpha shapes.
+The arched edges allow the shape to fit around the occurrence records
+more tightly. Even though the below plot has an alpha value of 2, the
+arched edges have it resembling the alpha shape where alpha = 1 in the
+plot above. To make our alpha hulls with ALA occurrence records we will
+rely on an R package <code>hull2spatial</code> developed by Cecina
+Babich Morrow. Check out their <a href="https://babichmorrowc.github.io/post/2019-03-18-alpha-hull/">blog
+post</a> on how the package was made. The package allows us to convert
 <code>ahull</code> objects into ggplot-friendly objects. You can install
-this package using:</p>
+the package using the code below:</p>
 <pre class="r"><code># install.packages(&quot;remotes)
 remotes::install_github(&quot;babichmorrowc/hull2spatial&quot;)</code></pre>
+<p>To make and plot our alpha hull 1. We’ll start by taking our cleaned
+Powdered Flatwing records and turning it into an <code>sf</code> object.
+2. Again taking our cleaned Powdered Flatwing data we will compute an
+alpha hull. 3. Taking that alpha hull we’ll transform it into an
+<code>sp</code> object 4. we can then transform the <code>sp</code>
+object into an <code>sf</code> object. 5. Lastly we’ll set our
+coordinates in preparation to plot it.</p>
 <pre class="r fold-show"><code># 1. Turn ALA occurrence data into a `sf` object
 dfly_clean |&gt; 
   st_as_sf(coords = c(&quot;decimalLongitude&quot;, &quot;decimalLatitude&quot;), crs = 4326) -&gt; dfly_sf
@@ -658,7 +668,7 @@ dfly_clean |&gt;
 # 3. Transform our `ahull` object into a `sp` object
 hull2spatial::ahull2poly(dfly_ahull) -&gt; dfly_sp_df
 
-# 4. Lastly transform `sp` object into a `sf` object
+# 4. Transform `sp` object into a `sf` object
 dfly_sp_df |&gt; 
   st_as_sf() -&gt; dfly_sf_ahull
 
@@ -680,13 +690,14 @@ dfly_ahull_p</code></pre>
 <div id="alpha-hull-of-ala-occurrences-using-specimen-data" class="section level3">
 <h3>Alpha hull of ALA occurrences using specimen data</h3>
 <p>Often citizen science data are excluded from scientific analyses due
-to it’s poor data quality. You’ll notice that when we exclude citizen
-science data for the Powdered Flatwing our number of records drop
-significantly. Although we’ve lost more than half our records we can
-still compute and plot alpha hulls - this is the beauty of them!</p>
-<p>We are going to repeat the above steps for generating an alpha hull
-excluding citizen science data. Remember you still need to clean this
-data set as above</p>
+to a reputation of poor data quality. By excluding citizen science data
+for the Powdered Flatwing our number of records drop significantly.
+Although we’ve lost more than half our records we can still compute and
+plot alpha hulls - this is the beauty of them!</p>
+<p>We are going to repeat the above steps for generating an alpha hull,
+but we’ll <strong>exclude citizen science data</strong>. All the steps
+we went through to make out first alpha hull are the same, apart from an
+initial filter when we download the data.</p>
 <pre class="r fold-show"><code># Create a vector excluding human observations
 institution_only &lt;- c(&quot;PRESERVED_SPECIMEN&quot;, &quot;LIVING_SPECIMEN&quot;, 
                    &quot;MACHINE_OBSERVATION&quot;, &quot;MATERIAL_SAMPLE&quot;, &quot;OBSERVATION&quot;)
@@ -698,6 +709,11 @@ galah_call() |&gt;
   galah_select(group = &quot;basic&quot;) |&gt; 
    atlas_occurrences() -&gt; dfly_specionly</code></pre>
 <pre><code>## This query will return 161 records</code></pre>
+<p>You’ll notice with this alpha hull that there are <strong>two
+separate hulls</strong> this is a benefit of an alpha hull over a convex
+hull: because of the mathematical constraints of an convex hull, all the
+points must be contained within a single shape-this can lead to an
+over-estimation of range and is a benefit of alpha hulls.</p>
 <pre class="r fold-show"><code>ggplot() + 
   geom_sf(data = aus, colour = &quot;black&quot;, fill = &quot;white&quot;)  +
   geom_sf(data = dflysp_sf, colour = &quot;black&quot;, size = 0.5) +  
