@@ -24,8 +24,9 @@ galah_config(email = "fonti.kar@gmail.com",
              )
 ```
 
-Being able to visualise and model where a species resides is an important skill, especially in conservation ecology. Here we'll explain the different between some commonly used methods for calculating species vulnerability and show you how to code them yourself! 
-The methods in question are convex hulls and alpha hulls (don't be alarmed it's just simple shapes on a map!) which are used to [quantify IUCN metrics such as, Area of Occupancy and Extent of Occurrence](https://www.ala.org.au/spatial-portal-help/aoo/) to describe the distribution of a particular species. Typically, convex and alpha hulls are used when dealing with **data deficient species**.
+Being able to visualise and model where a species resides is an important skill, especially in conservation ecology. Here we'll explain the difference between some commonly used methods for understanding species distributions and show you how to code them yourself! 
+The methods in question are convex hulls and alpha hulls (don't be alarmed it's just simple shapes on a map!) which are used to [quantify IUCN metrics such as, Area of Occupancy and Extent of Occurrence](https://www.ala.org.au/spatial-portal-help/aoo/) to describe the distribution of a particular species. 
+Typically, convex and alpha hulls are used when dealing with **data deficient species**.
 
 Here, we will walk you through how to create and plot your own convex and alpha hulls using ALA data. We will also showcase some **recent research** that puts these spatial polygons to use for biodiversity conservation. These spatial visualizations are a great alternative to plotting point based species occurrence records!
 
@@ -70,7 +71,7 @@ dfly_ddup |>
 
 ### Plot a convex hull of ALA occurences on a map! 
 
-Put simply a convex hull is a way to draw around all the points of a species on a map with as few lines as possible. It's defined as the smallest polygon that encloses all the points in the data set. To plot a convex hull on a map, 1. We will start by using `chull()` to compute a convex hull from our cleaned powdered flatwing data. 2. We'll then join the hull vector together to create an outline of the hull which can be plotted on a map. 3. To make a map we'll use the `ozmaps` package and set it to a specific coordinate system for Australia. 4. Now we can plot our powdered flatwing occurrence records and its convex hull on a map! 
+Put simply a convex hull is a way to draw around all the points of a species on a map with as few lines as possible. It's defined as the smallest polygon that encloses all the points in the data set. To plot a convex hull on a map, 1. We will start by using `chull()` to compute a convex hull from our cleaned Powdered Flatwing data. 2. We'll then join the hull vector together to create an outline of the hull which can be plotted on a map. 3. To make a map we'll use the `ozmaps` package and set it to a specific coordinate system for Australia. 4. Now we can plot our Powdered Flatwing occurrence records and its convex hull on a map! 
 
 ```{r, out.width = '90%', class.source = "fold-show"}
 # 1. Compute convex hull
