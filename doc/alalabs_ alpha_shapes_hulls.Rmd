@@ -38,13 +38,14 @@ pacman::p_load(remotes, galah, tidyverse, alphahull, sp, sf, ozmaps, patchwork)
 
 ### An eye-catching example
 
-We will use occurrence records of an endemic damselfly, *Austroargiolestes calcaris*, commonly known as the [Powdered Flatwing](https://bie.ala.org.au/species/https://biodiversity.org.au/afd/taxa/2d944503-2f03-48ec-8a8a-b78bc2b674af) to illustrate the various spatial polygon you can make
+We will use occurrence records of an endemic damselfly, *Austroargiolestes calcaris*, commonly known as the [Powdered Flatwing](https://bie.ala.org.au/species/https://biodiversity.org.au/afd/taxa/2d944503-2f03-48ec-8a8a-b78bc2b674af) to illustrate the various spatial polygons you can make
 
 <center>![A Powdered Flatwing perched on a plant by Reiner Richter CC-BY 4.0](../static/polygons/Austroargiolestes_calcaris_1.jpeg){width="7.9cm"}</center>
 
-Lets use `galah` to access records from the [Atlas of Living Australia](https://www.ala.org.au/). Note that you will need to first set up your own [ALA configuration locally](http://galah.ala.org.au/articles/download_data.html?q=config#configuring-galah) using `galah_config` before fetching records.
+Lets use `galah` to download occurrence records from the [Atlas of Living Australia](https://www.ala.org.au/). Note that you will need to first set up your own [ALA configuration locally](http://galah.ala.org.au/articles/download_data.html?q=config#configuring-galah) using `galah_config` before fetching records.
 
 ```{r, cache=TRUE, results='hide'}
+#Download Powdered flatwing records 
 galah_call() |> 
   galah_identify("Austroargiolestes calcaris") |> 
   galah_filter(profile="ALA") |> 
@@ -54,7 +55,7 @@ galah_call() |>
 
 ### Essential data cleaning 
 
-We need to first remove **all duplicates and missing values**,, before we can launch into plotting our data,
+Before we can plot anything, we will first remove **all duplicates and missing values**!
 
 ```{r, class.source = "fold-show"}
 # De-duplication
@@ -66,10 +67,9 @@ dfly_ddup |>
   filter(! is.na(decimalLongitude) & ! is.na(decimalLatitude) ) -> dfly_clean
 ```
 
-### Convex hull of ALA occurences
+### Plot a convex hull of ALA occurences on a map! 
 
-A convex hull is defined as the smallest polygon that encloses all the points in the data set. Put simply, its a way to draw around all the points with as few lines as possible! Here's are the key steps to computing and plotting a convex hull that surrounds the occurrences of the Powdered Flatwing.
-
+Put simply a convex hull is a way to draw around all the points of a species on a map with as few lines as possible. It's defined as the smallest polygon that encloses all the points in the data set. To plot a convex hull on a map, 1. We will start by using `chull()` to compute a convex hull from our cleaned powdered flatwing data. 2. We'll then join the hull vector together to create an outline of the hull which can be plotted on a map. 3. To make a map we'll use the `ozmaps` package and set it to a specific coordinate system for Australia. 4. Now we can plot our powdered flatwing occurrence records and its convex hull on a map! 
 
 ```{r, out.width = '90%', class.source = "fold-show"}
 # 1. Compute convex hull
@@ -99,7 +99,7 @@ dfly_chull_p
 
 A convex hull is actually a simplified form of an *alpha shape*. Alpha shapes have an *alpha parameter* that controls the level of detail, or how tightly the boundary fits around the point set.
 
-Lets make some alpha shapes for the Powdered Flatwing with increasing values of alpha. We will use the `purrr` R package and a customised function named `extract_polygons` for extracting the polygon outline from an `ashape` object so we can plot it with `ggplot2`.
+Lets make some alpha shapes for the Powdered Flatwing with increasing values of alpha. In order to do this we first need to use the `purrr` R package and a customised function named `extract_polygons` for extracting the polygon outline from an `ashape` object so we can plot it with `ggplot2`.
 
 ```{r extract_polygons, class.source = "fold-show"}
 extract_polygons <- function(alpha_shape_obj)
@@ -129,6 +129,11 @@ extract_polygons <- function(alpha_shape_obj)
   data.frame(x = xs, y = ys, group = as.factor(groups))[order(groups, ns), ]
 }
 ```
+
+Now that we have a function for extracting polygon outlines from an`ashape` object we can use our Powdered Flatwing data to make and plot those alpha shapes!
+To do this we'll 1. compute our alpha shapes and store them within a tibble. 2. extract our polygons 3. plot our alpha shapes with occurrence points, just like we did for the convex hull above!
+
+You'll notice from the 3 plots below that as the alpha value gets larger, the more simplified the alpha shape becomes.You also might have noticed that alpha = 2 and alpha = 5 are very similar, this won't always be the case, it's going to vary based on the distribution of your data.**Alpha = 2** is what we've most commonly come across in research, and is the value recommended by the IUCN for various forms of species vulnerability analysis. This doesn't mean other alpha values are useless, it just depends what you want to use it for! 
 
 ```{r, fig.width=12, fig.height=6, class.source = "fold-show"}
 # 1. Compute alpha shapes and store in list column within a tibble
@@ -169,7 +174,6 @@ dfly_ashapes |>
 wrap_plots(dfly_ashapes$ashape_maps)
 ```
 
-Notice as the alpha value gets larger, the more simplified the alpha shape becomes.
 
 ### Alpha hull of ALA occurrences
 
