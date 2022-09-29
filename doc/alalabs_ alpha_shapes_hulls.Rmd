@@ -24,7 +24,8 @@ galah_config(email = "fonti.kar@gmail.com",
              )
 ```
 
-In conservation ecology, convex hulls and alpha hulls are used to [quantify IUCN metrics such as, Area of Occupancy and Extent of Occurrence](https://www.ala.org.au/spatial-portal-help/aoo/) to describe the distribution of a particular species. Typically, convex and alpha hulls are used when dealing with **data deficient species**.
+Being able to visualise and model where a species resides is an important skill, especially in conservation ecology. Here we'll explain the different between some commonly used methods for calculating species vulnerability and show you how to code them yourself! 
+The methods in question are convex hulls and alpha hulls (don't be alarmed it's just simple shapes on a map!) which are used to [quantify IUCN metrics such as, Area of Occupancy and Extent of Occurrence](https://www.ala.org.au/spatial-portal-help/aoo/) to describe the distribution of a particular species. Typically, convex and alpha hulls are used when dealing with **data deficient species**.
 
 Here, we will walk you through how to create and plot your own convex and alpha hulls using ALA data. We will also showcase some **recent research** that puts these spatial polygons to use for biodiversity conservation. These spatial visualizations are a great alternative to plotting point based species occurrence records!
 
@@ -285,13 +286,11 @@ dflysp_ahull_p
 
 Ok, so now we can create convex hulls, alpha shapes and alpha hulls using data from `galah` in R, what application does this have?
 
-Recently, [Dr. Marsh and colleages](https://onlinelibrary.wiley.com/doi/full/10.1111/geb.13550) used alpha hulls to calculate the impact the 2020 mega bush fires on invertebrates in southern Australia. Data for invertebrates are inherently sparse so alpha hulls can be helpful when you only have a handful of records to work with.
+Recently, [Dr. Marsh and colleages](https://onlinelibrary.wiley.com/doi/full/10.1111/geb.13550) used alpha hulls to calculate the impact the 2020 mega bush fires on invertebrates in southern Australia. This research was the impetus for this post because invertebrate data is inherently sparse so alpha hulls can be helpful when you only have a handful of records to work with. 
 
-[Dr. Takach and their team](https://onlinelibrary.wiley.com/doi/10.1111/ddi.13145) used alpha hulls to understand how the Australian tropical savanna mammal distributions have changed over time. For example, distributions can shrink or expand due to habitat loss or in response to changing climate. Dr. Takach found that the [Black-Footed Tree Rat *Mesembriomys gouldii*](https://biocache.ala.org.au/occurrences/c6e1ff2d-ac80-4cc1-806c-6107e8e24617) experienced a range contraction.
+[Dr. Takach and their team](https://onlinelibrary.wiley.com/doi/10.1111/ddi.13145) used alpha hulls to understand how the Australian tropical savanna mammal distributions have changed over time. For example, distributions can shrink or expand due to habitat loss or in response to changing climate. Dr. Takach found that the [Black-Footed Tree Rat *Mesembriomys gouldii*](https://biocache.ala.org.au/occurrences/c6e1ff2d-ac80-4cc1-806c-6107e8e24617) experienced a range contraction. We've plotted this range contraction using all the things we've just learnt about alpha hulls! We've used `galah` to download all records available for the Black-Footed Tree Rat and only records recorded after 2000. 
 
 <center>![A Black-Footed Tree Rat perched on a branch by Colin Trainor CC-BY-NC 4.0](../static/polygons/Mesembriomys_gouldii_1.jpeg){width="7.9cm"}</center>
-
-The research paper didn't supply visualiations of their alpha hulls, so here we've plotted what the range reduction looks like using all records available vs. only records after the year 2000 for the Black-Footed Tree Rat using the workflow we've outlined above.
 
 ```{r include=FALSE, cache = TRUE}
 galah_call() |> 
@@ -379,3 +378,6 @@ ggplot() +
 
 combinedtree_rat_ahull_p 
 ```
+
+Now we know how to make nice alpha hulls of our favourite species! 
+This is a much clearer way of showing shifts in distribution that simply plotting occurrence records on a map.There are more sophisticated tools for understanding the distribution of species: like species distribution models. Sometimes you need more data then you have access to in order to run these models and this is when alpha hulls could be a good alternative.
