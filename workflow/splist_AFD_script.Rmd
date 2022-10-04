@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r }
 #install.packages("pacman")
-pacman::p_load(dplyr, janitor, galah, stringr, tidyverse, arrow, stringr)
+pacman::p_load(dplyr, janitor, galah, stringr, tidyverse, arrow, stringr, data.table)
 
 ## Functions 
 source("scripts/remove_improper_names_v2.R") # Version Fonti created
@@ -83,13 +83,22 @@ afd_species |> filter(VALID_NAME %in% caab_species) # ZER0
 ```
 
 
-### Using Interim Register of Marine and Nonmarine **Genera** https://marlin.csiro.au/geonetwork/srv/eng/catalog.search#/metadata/249c9716-3224-497e-98fc-ee0f8fd04373
+### Using Interim Register of Marine and Nonmarine **Genera** 
+- https://www.irmng.org/index.php
+- https://marlin.csiro.au/geonetwork/srv/eng/catalog.search#/metadata/249c9716-3224-497e-98fc-ee0f8fd04373
 
 ```{r}
-irmng_taxa <- read_csv_arrow("data/irmng_taxon.csv")
+irmng_taxa <- fread("data/invert_irmng.txt")
+
+head(irmng_taxa)
+names(irmng_taxa)
+dim(irmng_taxa)
+
+# Obtain genus
+irmng_taxa$genus |> unique() |> tabyl()
 
 irmng_taxa |> 
-  filter(!is.na(genus)) |> 
+  filter(!is.na(genus) | ! genus == "") |> 
   pull(genus) -> irmng_genus
 
 # Overlap with AFD
