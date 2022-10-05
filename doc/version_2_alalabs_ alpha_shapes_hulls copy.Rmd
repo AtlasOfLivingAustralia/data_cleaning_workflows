@@ -24,9 +24,15 @@ galah_config(email = "fonti.kar@gmail.com",
              )
 ```
 
-1 Being able to visualise and model where a species resides is an important skill, especially in conservation ecology. Here we'll explain the difference between some commonly used methods for understanding species distributions and show you how to code them yourself! 
+Being able to visualise and model where a species resides is an important skill, especially in conservation ecology. Here we'll explain the difference between some commonly used methods for understanding species distributions and show you how to code them yourself! 
 The methods in question are convex hulls and alpha hulls (don't be alarmed it's just simple shapes on a map!) which are used to [quantify IUCN metrics such as, Area of Occupancy and Extent of Occurrence](https://www.ala.org.au/spatial-portal-help/aoo/) to describe the distribution of a particular species. 
 Typically, convex and alpha hulls are used when dealing with **data deficient species**.
+
+Let's start with some recent research examples using alpha hulls to give you some context behind these methods in the biodiversity conservation space. This post was inspired by how [Dr. Marsh and colleages](https://onlinelibrary.wiley.com/doi/full/10.1111/geb.13550) used alpha hulls to calculate the impact the 2020 mega bush fires on invertebrates in southern Australia. Invertebrate data is inherently sparse so alpha hulls can be helpful when you only have a handful of records to work with. 
+
+Another great example of research using alpha hulls was conducted by [Dr. Takach and their team](https://onlinelibrary.wiley.com/doi/10.1111/ddi.13145), they used alpha hulls to understand how the Australian tropical savanna mammal distributions have changed over time. For example, distributions can shrink or expand due to habitat loss or in response to changing climate. Dr. Takach found that the [Black-Footed Tree Rat *Mesembriomys gouldii*](https://biocache.ala.org.au/occurrences/c6e1ff2d-ac80-4cc1-806c-6107e8e24617) experienced a range contraction. This paper didn't plot the alpha hulls, yet used them for further analysis, so we've plotted it for you! 
+We used `galah` to download all records available for the Black-Footed Tree Rat and then only records recorded after 2000 to show this range contraction. 
+
 
 Here, we will walk you through how to create and plot your own convex and alpha hulls using ALA data. We will also showcase some **recent research** that puts these spatial polygons to use for biodiversity conservation. These spatial visualizations are a great alternative to plotting point based species occurrence records!
 
