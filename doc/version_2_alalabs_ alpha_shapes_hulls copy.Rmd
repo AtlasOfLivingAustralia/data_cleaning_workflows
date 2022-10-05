@@ -25,7 +25,7 @@ galah_config(email = "fonti.kar@gmail.com",
 ```
 
 Being able to visualise and model where a species resides is an important skill, especially in conservation ecology. Here we'll explain the difference between some commonly used methods for understanding species distributions and show you how to code them yourself! 
-The methods in question are convex hulls and alpha hulls (don't be alarmed it's just simple shapes on a map!) which are used to [quantify IUCN metrics such as, Area of Occupancy and Extent of Occurrence](https://www.ala.org.au/spatial-portal-help/aoo/) to describe the distribution of a particular species. 
+The methods in question are **convex hulls** and **alpha hulls** (It's really just simple shapes on a map!) which are used to [quantify IUCN metrics such as, Area of Occupancy and Extent of Occurrence](https://www.ala.org.au/spatial-portal-help/aoo/) to describe the distribution of a particular species. 
 Typically, convex and alpha hulls are used when dealing with **data deficient species**.
 
 Let's start with some recent research examples using alpha hulls to give you some context behind these methods in the biodiversity conservation space. This post was inspired by how [Dr. Marsh and colleages](https://onlinelibrary.wiley.com/doi/full/10.1111/geb.13550) used alpha hulls to calculate the impact the 2020 mega bush fires on invertebrates in southern Australia. Invertebrate data is inherently sparse so alpha hulls can be helpful when you only have a handful of records to work with. 
@@ -123,10 +123,10 @@ ggplot() +
 combinedtree_rat_ahull_p 
 ```
 
-By the end of this post you'll be able to make a map like the one above yourself! 
+By the end of this post you'll be able to make a map like our tree rat range contraction map above! 
 These spatial visualizations are a great alternative to plotting point based species occurrence records. 
 
-Below we will start with *convex hulls*- the simplest of the shapes and we will end with *alpha hulls* (in our opinion the most visually appealing)...
+Below we will start with **convex hulls**- the simplest of the shapes and we will end with **alpha hulls** (in our opinion the most visually appealing)...
 
 ### Ok, Let's get started 
 Let's install/load some R packages which we'll need:
@@ -143,7 +143,7 @@ We will use occurrence records of an endemic damselfly, *Austroargiolestes calca
 
 <center>![A Powdered Flatwing perched on a plant by Reiner Richter CC-BY 4.0](../static/polygons/Austroargiolestes_calcaris_1.jpeg){width="7.9cm"}</center>
 
-Lets use `galah` to download occurrence records from the [Atlas of Living Australia](https://www.ala.org.au/). Note that you will need to first set up your own [ALA configuration locally](http://galah.ala.org.au/articles/download_data.html?q=config#configuring-galah) using `galah_config` before fetching records.
+Now let's use `galah` to download occurrence records from the [Atlas of Living Australia](https://www.ala.org.au/). Note that you will need to first set up your own [ALA configuration locally](http://galah.ala.org.au/articles/download_data.html?q=config#configuring-galah) using `galah_config` before fetching records.
 
 ```{r, cache=TRUE, results='hide'}
 #Download Powdered flatwing records 
@@ -156,21 +156,20 @@ galah_call() |>
 
 ### Essential data cleaning 
 
-Before we can plot anything, we will first remove **all duplicates and missing values**!
+Before we can plot anything, we need to remove all duplicated values and any NA values!
 
 ```{r, class.source = "fold-show"}
 # De-duplication
 dfly |> 
-  filter(! duplicated(decimalLongitude) & ! duplicated(decimalLatitude)) -> dfly_ddup
-
-# Exclude NA in coordinates
-dfly_ddup |>  
-  filter(! is.na(decimalLongitude) & ! is.na(decimalLatitude) ) -> dfly_clean
+  filter(! duplicated(decimalLongitude) & ! duplicated(decimalLatitude)) |>  #Remove duplicates
+  filter(! is.na(decimalLongitude) & ! is.na(decimalLatitude) ) -> dfly_clean # Exclude NA in coordinates
 ```
 
 ### Plot a convex hull of ALA occurences on a map! 
 
-Put simply a *convex hull* is a way to draw around all the points of a species on a map with as few lines as possible. It's defined as the smallest polygon that encloses all the points in the data set  (note: all points must be contained in the one polygon). To plot a convex hull on a map, 1. We will start by using `chull()` to compute a convex hull from our cleaned Powdered Flatwing data. 2. We'll then join the hull vector together to create an outline of the hull which can be plotted on a map. 3. To make a map we'll use the `ozmaps` package and set it to a specific coordinate system for Australia. 4. Now we can plot our Powdered Flatwing occurrence records and its convex hull on a map! 
+Put simply a **convex hull** is a way to draw around all the points of a species on a map with as few lines as possible. It's defined as the smallest polygon that encloses all the points in the data set  (note: all points must be contained in the one polygon). 
+
+To plot a convex hull on a map, 1. We will start by using `chull()` to compute a convex hull from our cleaned Powdered Flatwing data. 2. We'll then join the hull vector together to create an outline of the hull which can be plotted on a map. 3. To make a map we'll use the `ozmaps` package and set it to a specific coordinate system for Australia. 4. Now we can plot our Powdered Flatwing occurrence records and its convex hull on a map! 
 
 
 ```{r, out.width = '90%', class.source = "fold-show"}
@@ -285,7 +284,7 @@ Alpha hulls have arched edges, they are an extension of alpha shapes. The arched
 remotes::install_github("babichmorrowc/hull2spatial")
 ```
 
-To make and plot our alpha hull 1. We'll start by taking our cleaned Powdered Flatwing records and turning it into an `sf` object. 2. Again taking our cleaned Powdered Flatwing data we will compute an alpha hull. 3. Taking that alpha hull we'll transform it into an `sp` object 4. we can then transform the `sp` object into an `sf` object. 5. Lastly we'll set our coordinates in preparation to plot it. 
+To make and plot an alpha hull, 1. We'll start by taking our cleaned Powdered Flatwing records and turning it into an `sf` object. 2. Again taking our cleaned Powdered Flatwing data we will compute an alpha hull. 3. Taking that alpha hull we'll transform it into an `sp` object 4. we can then transform the `sp` object into an `sf` object. 5. Lastly we'll set our coordinates in preparation to plot it. 
 
 ```{r, class.source = "fold-show"}
 # 1. Turn ALA occurrence data into a `sf` object
@@ -324,7 +323,7 @@ dfly_ahull_p
 
 ### Alpha hull of ALA occurrences using specimen data
 
-Often citizen science data are excluded from scientific analyses due to a reputation of poor data quality. By excluding citizen science data for the Powdered Flatwing our number of records drop significantly. Although we've lost more than half our records we can still compute and plot alpha hulls - this is the beauty of them!
+Often citizen science data are excluded from scientific analyses due to a reputation of poor data quality. By excluding citizen science data for the Powdered Flatwing our number of records drops significantly. Although we've lost more than half our records we can still compute and plot alpha hulls - this is the beauty of them!
 
 We are going to repeat the above steps for generating an alpha hull, but we'll **exclude citizen science data**.
 All the steps we went through to make out first alpha hull are the same, apart from an initial filter when we download the data. 
@@ -368,7 +367,8 @@ hull2spatial::ahull2poly(dflysp_ahull) |>
 dflysp_sf_ahull %>% st_set_crs(st_crs(aus)) -> dflysp_sf_ahull
 ```
 
-You'll notice with this map that there are **two separate hulls** this is a benefit of an alpha hull over a convex hull: the mathematical constraints of a convex hull mean all the points must be contained within a single shape-this can lead to an over-estimation of range. The flip side of that is an alpha hull could be under-estimating range..pick your poison!  
+You'll notice with this map that there are **two separate hulls** this is a benefit of an alpha hull over a convex hull: the mathematical constraints of a convex hull mean all the points must be contained within a single shape-this can lead to an over-estimation of range. If you scroll all the way back up to the beginning of this post to our first map you'll see these multiple hulls quite clearly! 
+The flip side of that is an alpha hull could be under-estimating range..pick your poison! 
 
 ```{r, out.width = '90%', class.source = "fold-show"}
 ggplot() + 
@@ -383,5 +383,5 @@ ggplot() +
 dflysp_ahull_p
 ```
 
-Now we know how to make nice alpha hulls of our favourite species! 
-This is a much clearer way of showing distributions/shifts in distribution that simply plotting occurrence records on a map.There are more sophisticated tools for understanding the distribution of species: like species distribution models. Sometimes you need more data then you have access to in order to run these models and this is when alpha hulls could be a good alternative.
+Now we know how to make nice alpha hulls using citizen science data. 
+This is a much clearer way plotting range changes or species distributions than simply plotting occurrence records on a map.There are more sophisticated tools for understanding the distribution of species: like species distribution models. However, sometimes you need more data then you have access to in order to run these models and this is when alpha hulls could be a good alternative.
