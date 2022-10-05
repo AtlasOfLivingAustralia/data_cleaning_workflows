@@ -33,6 +33,8 @@ Let's start with some recent research examples using alpha hulls to give you som
 Another great example of research using alpha hulls was conducted by [Dr. Takach and their team](https://onlinelibrary.wiley.com/doi/10.1111/ddi.13145), they used alpha hulls to understand how the Australian tropical savanna mammal distributions have changed over time. For example, distributions can shrink or expand due to habitat loss or in response to changing climate. Dr. Takach found that the [Black-Footed Tree Rat *Mesembriomys gouldii*](https://biocache.ala.org.au/occurrences/c6e1ff2d-ac80-4cc1-806c-6107e8e24617) experienced a range contraction. This paper didn't plot the alpha hulls, yet used them for further analysis, so we've plotted it for you! 
 We used `galah` to download all records available for the Black-Footed Tree Rat and then only records recorded after 2000 to show this range contraction. 
 
+<center>![A Black-Footed Tree Rat perched on a branch by Colin Trainor CC-BY-NC 4.0](../static/polygons/Mesembriomys_gouldii_1.jpeg){width="7.9cm"}</center>
+
 ```{r include=FALSE, cache = TRUE}
 galah_call() |> 
   galah_identify("Mesembriomys gouldii") |> 
