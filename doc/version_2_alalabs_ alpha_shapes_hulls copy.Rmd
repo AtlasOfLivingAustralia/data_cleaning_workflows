@@ -381,5 +381,5 @@ You'll notice with this map that there are **two separate hulls**! This is a ben
 
 ### Final thoughts
 
-While sophisticated tools for understanding species distribution exist, they require a substantial amounts of data to properly inform conservation research. **Convex polygons** and **alpha hulls** provide a flexible alternative, particularly for understudied species, to help us understand dynamic changes to their distributions. 
+While sophisticated tools for modelling species distribution exist, they require a substantial amounts of data to properly inform conservation research. **Convex polygons** and **alpha hulls** are flexible alternatives, particularly for understudied species, to help us understand dynamic changes to their distributions. 
 
