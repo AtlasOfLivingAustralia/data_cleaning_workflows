@@ -24,7 +24,7 @@ galah_config(email = "fonti.kar@gmail.com",
              )
 ```
 
-The ability to visualise and predict where a species reside is important in conservation ecology. In this ALA Labs post, we'll explain the difference between two commonly used methods for graphically representing species distributions and show you how to create them in R! 
+The ability to visualise and predict where a species reside is important in conservation ecology. In this post, we'll explain the difference between two commonly used methods for graphically representing species distributions and show you how to create them using different data types! 
 
 **Convex hulls** and **alpha hulls** are two types of spatial plotting methods which are used to describe the distribution of a particular species and [quantify IUCN metrics such as, Area of Occupancy and Extent of Occurrence](https://www.ala.org.au/spatial-portal-help/aoo/). Typically, convex and alpha hulls are used when dealing with **data deficient species** in conservation research.
 
@@ -122,10 +122,6 @@ ggplot() +
 combinedtree_rat_ahull_p 
 ```
 
-By the end of this post, you'll be able to make a map like this! These spatial visualisations are a great alternative to plotting point based species occurrence records. We will start with **convex hulls** - the simplest of the shapes and we will end with **alpha hulls** (in our opinion the most visually appealing)...
-
-
-
 ### Let's get started 
 First we will install/load the R packages we'll need:
 
@@ -199,61 +195,13 @@ ggplot() +
 dfly_chull_p
 ```
 
-### Mapping Alpha shapes of ALA occurences
-
-A convex hull is actually a simplified form of an *alpha shape*. Alpha shapes have an *alpha parameter* that controls the level of detail, or how tightly the boundary fits around the point set.
-
-Lets make some alpha shapes for the Powdered Flatwing with increasing values of alpha. In order to do this we first need to use the `purrr` R package and a customised function named `extract_polygons` for extracting the polygon outline from an `ashape` object so we can plot it with `ggplot2`.
-
-You'll notice from the 3 plots below that as the alpha value gets larger, the more simplified the alpha shape becomes.You also might have noticed that alpha = 2 and alpha = 5 are very similar, this won't always be the case, it's going to vary based on the distribution of your data. **Alpha = 2** is what we've most commonly come across in research, and is the value recommended by the IUCN for various forms of species vulnerability analysis. This doesn't mean other alpha values are useless, it just depends what you want to use it for! 
-
-```{r, fig.width=12, fig.height=6, class.source = "fold-show"}
-# 1. Compute alpha shapes and store in list column within a tibble
-tibble(
-  alpha_value = c(1, 2, 5),
-  ashape_ls = map(.x = c(1, 2, 5),
-               .f = ~ dfly_clean |> 
-                 select(decimalLongitude, decimalLatitude) |> 
-                 ashape(alpha = .x)) 
-) -> dfly_ashapes
-
-
-# 2. Extract polygons 
-dfly_ashapes |> 
-  mutate(ashape_polygons = map(.x = ashape_ls,
-                               .f = extract_polygons)) -> dfly_ashapes
-
-# 3. Plot alpha shapes with occurrence points
-
-##  A function to compose map 
-plot_ashape_fun <- function(polygon_data, title){
-  p <- ggplot() + 
-    geom_sf(data = aus, colour = "black", fill = "white")  +
-    geom_point(data = dfly_clean, aes(decimalLongitude, decimalLatitude), size = 0.5) + 
-    geom_polygon(data = polygon_data, aes(x, y), fill = "orange", colour = "black", alpha = 0.5) +
-    coord_sf(xlim=c(142, 152),ylim=c(-32,-44)) +
-    ggtitle(paste("a = ", as.character(title))) +
-    labs(x = "Longtitude (DD)", y = "Latitude (DD)") + 
-    theme_bw(base_size = 12)
-}
-
-dfly_ashapes |> 
-  mutate(ashape_maps = map2(.x = ashape_polygons,
-                            .y = alpha_value,
-                            .f = ~ plot_ashape_fun(.x , .y)) 
-         ) -> dfly_ashapes
-
-wrap_plots(dfly_ashapes$ashape_maps)
-```
-
 
 ### Mapping an Alpha hull of ALA occurrences
+Alpha hulls have concave arced edges. They have an **alpha parameter** that controls the level of detail, or how tightly the boundary fits around the point set. The arched edges allow the shape to fit around the occurrence records more tightly.
 
-Alpha hulls have concave arced edges. They have an *alpha parameter* that controls the level of detail, or how tightly the boundary fits around the point set. The arched edges allow the shape to fit around the occurrence records more tightly.
+To illustrate, here are three alpha hulls with _increasing_ values for alpha:
 
-To illustrate this concept, here are three alpha hulls with increasing values for alpha:
-
-```{r, fig.width=12, fig.height=6, class.source = "fold-show"}
+```{r, fig.width=12, fig.height=6, echo=FALSE}
 # 1.  Turn ALA occurrence data into a `sf` object 
 dfly_sf <- st_as_sf(dfly_clean, coords = c("decimalLongitude", "decimalLatitude"), crs = 4326)
 
@@ -311,18 +259,28 @@ dfly_ahulls |>
 wrap_plots(dfly_ahulls$ahull_maps)
 ```
 
+Notice as the alpha value increases, the more simplified and fewer arches the alpha hull becomes. **Alpha = 2** is what we've most commonly come across in research, and is the value recommended by the IUCN for various forms of species vulnerability analysis, but choose your alpha values according to your needs.
 
 
-Notice that as the alpha value increases, the more simplified the alpha shape becomes. You also might have noticed that alpha = 2 and alpha = 5 are very similar, this won't always be the case, it's going to vary based on the distribution of your data. **Alpha = 2** is what we've most commonly come across in research, and is the value recommended by the IUCN for various forms of species vulnerability analysis. This doesn't mean other alpha values are useless, it just depends what you want to use it for! 
+### Using different data types {.tabset} 
 
+Citizen science data are often excluded from scientific analyses due poor data quality e.g. rare species can be misidentified by a lay person. Below, we show you how you can plot your alpha hulls using all records vs. specimen online records.
 
-To make our alpha hulls with ALA occurrence records we will rely on an R package `hull2spatial` developed by Cecina Babich Morrow. Check out their [blog post](https://babichmorrowc.github.io/post/2019-03-18-alpha-hull/) on how the package was made. The package allows us to convert `ahull` objects into ggplot-friendly objects. You can install the package using the code below:
-```{r, eval = FALSE}
+#### Alpha hull using all types data
+
+To make our alpha hulls, we will rely on an R package `hull2spatial` developed by Cecina Babich Morrow. Check out their [blog post](https://babichmorrowc.github.io/post/2019-03-18-alpha-hull/) about the package. This package allows us to convert `ahull` objects into ggplot-friendly objects. You can install the package using:
+```{r, eval = FALSE, class.source = "fold-show"}
 # install.packages("remotes)
 remotes::install_github("babichmorrowc/hull2spatial")
 ```
 
-To make and plot an alpha hull, 1. We'll start by taking our cleaned Powdered Flatwing records and turning it into an `sf` object. 2. Again taking our cleaned Powdered Flatwing data we will compute an alpha hull. 3. Taking that alpha hull we'll transform it into an `sp` object 4. we can then transform the `sp` object into an `sf` object. 5. Lastly we'll set our coordinates in preparation to plot it. 
+To make and plot an alpha hull:
+
+1. We'll start by taking our cleaned Powdered Flatwing records and turning it into an `sf` object. 
+2. Then compute an alpha hull using the cleaned data.
+3. After than, we will transform the alpha hulls into a `sp` object
+4. Then transform the `sp` object into an `sf` object. 
+5. Lastly, we will set our coordinates project system before plotting
 
 ```{r, class.source = "fold-show"}
 # 1. Turn ALA occurrence data into a `sf` object
@@ -359,17 +317,17 @@ ggplot() +
 dfly_ahull_p
 ```
 
-### Alpha hull of ALA occurrences using specimen data
+#### Alpha hull using specimen data 
 
-Often citizen science data are excluded from scientific analyses due to a reputation of poor data quality. By excluding citizen science data for the Powdered Flatwing our number of records drops significantly. Although we've lost more than half our records we can still compute and plot alpha hulls - this is the beauty of them!
+Although a strict data criteria will reduce the number of data points, we can still compute and plot alpha hulls for the Powdered Flatwing - this is the beauty of them!
 
-We are going to repeat the above steps for generating an alpha hull, but we'll **exclude citizen science data**.
-All the steps we went through to make out first alpha hull are the same, apart from an initial filter when we download the data. 
+We are going to repeat the same steps for generating an alpha hull using for records that are linked to a specimen or photo. The only additional step is narrowing records using [`galah_filter()`](http://galah.ala.org.au/reference/galah_filter.html) to exclude  **citizen science data** before the data is downloaded.
+
 
 ```{r, cache=TRUE, results='hide', class.source = "fold-show"}
 # Create a vector excluding human observations
 institution_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
-                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE", "OBSERVATION")
+                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
 
 galah_call() |> 
   galah_identify("Austroargiolestes calcaris") |> 
@@ -405,10 +363,7 @@ hull2spatial::ahull2poly(dflysp_ahull) |>
 dflysp_sf_ahull %>% st_set_crs(st_crs(aus)) -> dflysp_sf_ahull
 ```
 
-You'll notice with this map that there are **two separate hulls** this is a benefit of an alpha hull over a convex hull: the mathematical constraints of a convex hull mean all the points must be contained within a single shape-this can lead to an over-estimation of range. If you scroll all the way back up to the beginning of this post to our first map you'll see these multiple hulls quite clearly! 
-The flip side of that is an alpha hull could be under-estimating range..pick your poison! 
-
-```{r, out.width = '90%', class.source = "fold-show"}
+```{r, out.width = '90%', echo=FALSE}
 ggplot() + 
   geom_sf(data = aus, colour = "black", fill = "white")  +
   geom_sf(data = dflysp_sf, colour = "black", size = 0.5) +  
@@ -421,5 +376,10 @@ ggplot() +
 dflysp_ahull_p
 ```
 
-Now we know how to make nice alpha hulls using citizen science data. 
-This is a much clearer way plotting range changes or species distributions than simply plotting occurrence records on a map.There are more sophisticated tools for understanding the distribution of species: like species distribution models. However, sometimes you need more data then you have access to in order to run these models and this is when alpha hulls could be a good alternative.
+
+You'll notice with this map that there are **two separate hulls**! This is a benefit of an alpha hull over a convex hull. The mathematical constraints of a convex hull mean all points must be contained within a single polygon - this can lead to an over-estimation of range. 
+
+### Final thoughts
+
+While sophisticated tools for understanding species distribution exist, they require a substantial amounts of data to properly inform conservation research. **Convex polygons** and **alpha hulls** provide a flexible alternative, particularly for understudied species, to help us understand dynamic changes to their distributions. 
+
