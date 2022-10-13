@@ -24,14 +24,10 @@ galah_config(email = "fonti.kar@gmail.com",
              )
 ```
 
-The ability to visualise and predict where a species reside is important in conservation ecology. In this post, we'll explain the difference between two commonly used methods for graphically representing species distributions and show you how to create them using different data types! 
+The ability to visualise and predict where a species reside is important in conservation ecology. **Convex hulls** and **alpha hulls** are two types of spatial plotting methods which are used to describe the distribution of a particular species and [quantify IUCN metrics](https://www.ala.org.au/spatial-portal-help/aoo/). Typically, convex and alpha hulls are used when dealing with **data deficient species** in conservation research.
 
-**Convex hulls** and **alpha hulls** are two types of spatial plotting methods which are used to describe the distribution of a particular species and [quantify IUCN metrics such as, Area of Occupancy and Extent of Occurrence](https://www.ala.org.au/spatial-portal-help/aoo/). Typically, convex and alpha hulls are used when dealing with **data deficient species** in conservation research.
+Alpha hulls has helped researchers monitor dynamic changes in species distributions. For example, distributions can shrink or expand due to habitat loss or in response to changing climate. [Dr. Takach and their team](https://onlinelibrary.wiley.com/doi/10.1111/ddi.13145) used alpha hulls to investigate how  distributions of Australian tropical savanna mammals have changed over time. They found that the [Black-Footed Tree Rat *Mesembriomys gouldii*](https://biocache.ala.org.au/occurrences/c6e1ff2d-ac80-4cc1-806c-6107e8e24617) experienced contemporary range contractions which is shown below in the map we made using data from `{galah}`! 
 
-Recently, [Dr. Marsh and colleages](https://onlinelibrary.wiley.com/doi/full/10.1111/geb.13550) used alpha hulls to estimate the impact the 2020 mega bush fires on invertebrates in southern Australia. Since invertebrate data is inherently sparse, alpha hulls are really useful when you have a handful of records to work with. Dr. Marsh and their team found 13,581 invertebrate species had part of their range burnt during the megafires. Of these, 382 species had their entire known range burnt and a further 405 species had 50–99.9% of their range burnt!! This research study illustrates the magnitude of fire damage on a neglected taxonomic group and calls for drastic conservation action for all Australian invertebrates. We will actually be using an invertebrate species from Dr. Marsh's study in the walk-through below. 
-
-Alpha hulls can also help researchers understand dynamic changes in species distributions. For example, distributions can shrink or expand due to habitat loss or in response to changing climate. [Dr. Takach and their team](https://onlinelibrary.wiley.com/doi/10.1111/ddi.13145) used alpha hulls to investigate how  distributions of Australian tropical savanna mammals have changed over time. They compared alpha hulls of the [Black-Footed Tree Rat *Mesembriomys gouldii*](https://biocache.ala.org.au/occurrences/c6e1ff2d-ac80-4cc1-806c-6107e8e24617) from 2000 on wards to all the existing data for the species. They found that the Black-Footed Tree Rat experienced contemporary range contractions! While Dr. Takach 's team didn't show a plot of the alpha hulls in their research article, it's possible for us to reproduce one of their key results  using data from `{galah}`! 
- 
 <center>![A Black-Footed Tree Rat perched on a branch by Colin Trainor CC-BY-NC 4.0](../static/polygons/Mesembriomys_gouldii_1.jpeg){width="7.9cm"}</center>
 
 ```{r include=FALSE, cache = TRUE}
@@ -121,6 +117,8 @@ ggplot() +
 
 combinedtree_rat_ahull_p 
 ```
+
+More recently, [Dr. Marsh and colleages](https://onlinelibrary.wiley.com/doi/full/10.1111/geb.13550) used alpha hulls to estimate the impact the 2020 mega bush fires on invertebrates in southern Australia. Since invertebrate data is inherently sparse, alpha hulls are really useful when you have a handful of records to work with.  In this post, we'll explain the difference between **convex hulls** and **alpha hulls** and show you how to create them using different data types! We will actually be using an invertebrate species from Dr. Marsh's study in the walk-through below.
 
 ### Let's get started 
 First we will install/load the R packages we'll need:
