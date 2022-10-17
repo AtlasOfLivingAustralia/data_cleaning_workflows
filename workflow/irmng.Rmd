@@ -32,7 +32,6 @@ irmng_sp <- fread("data/IRMNG/irmng_speciesprofile.txt")
 head(irmng_sp)
 names(irmng_sp)
 dim(irmng_sp)
-
 ```
 
 ## Filter list down to only Animalia 
@@ -91,12 +90,13 @@ animalia_irmng |>
   filter(phylum == "Chordata") |> 
   pull(order) |>  unique() -> chordata_orders
 
-# Only Amphioxiformes in list
-str_subset(string = chordata_orders, pattern = paste(within_chords, collapse = "|"), )
-
 # Within Chordata
 within_chords <-c("Amphioxiformes",
                   "Tunicata")
+
+
+# Only Amphioxiformes in list
+str_subset(string = chordata_orders, pattern = paste(within_chords, collapse = "|"), )
 
 animalia_irmng |> 
   filter(order %in% within_chords) |> 
@@ -117,18 +117,79 @@ invert_irmng |>
   left_join(irmng_sp, by = "taxonID") -> invert_irmng
 ```
 
-## Filter is.Marine
+# Remove suffix "(awaiting allocation)" and keep first word for now
 
 ```{r}
+awc_pattern <- "(awaiting allocation)"
+writeLines(awc_pattern)
+awaiting_class <- str_subset(string = unique(invert_irmng$class), pattern = awc_pattern) 
+
+# Do classes that are awaiting allocation exist in the data set?
+word(awaiting_class) %in%  unique(invert_irmng$class) # No?! We have to keep these then
+
+# Remove (awaiting allocation) and replace with the first word e.g. class
 invert_irmng |> 
+  mutate(class = ifelse(str_detect(class, pattern = x), word(class), class)) -> invert_irmng_awaitingcol
+```
+
+### Remove suffix "incertae sedis" and keep first word for now
+
+Similar process as above
+
+```{r}
+insed_pattern <- "incertae sedis"
+writeLines(insed_pattern)
+insed_class <- str_subset(string = unique(invert_irmng_awaitingcol$class), pattern = insed_pattern) 
+
+# Do classes that are incertae sedis exist in the data set?
+word(insed_class) %in%  unique(invert_irmng_awaitingcol$class) # Some yes
+word(insed_class)[ word(insed_class) %in%  unique(invert_irmng_awaitingcol$class) ] #Which ones
+
+# Remove incertae sedis and replace with the first word e.g. class
+invert_irmng_awaitingcol |> 
+  mutate(class = ifelse(str_detect(class, pattern = insed_pattern), word(class), class)) -> invert_irmng_awc_insed
+```
+
+## Exclude isExtinct
+```{r}
+invert_irmng_awc_insed |> 
+  filter(! isExtinct == 1) -> invert_irmng_extant
+```
+
+## Filter to include is.Marine = TRUE
+
+```{r}
+invert_irmng_extant |> 
   filter(isMarine == TRUE) |> 
   dim() 
 
-invert_irmng |> 
+invert_irmng_extant |> 
   filter(isMarine == TRUE) -> marine_invert_irmng
 ```
 
-## Check of overlap
+### Species that live across all habitats (e.g. are marine and FW and terrestrial)
+
+Don't exclude these when checking overlap (739 rows)
+
+```{r}
+marine_invert_irmng |> 
+  filter(isMarine == TRUE & isTerrestrial == TRUE |  isMarine == TRUE & isFreshwater == TRUE) |> dim()
+
+marine_invert_irmng |> 
+  filter(isMarine == TRUE & isTerrestrial == TRUE |  isMarine == TRUE & isFreshwater == TRUE) |> 
+  select(kingdom:subgenus, starts_with("is")) -> dont_excl
+
+# Quick tally
+marine_invert_irmng |> 
+  select(starts_with("is")) |> 
+  colSums(na.rm = TRUE)
+
+# M
+marine_invert_irmng |> 
+  summarise(n_marine_only = )
+```
+
+## Read and Reformat AFD list first
 
 ```{r}
 afd_species <- read_csv("output/afd_splist_full.csv")
@@ -144,31 +205,161 @@ lower_afd |> mutate(PHYLUM = stringr::str_to_title(PHYLUM),
                     ORDER = stringr::str_to_title(ORDER),
                     FAMILY = stringr::str_to_title(FAMILY),
                     GENUS = stringr::str_to_title(GENUS)) -> lower_afd
-
-# Remove suffix "(awaiting allocation)" and keep first word for now
-x <- "(awaiting allocation)"
-writeLines(x)
-awaiting_class <- str_subset(string = unique(marine_invert_irmng$class), pattern = x) 
-
-
-# Do awaiting_class exist as classes themselves
- marine_invert_irmng |> mutate(class = ifelse()) word(awaiting_class) 
-
-marine_invert_irmng |> 
-  filter(class %in% awaiting_class) |> dim() #Excluding
-
-
-marine_invert_irmng |> dim()
-# Overlap with Class
-marine_invert_irmng$class |> tabyl()
-
-lower_afd |> filter(PHYLUM %in% unique(marine_invert_irmng$phylum)) 
-
-lower_afd |> filter(! PHYLUM %in% unique(marine_invert_irmng$phylum)) |> dim()
-
-lower_afd |> filter(! PHYLUM %in% unique(marine_invert_irmng$phylum)) |> pull(PHYLUM)
-
 ```
+
+### Descriptive stats on `genus` before checking for overlap
+
+- There are 4401 empty genus!
+- Lypusidae looks like a moth terrestrial family to me! Error labels?
+- 53 taxon that are marine and no genus info - Can exclude these
+- 33 taxon that are terrestrial/FW/marine and no genus info - Need to keep!
+
+```{r}
+marine_invert_irmng$genus |> 
+  tabyl() |> 
+  arrange(-n) |> 
+  head() 
+
+# Can we rely on higher taxa for exclusion?
+marine_invert_irmng |>
+  filter(genus %in% "") |> 
+  select(kingdom:subgenus, starts_with("is")) -> no_genus
+
+# Must keep
+no_genus  |>
+  filter(class %in% "" | order %in% "" |  family %in% "") |> 
+  filter(isTerrestrial == TRUE | isFreshwater == TRUE) -> no_genus_fwt
+
+
+# Marine only higher tax
+no_genus  |>
+  filter(class %in% "" | order %in% "" |  family %in% "") |> 
+  filter(! isTerrestrial == TRUE & ! isFreshwater == TRUE) -> marine_no_genus
+```
+
+#### Excluding using IRMNG
+
+How many rows is empty in genus, family,  class, order, phylum?
+
+```{r}
+marine_invert_irmng |> 
+  summarise(n_empt_genus = sum(genus == ""),
+            n_empt_family = sum(family == ""),
+            n_empt_order = sum(order == ""),
+            n_empt_class = sum(class == "")
+           )
+```
+
+
+Plan is to:
+
+1. Exclude by genus AND is ONLY marine first
+2. Then broaden this out to family AND is ONLY marine ... and work upwards
+3. Repeat this to phylum AND is ONLY marine
+
+What AFD species remain will be specie that live across Terrestrial, FW and Marine
+
+### 1. Exclude by genus AND is ONLY marine first
+
+```{r}
+marine_invert_irmng |> 
+  filter(! isTerrestrial == TRUE & ! isFreshwater == TRUE) |> 
+  filter(! genus %in% "") |> 
+  pull(genus) |> 
+  unique() -> marine_only_genus
+
+length(marine_only_genus) #10570 genus that is marine only
+
+lower_afd |> 
+  filter(! GENUS %in% marine_only_genus) -> lower_afd_stage1
+
+cat(
+"A total of:", length(marine_only_genus), "marine only genus found in IRMNG \n",
+"Excluding matches ...\n",
+"Reducing total number of taxon from:", nrow(lower_afd), 
+"to", nrow(lower_afd_stage1), 
+"\n A total of", nrow(lower_afd)-nrow(lower_afd_stage1), "excluded"
+)
+
+lower_afd_stage1$PHYLUM |> tabyl() |> arrange(-n)
+lower_afd_stage1$CLASS |> tabyl() |> arrange(-n)
+lower_afd_stage1$ORDER |> tabyl() |> arrange(-n)
+
+lower_afd_stage1 
+```
+
+### 2. Exclude by family AND is ONLY marine first
+
+```{r}
+marine_invert_irmng |> 
+  filter(! family %in% "") |> 
+  filter(! isTerrestrial == TRUE & ! isFreshwater == TRUE) |>
+  pull(family) |> 
+  unique() -> marine_only_family
+
+length(marine_only_family) #1336
+
+lower_afd |> 
+  filter(! FAMILY %in% marine_only_family) -> lower_afd_stage2
+
+cat(
+"A total of:", length(marine_only_family), "marine only families found in IRMNG \n",
+"Excluding matches ...\n",
+"Reducing total number of taxon from previous step from:", nrow(lower_afd_stage1), 
+"to", nrow(lower_afd_stage2), 
+"\n A total of", nrow(lower_afd_stage1)-nrow(lower_afd_stage2), "species excluded at this step",
+"\n A grant total of", nrow(lower_afd)-nrow(lower_afd_stage2), "species excluded from original AFD"
+)
+
+
+lower_afd_stage2$PHYLUM |> tabyl() |> arrange(-n)
+lower_afd_stage2$CLASS |> tabyl() |> arrange(-n)
+lower_afd_stage2$ORDER |> tabyl() |> arrange(-n)
+
+lower_afd_stage2 
+```
+
+### 2. Exclude by class AND is ONLY marine first
+
+Whoa this is a huge drop! Nearly 50% 
+THis is too strict
+```{r}
+marine_invert_irmng |> 
+  filter(! class %in% "") |> 
+  filter(! isTerrestrial == TRUE & ! isFreshwater == TRUE) |>
+  pull(class) |> 
+  unique() -> marine_only_class
+
+length(marine_only_class) #67 classes that is marine only
+
+lower_afd_stage2 |> 
+  filter(! CLASS %in% marine_only_class) -> lower_afd_stage3
+
+cat(
+"A total of:", length(marine_only_class), "marine only classes found in IRMNG \n",
+"Excluding matches ...\n",
+"Reducing total number of taxon from previous step from:", nrow(lower_afd_stage2), 
+"to", nrow(lower_afd_stage3), 
+"\n A total of", nrow(lower_afd_stage2)-nrow(lower_afd_stage3), "species excluded at this step",
+"\n A grant total of", nrow(lower_afd)-nrow(lower_afd_stage3), "species excluded from original AFD"
+)
+```
+
+### Exploring stage 3 output
+
+Definitely want to keep Mollusca, Nematoda! 
+
+```{r}
+# Does it include the groups that we have to include? e.g nogenus_fwt
+lower_afd_stage2$ORDER |> tabyl()
+lower_afd_stage3$ORDER |> tabyl()
+
+unique(no_genus_fwt$phylum)[! unique(no_genus_fwt$phylum) %in% lower_afd_stage2$PHYLUM]
+
+# 
+```
+
+
 
 
 ## Export as .csv
@@ -177,5 +368,3 @@ lower_afd |> filter(! PHYLUM %in% unique(marine_invert_irmng$phylum)) |> pull(PH
 write.csv(invert_irmng, "data/invert_irmng.csv")
 fwrite(invert_irmng, "data/invert_irmng.txt", row.names = FALSE)
 ```
-
-

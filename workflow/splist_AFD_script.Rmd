@@ -61,8 +61,6 @@ afd_species <- afd_species[which(! afd_species$VALID_NAME %in% griis_species$Sup
 
 ### Remove Marine species
 
-###  Using World Register of Marine Speices
-
 ### Using CAAB
 
 Using CAAB data: https://www.cmar.csiro.au/data/caab/
