@@ -292,6 +292,27 @@ galah_call() |>
 invert_all <- readRDS("output/invert_all.rds")
 ```
 
+Benchmarking the download time to compare with ALA4R parallel method
+
+```{r}
+# devtools::install_github("jabiru/tictoc")
+library(tictoc)
+
+tic("galah download")
+galah_call() |> 
+  galah_filter(
+    taxonConceptID == galah_identify("Animalia")$identifier, 
+    taxonConceptID != galah_identify("Chordata")$identifier, # Filters NOT Chordata
+    basisOfRecord == specimen_only # Filters to specimen only
+  ) |> 
+  galah_select(fields) |>  
+  atlas_occurrences() -> invert_all
+toc()
+
+# galah download: 1949.915 sec elapsed
+1949.915/60 # 32 mins
+```
+
 ### Checks of downloads 
 
 No changes made here as a lot of the code below here applies to a list
