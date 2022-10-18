@@ -14,7 +14,7 @@ I think the major difference between the NESP bugs and current galah workflow is
 
 Some of the latter parts of this workflow involves collapsing down the lists of download (organised by phylum).  I assumed this was a product for parallel processing using `future` so I didn't write streamlined parts for these sections as output depends on user and `galah` provides one long tibble for all phylum. 
 
-Cautionary note: It is not advised to parallelise downloads from `galah`
+**Cautionary note: It is not advised to parallelise downloads from `galah`** as this has a very high chance of stalling BioCache API and the user will get kicked out
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, 
@@ -25,9 +25,6 @@ knitr::opts_chunk$set(echo = TRUE,
 
 ```{r}
 rm(list = ls())
-gc()
-# system("ps")
-# system("pkill -f R")
 
 # install.packages("pacmac")
 pacman::p_load(data.table, galah, sp, raster, future, future.apply)
@@ -55,20 +52,15 @@ if(!dir.exists(ala_dir)) dir.create(ala_dir)
 ```{r}
 galah_config(email = "fonti.kar@gmail.com", 
              atlas = "Australia",
-             download_reason_id = 10, # testing reason
+             download_reason_id = 10 # testing reason
              )
 ```
 
-### Writing some text files and reading in a cleaned AFD species list
+### Reading in a cleaned AFD species list
 
 ```{r}
-## No data species txt file
-nodatalog <- file.path(output_dir, "nodata_log.txt")
-writeLines(c("species0"), nodatalog)
-
-
 ## Load AFD taxonomic checklist ####
-afd_taxonomy <- fread(file.path(output_dir, "afd_species_clean.csv"))
+afd_taxonomy <- fread("output/afd_splist_full.csv")
 afd_taxon <- unique(afd_taxonomy$PHYLUM) 
 length(afd_taxon)
 ```
@@ -78,13 +70,14 @@ length(afd_taxon)
 `taxon.counts()` calls for `get_ala_taxondata.R` to get a tally of each taxon, but `get_ala_taxondata.R` actually has download occurrence records first, cleans it up a bit and then tallies. More notes below:
 
 `get_ala_taxondata.R` downloads occurrence records depending on: 
+
 1. basis of record if `specimens_only = TRUE`
     e.g. 
     "PreservedSpecimen", "LivingSpecimen", 
     "MachineObservation", "EnvironmentalDNA","GenomicDNA"
 2. [fields](https://biocache.ala.org.au/ws/index/fields), this version is better for the eyes: https://biocache.ala.org.au/fields
 3. [Darwin Core fields](https://biocache.ala.org.au/ws/index/fields) via ALA4R::occurrences::`qa` argument. 
-   `qa` was preferred over `extra = "assertions"` because `extra = "assertions"` only lists one assertion, even if the     record has multiple.
+   `qa` was preferred over `extra = "assertions"` because `extra = "assertions"` only lists one assertion, even if the record has multiple.
     e.g.
     "el1055", "el1056", #endemism 
     "el682", #migratory
@@ -95,7 +88,8 @@ length(afd_taxon)
     "sensitive","taxonomic_issue")
 
 Some data cleaning steps in the `get_ala_taxondata.R`: 
-- Removes rows where `latitude` and `latitude` are NA
+
+1. Removes rows where `latitude` and `latitude` are NA
 ```{r}
 taxon.counts <- lapply(afd_taxon,
                        function(x){
@@ -117,12 +111,15 @@ colnames(taxon.counts) <- afd_taxon
 write.csv(taxon.counts, file.path(output_dir, "taxon_counts.csv"))
 ```
 
-### galah alternative for getting counts for each Invertebrate Phylum
+### {galah} alternative for getting counts for each Invertebrate Phylum
 
-Note: ALA has collapsed `EnvironmentalDNA`, `GenomicDNA`" into `Material_Sample` 
-ALA has added `contentTypes` to further delineate these categories
+Fields for [`basisOfRecord`](https://github.com/AtlasOfLivingAustralia/ala-dataquality/wiki/basisOfRecord)
+
+**Note:** ALA has collapsed `EnvironmentalDNA`, `GenomicDNA`" into `Material_Sample` 
+ALA has added [`contentTypes`](https://github.com/AtlasOfLivingAustralia/ala-dataquality/wiki/contentTypes) to further delineate these categories
 
 ```{r}
+# Equvialent to n.all 
 # Obtain counts for each phylum
 galah_call() |>
   galah_filter(
@@ -130,24 +127,10 @@ galah_call() |>
     taxonConceptID != galah_identify("Chordata")$identifier # Filters NOT Chordata
   ) |> 
   galah_group_by(phylum) |>
-  atlas_counts() -> invert_phyla_counts 
+  atlas_counts() -> n.all 
 
 # To view more rows
-invert_phyla_counts |> print(n = 50) # Change n for view more
-
-# If need to filter basis of record, equivalent to specimen_only = TRUE in `get_ala_taxondata`
-specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
-                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
-
-# Equvialent to n.all 
-galah_call() |>
-  galah_filter(
-    taxonConceptID == galah_identify("Animalia")$identifier, 
-    taxonConceptID != galah_identify("Chordata")$identifier, 
-  ) |> 
-  galah_group_by(phylum) |> 
-  atlas_counts()
-
+n.all |> print(n = 50) # Change n for view more
 
 # This is equivalent to n.obs
 galah_call() |>
@@ -157,10 +140,14 @@ galah_call() |>
     basisOfRecord == "HUMAN_OBSERVATION" # Filters to human observed
   ) |> 
   galah_group_by(phylum) |> 
-  atlas_counts()
+  atlas_counts() -> n.obs
 
+n.obs |> print(n = 50)
 
 # This is equivalent to n.spec
+# If need to filter basis of record, equivalent to specimen_only = TRUE in `get_ala_taxondata`
+specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
+                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
 galah_call() |>
   galah_filter(
     taxonConceptID == galah_identify("Animalia")$identifier, 
@@ -168,35 +155,76 @@ galah_call() |>
     basisOfRecord == specimen_only # Filters to specimen only
   ) |> 
   galah_group_by(phylum) |> 
+  atlas_counts() -> n.spec
+
+n.spec |> print(n =)
+```
+
+### {galah} alternative for filtering records by assertions
+
+Assertions are used to filter down records ensure the data is fit for use. 
+The `{galah}` code below is a **temporary** solution for the current version of the R package.
+I believe there will be a formalised solution in the next release. Watch this space.
+
+
+Currently, users can filter records using `galah_filter()` as below.  
+Replacing `UNKNOWN_KINGDOM` with whatever assertion name you’d like to use. 
+Alternatively, to exclude by multiple assertions, use `c()` 
+
+This method of filtering can also applied to downloading records as well as obtaining counts.
+
+```{r}
+galah_call() |>
+  galah_filter(
+    taxonConceptID == galah_identify("Animalia")$identifier, 
+    taxonConceptID != galah_identify("Chordata")$identifier, 
+    basisOfRecord == specimen_only, # Filters to specimen only
+    assertions != UNKNOWN_KINGDOM
+  ) |> 
+  galah_group_by(phylum) |> 
+  atlas_counts() 
+
+
+IA_assertions <- c("UNKNOWN_KINGDOM", "TAXON_MATCH_NONE",
+                   "COORDINATE_PRECISION_MISMATCH", "MISSING_GEODETICDATUM")
+
+galah_call() |> 
+  galah_filter(
+    taxonConceptID == galah_identify("Animalia")$identifier, 
+    taxonConceptID != galah_identify("Chordata")$identifier, 
+    basisOfRecord == specimen_only, # Filters to specimen only
+    assertions != IA_assertions
+  ) |> 
+  galah_group_by(phylum) |> 
   atlas_counts()
 ```
 
-### Download data by taxon using `galah`
+### `{galah}` alternative download occurence records
 
-Just searching each field from the `fields` vector above here https://biocache.ala.org.au/fields to make a new vector that works with the current API system. Note to avoid parallel process this step to avoid crashes to API system
+Just searching each field from the `fields` vector above here https://biocache.ala.org.au/fields to make a new vector that works with the current API system. **Note: to avoid parallel process this step to avoid crashes to API system**
 
 Unable to find equivalent fields for: 
 - `taxonomic_kosher`
 - `catalogue_number`
 
 Some fields did not have an exact match but I took my best guess to find a match i.e. original ~ best guess
-raw_taxon_name ~ raw_scientificName
-raw_datum ~ raw_geodeticDatum
-taxon_name ~ scientificName
-common_name ~ vernacularName
-rank ~ taxonRank
-state ~ locality
-min_elevation_d not sure what _d represents ~ minimumElevationInMeters
-max_elevation_d not sure what _d represents ~ maximumElevationInMeters
-min_depth_d not sure what _d represents  ~  minimumDepthInMeters
-max_depth_d not sure what _d represents ~ maximumDepthInMeters
-collector ~ recordedBy
-occurrence_date ~ eventDate
-geospatial_kosher ~ spatiallyValid
+
+-raw_taxon_name ~ raw_scientificName
+-raw_datum ~ raw_geodeticDatum
+-taxon_name ~ scientificName
+-common_name ~ vernacularName
+-rank ~ taxonRank
+-state ~ locality
+-min_elevation_d not sure what _d represents ~ minimumElevationInMeters
+-max_elevation_d not sure what _d represents ~ maximumElevationInMeters
+-min_depth_d not sure what _d represents  ~  minimumDepthInMeters
+-max_depth_d not sure what _d represents ~ maximumDepthInMeters
+-collector ~ recordedBy
+-occurrence_date ~ eventDate
+-geospatial_kosher ~ spatiallyValid
 
 ```{r}
 # Limiting my download to a specific year for now
-
 specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
                    "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
 
@@ -243,20 +271,21 @@ galah_call() |>
     taxonConceptID != galah_identify("Chordata")$identifier, 
     basisOfRecord == specimen_only # Filters to specimen only
   ) |> 
-  galah_select(fields_v2) |> 
+  galah_select(fields) |> 
   atlas_occurrences() -> invert_2022
 
 # saveRDS(invert_2022, "output/invert_2022.rds")
 invert_2022 <- readRDS("output/invert_2022.rds")
 
 ## Doing the mass download
+
 galah_call() |> 
   galah_filter(
     taxonConceptID == galah_identify("Animalia")$identifier, 
     taxonConceptID != galah_identify("Chordata")$identifier, # Filters NOT Chordata
     basisOfRecord == specimen_only # Filters to specimen only
   ) |> 
-  galah_select(fields_v2, assertions) |> 
+  galah_select(fields, assertions) |>  
   atlas_occurrences() -> invert_all
 
 # saveRDS(invert_all, "output/invert_all.rds")
@@ -299,54 +328,8 @@ for (i in 2:length(ala)) {
 }
 ```
 
-```{r}
-
-```
-
-
-
-### Quick checks of the download
-
-```{r}
-invert_2022
-
-invert_2022 |> 
-  group_by(phylum) |> 
-  summarise(n_obs = n())
-
-# Not sure what is the difference between institutionID and institutionUid
-invert_2022 |> select(institutionID, institutionUid) |> print(n = 50)
-# Mostly empty, I think okay to remove as Uid seems to convey the same grouping levels but tidier but left as is for now
-
-# Not sure what is difference between raw_locality, locality
-invert_2022 |> select(raw_locality, locality) # It didn't download raw_locality despite it being on the field search site!
-
-# Which fields didn't get downloaded from fields_v2
-setdiff(fields_v2, colnames(invert_2022))
-
-# "id"                   "institutionID"        "license"              "raw_scientificName"   "raw_locality"        
-#  "raw_geodeticDatum"    "raw_decimalLatitude"  "raw_decimalLongitude" "raw_basisOfRecord"   
-
-# Which vars did we download thats not in field_v2
-setdiff(colnames(invert_2022),fields_v2)
-
-# "recordID"                 "dctermsLicense"           "verbatimScientificName"   "locality1"               
-# "verbatimCoordinateSystem" "verbatimLatitude"         "verbatimLongitude"        "verbatimBasisOfRecord"   
-# "assertions"               "recordID1"  
-
-# Not sure why some have suffix1?
-invert_2022 |> select(ends_with("1"))
-#Looks like they are mostly double ups, requesting for raw_locality will give you the same output https://biocache.ala.org.au/fields?filter=locality
-all.equal(invert_2022$locality, invert_2022$locality1)
-all.equal(invert_2022$recordID, invert_2022$recordID1)
-
-# We can remove these duplicates
-invert_2022 |> select(-c(locality1, recordID1)) -> invert_2022
-
-# I think there must be some sort of alias built in, you can request a certain field but what is returned are the DwC names. raw is equivalent to verbatim for example (https://biocache.ala.org.au/fields?filter=latitude)
-```
-
 ### Some data cleaning steps that are in get_ala_taxondata.R
+
 ```{r}
 invert_2022_test <- invert_2022
 invert_2022_test$decimalLatitude[sample(nrow(invert_2022_test),5)] <-NA # replace 5 obs with NA for a test
@@ -369,13 +352,12 @@ invert_2022 |> mutate(verbatimEventDate = lubridate::dmy(verbatimEventDate),
                       verbatimLatitude = as.numeric(verbatimLatitude),
                       verbatimLongitude = as.numeric(verbatimLongitude)
                       )
-
 ```
 
 
 ### Merge downloaded data
 
-Arthropods is a big data set so its being treated as a data.table obj
+Arthropods is a big data set so its being treated as a `data.table` obj
 Looks like counts are reformatted from list to a data frame and the class of each variable is assigned to coltypes
 
 ```{r}
@@ -400,7 +382,8 @@ rm(f)
 
 Here the code deals with everything except Arthopods.
 By merging I think its just collapsing down the lists of each phylum
-Some code to deal with mismatched column classes from different phylum, I suspect this might not be an issue if its in one giant tibble in the eventual download, but requires testing and splitting phylums into lists
+Some code to deal with mismatched column classes from different phylum.
+I suspect this might not be an issue as `{galah}` downloads in one giant tibble, but requires testing and splitting phyla into lists
 
 ```{r}
 for (i in 2:length(ala)) {
@@ -436,6 +419,8 @@ for (i in 2:length(ala)) {
 
 ### Post merge checks
 
+No changes made here
+
 ```{r}
 ## Check
 message(cat("#rows in merged data = sum of cleaned records : "),
@@ -455,6 +440,8 @@ write.csv(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Dat
 
 #### EXTRA
 
+In next version of `{galah}`, users will be able to obtain a list of assertions. Currently you can view the assertions in messy form [here](https://github.com/AtlasOfLivingAustralia/biocache-store/blob/5c55b021d283026868924f4c3c88a3061ec06956/src/main/scala/au/org/ala/biocache/vocab/AssertionCodes.scala)
+
 ```{r}
 # ## Explore ALA fields
 # ala_fields("occurrence", as_is=TRUE)
@@ -468,9 +455,4 @@ write.csv(ala_merged, file = file.path(output_dir, paste0("merged_ala_", Sys.Dat
 ala_fields("assertions",as_is=TRUE)
 write.csv(ala_fields("assertions",as_is=TRUE), file = "./output/assertions.csv")
 ```
-
-```{r}
-invert_2022 |> select(assertions)
-```
-
 

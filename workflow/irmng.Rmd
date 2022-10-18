@@ -150,9 +150,21 @@ invert_irmng_awaitingcol |>
   mutate(class = ifelse(str_detect(class, pattern = insed_pattern), word(class), class)) -> invert_irmng_awc_insed
 ```
 
+## Accepted taxonomicStatus only
+
+```{r}
+# Quick tally of all
+invert_irmng_awc_insed |> tabyl(taxonomicStatus) |> arrange(-n)
+
+invert_irmng_awc_insed |> filter(taxonomicStatus == "accepted") -> accepted_invert_irmng
+
+# We would be removing ~40%
+(nrow(invert_irmng_awc_insed) - nrow(accepted_invert_irmng)) / nrow(invert_irmng_awc_insed) 
+```
+
 ## Exclude isExtinct
 ```{r}
-invert_irmng_awc_insed |> 
+accepted_invert_irmng |> 
   filter(! isExtinct == 1) -> invert_irmng_extant
 ```
 
@@ -169,7 +181,7 @@ invert_irmng_extant |>
 
 ### Species that live across all habitats (e.g. are marine and FW and terrestrial)
 
-Don't exclude these when checking overlap (739 rows)
+Don't exclude these when checking overlap 
 
 ```{r}
 marine_invert_irmng |> 
@@ -183,29 +195,48 @@ marine_invert_irmng |>
 marine_invert_irmng |> 
   select(starts_with("is")) |> 
   colSums(na.rm = TRUE)
-
-# M
-marine_invert_irmng |> 
-  summarise(n_marine_only = )
 ```
 
-## Read and Reformat AFD list first
+### Marine only taxa
 
 ```{r}
-afd_species <- read_csv("output/afd_splist_full.csv")
+# Are there marine only phyla?
+marine_invert_irmng |> 
+  filter(isTerrestrial == FALSE & isFreshwater == FALSE) |> 
+  filter(class == "" & order == "" & family == "" & genus == "") -> phyla_only_data
 
-names(afd_species)
-dim(afd_species)
+#Yes, we can exclude these
+lower_afd |> filter(PHYLUM %in% phyla_only_data$phylum) #81 species
+lower_afd |> filter(! PHYLUM %in% phyla_only_data$phylum) -> afd_nomarine_phyla
 
-lower_afd <- afd_species
+# Are there terrestrial/FW Cnidaria and Poriferas? Apparently so
+marine_invert_irmng |> 
+  filter(phylum == "Cnidaria") |> 
+  select(starts_with("is")) |> 
+  colSums(na.rm = TRUE)
 
-# Change format of text
-lower_afd |> mutate(PHYLUM = stringr::str_to_title(PHYLUM),
-                    CLASS = stringr::str_to_title(CLASS),
-                    ORDER = stringr::str_to_title(ORDER),
-                    FAMILY = stringr::str_to_title(FAMILY),
-                    GENUS = stringr::str_to_title(GENUS)) -> lower_afd
+marine_invert_irmng |> 
+  filter(phylum == "Cnidaria" & isTerrestrial == TRUE) 
+
+marine_invert_irmng |> 
+  filter(phylum == "Porifera") 
+
+
+# Marine only classes?
+marine_invert_irmng |> 
+  filter(isTerrestrial == FALSE & isFreshwater == FALSE) |> 
+  filter(order == "" & family == "" & genus == "") -> class_only_data
+
+#
+afd_nomarine_phyla |> filter(CLASS %in% class_only_data$class) |> 
+  select(PHYLUM:SUB_SPECIES, ends_with("NAME")) |> 
+  
+
+
 ```
+
+
+
 
 ### Descriptive stats on `genus` before checking for overlap
 
@@ -236,6 +267,25 @@ no_genus  |>
   filter(class %in% "" | order %in% "" |  family %in% "") |> 
   filter(! isTerrestrial == TRUE & ! isFreshwater == TRUE) -> marine_no_genus
 ```
+
+## Read and Reformat AFD list first
+
+```{r}
+afd_species <- read_csv("output/afd_splist_full.csv")
+
+names(afd_species)
+dim(afd_species)
+
+lower_afd <- afd_species
+
+# Change format of text
+lower_afd |> mutate(PHYLUM = stringr::str_to_title(PHYLUM),
+                    CLASS = stringr::str_to_title(CLASS),
+                    ORDER = stringr::str_to_title(ORDER),
+                    FAMILY = stringr::str_to_title(FAMILY),
+                    GENUS = stringr::str_to_title(GENUS)) -> lower_afd
+```
+
 
 #### Excluding using IRMNG
 

@@ -113,4 +113,14 @@ afd_taxonomy |> filter(! VALID_NAME %in% myfiles$valid_name) # 92,730
 
 afd_taxonomy$VALID_NAME
 ```
+
+```{r}
+myfiles |> filter(isTerrestrial == FALSE & isFreshwater == FALSE & isBrackish == FALSE) |> 
+  pull(isMarine) |> tabyl()
+
+
+myfiles |> filter(isMarine == TRUE) |> 
+  pull(isMarine) |> tabyl()
+```
+
  
