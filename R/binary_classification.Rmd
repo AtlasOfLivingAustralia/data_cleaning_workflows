@@ -1,0 +1,176 @@
+---
+title: "Binary Classification in R"
+author: "Fonti Kar"
+date: "2022-10-24"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(tidymodels, yardstick, randomForest)
+```
+
+### Why {tidymodels}
+
+In R, there are multiple packages that fit the same type of model. It is common for each package to provide a unique interface. In other words, things such as an argument for the same model attribute is defined differently for each package. For example, the ranger and randomForest packages fit Random Forest models. In the ranger() function, to define the number of trees we use num.trees. In randomForest, that argument is named ntree. It is not easy to switch between packages to run the same model.
+
+Instead of replacing the modeling package, tidymodels replaces the interface. Better said, tidymodels provides a single set of functions and arguments to define a model.
+
+### Relevant resources:
+
+- https://jmsallan.netlify.app/blog/a-workflow-for-binary-classification-with-tidymodels/
+- https://medium.com/the-researchers-guide/modelling-binary-logistic-regression-using-tidymodels-library-in-r-part-1-c1bdce0ac055
+- https://www.gormanalysis.com/blog/decision-trees-in-r-using-rpart/
+- [A tutorial with training set](https://rviews.rstudio.com/2019/06/19/a-gentle-intro-to-tidymodels/) 
+
+## An example first using `iris`
+
+When using tidymodels in binary classification problems, the target variable:
+
+- must be a factor,
+- with its first level corresponding to the positive class. i.e 1 is indicator of presence or IS versicolour
+
+```{r}
+iris <- iris %>% 
+  mutate(is_versicolor = ifelse(Species == "versicolor", "versicolor", "not_versicolor")) %>% # Binary response
+  mutate(is_versicolor =factor(is_versicolor, levels = c("versicolor", "not_versicolor"))) # Setting as factor
+```
+
+### Pre-processing using the {recipes} package
+
+- https://recipes.tidymodels.org/
+- https://www.tidymodels.org/start/recipes/
+
+```{r}
+iris_recipe <- iris %>%
+  recipe(is_versicolor ~.) %>% # outcome == is_versicolor, predictor is what remains in iris
+  step_rm(Species) %>% # removes Species column
+  step_corr(all_predictors()) %>% # a correlation filter
+  step_center(all_predictors(), -all_outcomes()) %>% # centering predictors but not outcome
+  step_scale(all_predictors(), -all_outcomes()) # scaling (z transform) predictors not outcome
+
+
+iris_recipe |>  prep()
+```
+
+### Define tree with {parsnip}
+
+The engine in the parsnip context is the source of the code to run the model. It can be a package, a R base function, stan or spark, among others. Here we are using the random forest implemented in the ranger package.
+
+```{r}
+rf <- rand_forest(mode = "classification", trees = 100) %>%
+  set_engine("ranger")
+
+rf
+```
+
+Alternatively, if we now want to run the same model against randomForest, we simply change the value in set_engine() to “randomForest”.
+
+Snippet from [here](https://rviews.rstudio.com/2019/06/19/a-gentle-intro-to-tidymodels/)
+
+```{r}
+iris_rf <-  rand_forest(trees = 100, mode = "classification") %>%
+  set_engine("randomForest") 
+```
+
+### Creating a workflow
+
+```{r}
+iris_rf_wf <- workflow() %>%
+  add_recipe(iris_recipe) %>%
+  add_model(rf)
+
+iris_rf_wf2 <- workflow() %>%
+  add_recipe(iris_recipe) %>%
+  add_model(iris_rf)
+```
+
+### Getting predictions
+
+```{r}
+set.seed(3131)
+
+# ranger
+iris_pred <- iris_rf_wf %>%
+  fit(iris) %>%
+  predict(iris) %>%
+  bind_cols(iris)
+
+iris_pred %>% glimpse()
+
+set.seed(3131)
+
+# randomForest
+iris_pred2 <-iris_rf_wf2 %>%
+  fit(iris) %>%
+  predict(iris) %>%
+  bind_cols(iris)
+```
+
+### Model performance evaluations
+
+For more measures: https://yardstick.tidymodels.org/
+
+#### Confusion matrix
+
+Interesting randomForest get ever so slightly  better than ranger
+
+```{r}
+# ranger
+iris_pred %>%
+  conf_mat(truth = is_versicolor, estimate = .pred_class)
+
+# randomForest
+iris_pred2 %>%
+  conf_mat(truth = is_versicolor, estimate = .pred_class)
+```
+
+#### Class metrics
+
+- accuracy: the fraction of observations correctly classified,
+- sensibility: the fraction of positive observations correctly classified,
+- specificity: the fraction of negative observations correctly classified.
+
+```{r}
+class_metrics <- metric_set(accuracy, sens, spec)
+```
+
+```{r}
+# ranger
+iris_pred %>%
+ class_metrics(truth = is_versicolor, estimate = .pred_class)
+
+# randomForest
+iris_pred2 %>%
+ class_metrics(truth = is_versicolor, estimate = .pred_class)
+```
+
+### Curve methods
+
+Not sure what these are , but mentioned [here](https://rviews.rstudio.com/2019/06/19/a-gentle-intro-to-tidymodels/)
+
+Setting `type = "prob"`, we can get the probability of `versicolour` and `not_versicolour`. 
+
+Checkout ?gain_curve. "If truth is binary, only 1 column should be selected. Otherwise, there should be as many columns as factor levels of truth."
+
+Then we can plot gain curves
+
+```{r}
+#ranger
+iris_rf_wf %>%
+  fit(iris) %>%
+  predict(iris, type = "prob") %>%
+  bind_cols(iris) -> iris_rf_wf_prob
+
+
+?gain_curve
+
+iris_rf_wf_prob |> 
+  gain_curve(is_versicolor, .pred_versicolor) |> 
+  autoplot()
+  
+```
+
