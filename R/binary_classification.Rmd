@@ -10,7 +10,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-pacman::p_load(tidymodels, yardstick, randomForest)
+pacman::p_load(tidymodels, yardstick, rpart, ranger, randomForest, rattle, rpart.plot, RColorBrewer)
 ```
 
 ### Why {tidymodels}
@@ -19,12 +19,180 @@ In R, there are multiple packages that fit the same type of model. It is common 
 
 Instead of replacing the modeling package, tidymodels replaces the interface. Better said, tidymodels provides a single set of functions and arguments to define a model.
 
-### Relevant resources:
+### Relevant resources
 
 - https://jmsallan.netlify.app/blog/a-workflow-for-binary-classification-with-tidymodels/
-- https://medium.com/the-researchers-guide/modelling-binary-logistic-regression-using-tidymodels-library-in-r-part-1-c1bdce0ac055
-- https://www.gormanalysis.com/blog/decision-trees-in-r-using-rpart/
+- [Continuous predictors](https://medium.com/the-researchers-guide/modelling-binary-logistic-regression-using-tidymodels-library-in-r-part-1-c1bdce0ac055)
+- [Decision trees with rpart](https://www.gormanalysis.com/blog/decision-trees-in-r-using-rpart/) 
 - [A tutorial with training set](https://rviews.rstudio.com/2019/06/19/a-gentle-intro-to-tidymodels/) 
+
+# Decision Trees
+
+https://parsnip.tidymodels.org/reference/decision_tree.html
+
+## An example using {rpart}
+
+https://www.gormanalysis.com/blog/decision-trees-in-r-using-rpart/
+
+First let’s define a problem. There’s a common scam amongst motorists whereby a person will slam on his breaks in heavy traffic with the intention of being rear-ended. The person will then file an insurance claim for personal injury and damage to his vehicle, alleging that the other driver was at fault. Suppose we want to predict which of an insurance company’s claims are fraudulent using a decision tree.
+
+```{r}
+# Data
+train <- data.frame(
+  ClaimID = c(1,2,3),
+  RearEnd = c(TRUE, FALSE, TRUE),
+  Fraud = c(TRUE, FALSE, TRUE)
+)
+
+
+mytree <- rpart(
+  Fraud ~ RearEnd, 
+  data = train, 
+  method = "class"
+)
+
+mytree
+```
+
+### Minimum observations
+
+Notice the output shows only a root node. This is because rpart has some default parameters that prevented our tree from growing. Namely:
+
+- `minsplit`  is “the minimum number of observations that must exist in a node in order for a split to be attempted” 
+- `minbucket.`  “the minimum number of observations in any terminal node”. 
+
+See what happens when we override these parameters.
+
+```{r}
+mytree <- rpart(
+  Fraud ~ RearEnd, 
+  data = train, 
+  method = "class", 
+  minsplit = 2, 
+  minbucket = 1
+)
+
+mytree
+
+fancyRpartPlot(mytree, caption = NULL)
+```
+
+### Methods in splitting branches
+
+By default, rpart uses [gini impurity](https://www.gormanalysis.com/blog/magic-behind-constructing-a-decision-tree) to select splits when performing classification. (If you’re unfamiliar read this article.) You can use information gain instead by specifying it in the parms parameter.
+
+```{r}
+mytree <- rpart(
+  Fraud ~ RearEnd, 
+  data = train, 
+  method = "class",
+  parms = list(split = 'information'), 
+  minsplit = 2, 
+  minbucket = 1
+)
+
+mytree
+```
+
+### Supplying a training set
+
+```{r}
+train_2 <- data.frame(
+  ClaimID = c(1,2,3),
+  RearEnd = c(TRUE, FALSE, TRUE),
+  Fraud = c(TRUE, FALSE, FALSE)
+)
+
+train; train_2
+```
+
+Build a tree based on new data
+
+The complexity measure is a combination of the size of a tree and the ability of the tree to separate the classes of the target variable. If the next best split in growing a tree does not reduce the tree’s overall complexity by a certain amount, rpart will terminate the growing process. This amount is specified by the complexity parameter, cp, in the call to rpart(). Setting cp to a negative amount ensures that the tree will be fully
+
+```{r}
+mytree_2 <- rpart(
+  Fraud ~ RearEnd, 
+  data = train, 
+  method = "class", 
+  minsplit = 2, 
+  minbucket = 1, 
+  cp = -1
+)
+
+fancyRpartPlot(mytree_2, caption = NULL)
+```
+
+This is not always a good idea since it will typically produce over-fitted trees, but trees can be pruned back as discussed later in this article.
+
+### Weighting each observation
+
+You can also weight each observation for the tree’s construction by specifying the weights argument to rpart()
+
+```{r}
+mytree_3 <- rpart(
+  Fraud ~ RearEnd, 
+  data = train, 
+  method = "class", 
+  minsplit = 2, 
+  minbucket = 1,
+  weights = c(0.4, 0.4, 0.2)
+)
+
+fancyRpartPlot(mytree_3, caption = NULL)
+```
+
+One of the best ways to identify a fraudulent claim is to hire a private investigator to monitor the activities of a claimant. Since private investigators don’t work for free, the insurance company will have to strategically decide which claims to investigate. To do this, they can use a decision tree model based off some initial features of the claim. If the insurance company wants to aggressively investigate claims (i.e. investigate a lot of claims), they can train their decision tree in a manner that will penalize incorrectly labeled fraudulent claims more than it penalizes incorrectly labeled non-fraudulent claims.
+
+### Penalities
+
+I think here `Whiplash` can tell us whether the claim is true or not
+
+```{r}
+train_3 <- data.frame(
+  ClaimID = 1:7,
+  RearEnd = c(TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE),
+  Whiplash = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE),
+  Fraud = c(TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE)
+)
+
+train_3
+
+mytree_4 <- rpart(
+  Fraud ~ RearEnd + Whiplash, 
+  data = train_3, 
+  method = "class",
+  maxdepth = 1, 
+  minsplit = 2, 
+  minbucket = 1
+)
+
+fancyRpartPlot(mytree_4, caption = NULL)
+```
+
+rpart has determined that RearEnd was the best variable for identifying a fraudulent claim. BUT there was one fraudulent claim in the training dataset that was not a rear-end collision. (ROW 3) If the insurance company wants to identify a high percentage of fraudulent claims without worrying too much about investigating non-fraudulent claims they can set the loss matrix to penalize claims incorrectly labeled as fraudulent three times less than claims incorrectly labeled as non-fraudulent.
+
+To alter the default, equal penalization of mislabeled target classes, set the loss component of the parms parameter to a matrix where the (i,j) element is the penalty for misclassifying an i as a j. (The loss matrix must have 0s in the diagonal). 
+
+```{r}
+lossmatrix <- matrix(c(0,1,3,0), byrow = TRUE, nrow = 2)
+lossmatrix
+
+mytree_5 <- rpart(
+  Fraud ~ RearEnd + Whiplash, 
+  data = train_3, 
+  method = "class",
+  maxdepth = 1, 
+  minsplit = 2, 
+  minbucket = 1,
+  parms = list(loss = lossmatrix)
+)
+
+fancyRpartPlot(mytree_5, caption = NULL)
+```
+
+
+# Randpom Forest Trees
 
 ## An example first using `iris`
 

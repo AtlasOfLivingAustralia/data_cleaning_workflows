@@ -1,0 +1,44 @@
+---
+title: "Decision Tree with IRMNG"
+author: "Fonti Kar"
+date: "2022-10-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Problem
+
+The [IRMNG](https://www.irmng.org/) contains higher taxonomic names for all marine species. This list is comprehensive and actively maintained. The only caveat is that is doesn't go down to species level.
+
+We wish to cross match this genus list with the AFD species list to EXCLUDE marine species from the AFD. 
+
+Initial attempts with cross matching between the IRMNG and AFD was not very successful. The problems include:
+
+- No true way to verifying exclusions at the genus level
+- Order of exclusion is not clear, from phylum to genus or genus to phylum? Data condensing problem
+  + Excluding from phylum that are only marine results in keeping the odd Cnidarian and Sponge that is FW
+  + Excluding genus then to order, excludes too many, too quickly
+- Some species live across brackish, freshwater and marine habitats 
+  + No direct way to left join habitat information to AFD list
+- Some taxonomic names are not 'accepted' 
+ 
+## Solution
+
+Decision Tree approach using {tidymodels}. The idea is that we will feed the model with the taxonomic data (phylum, class, order, family, genus) and use this to predict the response isMarineOnly (FALSE for isTerrestrial, isFreshwater, isBrackish).
+
+We are using a decision tree approach because we want to know what are the taxonomic rules at each split the govern whether a genus  is marine or not.
+
+Below is the code for me to explore this option.
+
+### Set up: Load libraries and read in the dataset
+
+```{r}
+
+```
+
+
+
+
