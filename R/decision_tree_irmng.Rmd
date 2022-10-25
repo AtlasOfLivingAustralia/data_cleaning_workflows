@@ -3,6 +3,8 @@ title: "Decision Tree with IRMNG"
 author: "Fonti Kar"
 date: "2022-10-24"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -35,10 +37,236 @@ Below is the code for me to explore this option.
 
 ### Set up: Load libraries and read in the dataset
 
-```{r}
-
+```{r lib}
+pacman::p_load(tidymodels, tidyverse, data.table, skimr, janitor)
 ```
 
+```{r data}
+# Taxonomic info
+irmng_taxa <- fread("data/IRMNG/irmng_taxon.txt")
 
+# Species profile
+irmng_sp <- fread("data/IRMNG/irmng_speciesprofile.txt")
 
+glimpse(irmng_taxa)
+glimpse(irmng_sp)
+```
+
+## Pre-cleaning 
+
+```{r}
+# Filter list down to only Animalia 
+irmng_taxa |> 
+  filter(kingdom == "Animalia") -> animalia_irmng
+  
+# Exclude everything "Vertebrata"
+  invert_phy <- c("Porifera",
+                "Ctenophora",
+                "Cnidaria", 
+                "Xenacoelomorpha", 
+                "Platyhelminthes",
+                "Annelida",
+                "Arthropoda",
+                "Mollusca",
+                "Nematoda",
+                "Rotifera",
+                "Tardigrada",
+                "Scalidophora",
+                "Lophophorata",
+                "Onychophora",
+                "Chaetognatha",
+                "Nematomorpha",
+                "Nemertea",
+                "Placozoa",
+                "Loricifera",
+                "Echinodermata",
+                "Hemichordata",
+                "Acoelomorpha", 
+                "Brachiopoda",
+                "Bryozoa", 
+                "Entoprocta", 
+                "Phoronida", 
+                "Xenoturbellida") 
+  
+# Inverts within Chordata (order level)
+within_chords <-c("Amphioxiformes",
+                  "Tunicata")
+
+animalia_irmng |> 
+  filter(phylum %in% invert_phy | order %in% within_chords) -> invert_irmng
+
+# Remove suffix "(awaiting allocation)" and keep class
+awc_pattern <- "(awaiting allocation)"
+
+invert_irmng |> 
+  mutate(class = ifelse(str_detect(class, pattern = awc_pattern), word(class), class)) -> invert_irmng_awaitingcol
+
+# Remove suffix "incertae sedis" and keep class
+insed_pattern <- "incertae sedis"
+
+invert_irmng_awaitingcol |> 
+  mutate(class = ifelse(str_detect(class, pattern = insed_pattern), word(class), class)) -> invert_irmng_awc_insed
+
+# Accepted taxonomicStatus only
+invert_irmng_awc_insed |> filter(taxonomicStatus == "accepted") -> accepted_invert_irmng
+
+# Join species info
+accepted_invert_irmng |> 
+  left_join(irmng_sp, by = "taxonID") -> accepted_invert_irmng
+
+# Exclude isExtinct
+accepted_invert_irmng |> 
+  filter(! isExtinct == 1) -> invert_irmng_extant
+
+# Setting empty "" to NA
+invert_irmng_extant %>%
+  mutate_all(na_if,"") -> invert_irmng_extant
+```
+
+#### Create training set
+
+We want a response of MarineOnly where 1 == is only exists in Marine habitats and 0 where is it not 
+
+In other words MarineOnly would be: isMarine == 1 & isTerrestrial == 0 & isFreshWater == 0
+
+We only need the predictors (phylum:genus) and the the habitat variables
+
+NOTE: What to do with subgenus? (ALL NA anyway)
+
+```{r}
+# Selecting the columns I want
+invert_irmng_extant |> 
+  select(phylum:genus, starts_with("is"), -isExtinct) |> 
+  as_tibble() -> marine_train
+
+marine_train
+```
+
+```{r}
+# Create the response variable I want to predict
+marine_train |> 
+  mutate(MarineOnly = case_when(isTerrestrial == FALSE &
+                                  isFreshwater == FALSE ~ 1,
+                                TRUE ~ 0),
+         MarineOnly = factor(MarineOnly)
+         ) -> marine_train
+
+marine_train |> glimpse()
+marine_train |> skim()
+```
+
+### Check correlation among variables
+
+Note that we can't do this as all of our variables are categorical
+
+### Data splitting with {rsample}
+
+```{r}
+set.seed(222)
+
+# Put 3/4 of the data into the training set 
+data_split <- initial_split(marine_train, prop = 3/4)
+
+# Create data frames for the two sets:
+train_data <- training(data_split)
+test_data  <- testing(data_split)
+```
+
+### Creating a recipe
+
+My outcome variable is `MarineOnly` and my predictor variables are my higher taxonomic data.
+
+I don't know if I need to create dummy variables for all predictors
+
+Resources: 
+
+- https://recipes.tidymodels.org/reference/step_dummy.html
+- https://recipes.tidymodels.org/articles/Dummies.html
+
+```{r}
+marine_train$phylum |> tabyl()
+marine_train$class |> tabyl()
+marine_train$order |> tabyl()
+marine_train$genus |> tabyl()
+
+# If I had to, it would look something like this an example with phylum
+irmng_recipe <- train_data %>%
+  recipe(MarineOnly ~.) %>% 
+  update_role(starts_with("is"), new_role = "ID") %>%  # remove all XX columns
+  step_dummy(phylum) 
+
+dummy <- irmng_recipe |> prep(training = train_data)
+
+irmng_recipe_data <- bake(dummy, new_data = NULL)
+```
+
+```{r}
+irmng_recipe <- train_data %>%
+  recipe(MarineOnly ~.) %>% 
+  update_role(starts_with("is"), new_role = "ID") %>%  # remove all XX columns
+  #step_dummy(all_predictors()) |> 
+  step_string2factor(all_predictors()) 
+
+summary(irmng_recipe)
+irmng_recipe |> prep()
+```
+
+## Decision trees with {tidymodels}
+
+https://parsnip.tidymodels.org/reference/decision_tree.html
+
+Can try `bag_tree` - demo [here](https://bcullen.rbind.io/post/2020-06-02-tidymodels-decision-tree-learning-in-r/)
+
+```{r}
+show_engines("decision_tree")
+```
+
+### Specifying the model
+
+Not sure what to set for optional args: `tree_depth` and `min_n`
+Can set engine specific arguments in `set_engine` see `?set_engine` e.g. method,  parms = list(split = 'information')
+
+```{r}
+set.seed(222)
+decs_mod <- decision_tree(mode = "classification") |> 
+  set_engine("rpart")
+```
+
+### Creating a workflow
+
+```{r}
+irmng_dec_wf <- workflow() %>%
+  add_recipe(irmng_recipe) %>%
+  add_model(decs_mod)
+```
+
+### Fit and predict from model!
+
+Not sure how I can get my tree out of this?
+
+```{r}
+irmng_dec_wf |> 
+  fit(train_data) -> fit
+
+irmng_dec_wf |> 
+  fit(train_data) |> 
+  predict(train_data) %>%
+  bind_cols(train_data) -> irmng_dec_fit
+
+irmng_dec_fit
+```
+
+### Evaluate fit
+
+```{r}
+# Confusion matrix
+irmng_dec_fit %>%
+  conf_mat(truth = MarineOnly, estimate = .pred_class)
+
+# Class metrics
+class_metrics <- metric_set(accuracy, sens, spec)
+
+irmng_dec_fit %>%
+  class_metrics(truth = MarineOnly, estimate = .pred_class)
+```
 

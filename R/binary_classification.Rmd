@@ -342,3 +342,6 @@ iris_rf_wf_prob |>
   
 ```
 
+### Visualise
+
+One of the few downfalls of {tidymodels} is its (current) inability to plot these tree-based models. For the past two models, it was simpler to extract root nodes and plot them, but their interpretation (as we’re fitting to residuals instead of data sets) are not straightforward. For that reason, we don’t have any pretty plots here. Instead, we’ll skip to evaluating the metrics of all models.
