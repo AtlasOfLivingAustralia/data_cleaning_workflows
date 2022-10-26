@@ -38,7 +38,7 @@ Below is the code for me to explore this option.
 ### Set up: Load libraries and read in the dataset
 
 ```{r lib}
-pacman::p_load(tidymodels, tidyverse, data.table, skimr, janitor)
+pacman::p_load(tidymodels, rpart, rpart.plot, tidyverse, data.table, skimr, janitor, rattle)
 ```
 
 ```{r data}
@@ -268,5 +268,47 @@ class_metrics <- metric_set(accuracy, sens, spec)
 
 irmng_dec_fit %>%
   class_metrics(truth = MarineOnly, estimate = .pred_class)
+```
+
+### Visualising
+
+https://www.quantargo.com/courses/course-r-machine-learning-tidymodels/03-model-fitting-parsnip/02-decision-trees/section-plotting-decision-trees
+
+Trying to plot crashes R haha
+
+```{r}
+set.seed(222)
+
+model <- decision_tree(mode = "classification") %>% 
+  set_engine("rpart") %>% 
+  fit(MarineOnly ~., data = train_data)
+
+model$fit %>% rpart.plot(type = 4, extra = 2, roundint = FALSE)
+model$fit$splits
+
+# Nodes?
+model$fit$where |> table()
+```
+
+## Decision Tree with {rpart}
+
+It seems tidymodels is not fully developed for visualising nodes and trees so I am going to try with just plain old rpart and see how it goes!
+
+```{r}
+train_data |> select(-starts_with("is")) -> rpart_dat
+
+rpart_dat
+
+mytree <- rpart(
+  MarineOnly ~ phylum + class + order + family + genus, 
+  data = rpart_dat, 
+  method = "class",
+  minsplit = 2, 
+  minbucket = 1
+)
+
+summary(mytree)
+
+# fancyRpartPlot(mytree, caption = NULL) # Crashes R
 ```
 
