@@ -38,7 +38,7 @@ Below is the code for me to explore this option.
 ### Set up: Load libraries and read in the dataset
 
 ```{r lib}
-pacman::p_load(tidymodels, rpart, rpart.plot, tidyverse, data.table, skimr, janitor, rattle)
+pacman::p_load(tidymodels, rpart, rpart.plot, tidyverse, data.table, skimr, janitor, rattle, dplyr)
 ```
 
 ```{r data}
@@ -136,7 +136,7 @@ NOTE: What to do with subgenus? (ALL NA anyway)
 ```{r}
 # Selecting the columns I want
 invert_irmng_extant |> 
-  select(phylum:genus, starts_with("is"), -isExtinct) |> 
+  dplyr::select(phylum:genus, starts_with("is"), -isExtinct) |> 
   as_tibble() -> marine_train
 
 marine_train
@@ -295,9 +295,13 @@ model$fit$where |> table()
 It seems tidymodels is not fully developed for visualising nodes and trees so I am going to try with just plain old rpart and see how it goes!
 
 ```{r}
-train_data |> select(-starts_with("is")) -> rpart_dat
+train_data |> dplyr::select(-starts_with("is")) -> rpart_dat
 
-rpart_dat
+rpart_dat %>% str()
+unique(rpart_dat$phylum) %>% length()
+unique(rpart_dat$class) %>% length()
+unique(rpart_dat$order) %>% length()
+unique(rpart_dat$genus) %>% length()
 
 mytree <- rpart(
   MarineOnly ~ phylum + class + order + family + genus, 
@@ -310,5 +314,11 @@ mytree <- rpart(
 summary(mytree)
 
 # fancyRpartPlot(mytree, caption = NULL) # Crashes R
+```
+
+
+
+```{r}
+
 ```
 
