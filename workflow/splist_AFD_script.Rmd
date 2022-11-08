@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r }
 #install.packages("pacman")
-pacman::p_load(dplyr, janitor, galah, stringr, tidyverse, arrow, stringr, data.table)
+pacman::p_load(dplyr, janitor, galah, stringr, tidyverse, arrow, stringr, data.table, CoordinateCleaner)
 
 ## Functions 
 source("scripts/remove_improper_names_v2.R") # Version Fonti created
@@ -61,52 +61,9 @@ afd_species <- afd_species[which(! afd_species$VALID_NAME %in% griis_species$Sup
 
 ### Remove Marine species
 
-### Using CAAB
-
-Using CAAB data: https://www.cmar.csiro.au/data/caab/
-
-```{r}
-# Read in data
-caab_species <- read_csv("data/caab_dump_latest.csv")
-
-# Create scientific name
-caab_species |> mutate(scientific_name = ifelse(! is.na(SPECIES),
-                                                paste0(GENUS," ", SPECIES),
-                                                NA)) -> caab_species
-
-# Overlap 
-intersect(all_species, caab_species) # ZERO
-
-afd_species |> filter(VALID_NAME %in% caab_species) # ZER0 
-```
-
-
-### Using Interim Register of Marine and Nonmarine **Genera** 
-- https://www.irmng.org/index.php
-- https://marlin.csiro.au/geonetwork/srv/eng/catalog.search#/metadata/249c9716-3224-497e-98fc-ee0f8fd04373
-
-```{r}
-irmng_taxa <- fread("data/invert_irmng.txt")
-
-head(irmng_taxa)
-names(irmng_taxa)
-dim(irmng_taxa)
-
-# Obtain genus
-irmng_taxa$genus |> unique() |> tabyl()
-
-irmng_taxa |> 
-  filter(!is.na(genus) | ! genus == "") |> 
-  pull(genus) -> irmng_genus
-
-# Overlap with AFD
-genus_pattern <- fixed(paste(irmng_genus, collapse = "|"))
-grep(pattern = paste(irmng_genus, collapse = "|"), ) 
-
-matches <- str_subset(string = all_species, pattern = genus_pattern) # No matches
-```
-
 ### Using World Register of Marine species
+
+Passing taxonomic names to: `wm_records_names()` will return a dataframe of marine species! There is a limit of about 100 species in each API query so it can take a while! I have done this already and saved the output as a .csv. This file is still a bit too big to commit to GitHub, so I think net steps is to split it up and save as smaller components and then commit separately, join them in the workflow before to cross matching and excluding.
 
 ```{r}
 worms <- read_csv("output/worrms_marine_splist.csv")
@@ -155,9 +112,6 @@ nrow(afd_species_nomarine_snm) + nrow( excluded_mar_species) + nrow(excluded_mar
 message(paste("Found ", nrow(excluded_mar_species), " marine species by validname in WoRMS"))
 message(paste("After exclusion by validname, a further", nrow(excluded_mar_species_scientificname), "marine species were found by scientificname in WoRMS"))
 message(paste("The total number of AFD species remaining following complete exclusion is ", nrow(afd_species_nomarine_snm)))
-```
- 
-
 ```
 
 

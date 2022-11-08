@@ -26,7 +26,7 @@ knitr::opts_chunk$set(echo = TRUE,
 rm(list = ls())
 
 # install.packages("pacmac")
-pacman::p_load(data.table, galah, dplyr, sp, raster, future, future.apply)
+pacman::p_load(data.table, galah, dplyr, CoordinateCleaner, sf, ozmaps)
 ```
 
 ### Setting up server paths
@@ -238,13 +238,15 @@ Some fields did not have an exact match but I took my best guess to find a match
 
 #### Investigate fields are there
 
+I think safer to split into 3, 2 parts is hit and miss
+
 ```{r}
 ALA_fields <- show_all(fields)
 
 ALA_fields %>% print(n = 100)
 
 # Search the fields
-search_all(fields, "coordinatePrecision") %>% print(n = 50) 
+search_all(fields, "coordinate") 
 
 # Fields that IA want
 IA_fields<- c("id","dataResourceUid","dataResourceName",
@@ -279,82 +281,32 @@ IA_fields<- c("id","dataResourceUid","dataResourceName",
               "raw_sex", "sex",
               "preparations",
               "outlierLayer",
-              "spatiallyValid", "catalogNumber", "decimalLatitude","decimalLongitude",
-              "coordinatePrecision","coordinateUncertaintyInMeters",
-              "country","stateProvince", 
-              "cl959","cl21","cl1048",
-              "minimumElevationInMeters", "maximumElevationInMeters", 
-              "minimumDepthInMeters", "maximumDepthInMeters",
-              "individualCount",
-              "recordedBy",
-              "eventDate",
-              "year","month",
-              "verbatimEventDate",
-              "basisOfRecord","raw_basisOfRecord",
-              "occurrenceStatus",
-              "raw_sex", "sex",
-              "preparations",
-              "outlierLayer",
               "spatiallyValid", "catalogNumber") 
 
 length(IA_fields)
 
-# Split into 4 parts
-IA_fields_split <- split(IA_fields, ceiling(seq_along(IA_fields)/25))
+# Split into 2 parts
+IA_fields_split <- split(IA_fields, ceiling(seq_along(IA_fields)/20))
 
 # We want to eventually join by recordID so need to add this to the 2-4 parts
 IA_fields_split$`2` <- c("id", IA_fields_split$`2`)
 IA_fields_split$`3` <- c("id", IA_fields_split$`3`)
-IA_fields_split$`4` <- c("id", IA_fields_split$`4`)
 ```
 
 
-```{r}
-specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
-                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
+### {galah} download: user supplied list of taxa
 
-# Limiting my download to a specific year for testing purposes
-galah_call() %>% 
-  galah_filter(
-    year == 2022,
-    taxonConceptID == galah_identify("Animalia")$identifier, 
-    taxonConceptID != galah_identify("Chordata")$identifier, 
-    basisOfRecord == specimen_only # Filters to specimen only
-  ) %>% 
-  galah_select(fields, group = "assertions") %>% 
-  atlas_occurrences() 
-
-# saveRDS(invert_2022, "output/invert_2022.rds")
-invert_2022 <- readRDS("output/invert_2022.rds")
-
-## Doing the mass download
-
-galah_call() %>% 
-  galah_filter(
-    taxonConceptID == galah_identify("Animalia")$identifier, 
-    taxonConceptID != galah_identify("Chordata")$identifier, # Filters NOT Chordata
-    basisOfRecord == specimen_only # Filters to specimen only
-  ) %>% 
-  galah_select(fields, group = "assertions") %>%  
-  atlas_occurrences() -> invert_all
-
-# saveRDS(invert_all, "output/invert_all.rds")
-invert_all <- readRDS("output/invert_all.rds")
-```
-
-### {galah} download: user supplied list
-
-I realised there are some inverts that are in Chordata, so we definitely don't want to exclude all Chordates
+I realised there are some inverts that are in Chordata, so we definitely don't want to exclude all Chordates. This method would also work with taxon counts above
 
 ```{r}
 search_taxa(afd_taxon) # Issues with ACANTHOCEPHALA its technically a Phylum but recorded as a class in here https://bie.ala.org.au/species/NZOR-6-53977
 
-# Currently working with identifier 
+# Currently working with identifier for ACANTHOCEPHALA
 galah_call() %>% 
   galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
   atlas_counts()
 
-# Current workaround
+# Current workaround to get taxa in AFD list
 afd_taxon_phylums <- afd_taxon[-which(afd_taxon == "ACANTHOCEPHALA")]
       
 galah_call() %>% 
@@ -362,7 +314,7 @@ galah_call() %>%
   galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
   galah_filter(basisOfRecord == specimen_only, 
                year == 2022) %>%  # Limiting to 2022 for now
-  galah_select(glue::as_glue(IA_fields_split$`1`)) %>%
+  galah_select(all_of(IA_fields_split$`1`)) %>%
   atlas_occurrences() -> invert_2022_p1
 
 galah_call() %>% 
@@ -370,7 +322,7 @@ galah_call() %>%
   galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
   galah_filter(basisOfRecord == specimen_only, 
                year == 2022) %>%  # Limiting to 2022 for now 
-  galah_select(glue::as_glue(IA_fields_split$`2`)) %>% 
+  galah_select(all_of(IA_fields_split$`2`)) %>% 
   atlas_occurrences() -> invert_2022_p2
 
 galah_call() %>% 
@@ -378,44 +330,95 @@ galah_call() %>%
   galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
   galah_filter(basisOfRecord == specimen_only, 
                year == 2022) %>%  # Limiting to 2022 for now 
-  galah_select(glue::as_glue(IA_fields_split$`3`)) %>% 
+  galah_select(all_of(IA_fields_split$`3`)) %>% 
   atlas_occurrences() -> invert_2022_p3
-
-galah_call() %>% 
-  galah_identify(afd_taxon_phylums) %>% 
-  galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
-  galah_filter(basisOfRecord == specimen_only, 
-               year == 2022) %>%  # Limiting to 2022 for now 
-  galah_select(glue::as_glue(IA_fields_split$`4`)) %>% 
-  atlas_occurrences() -> invert_2022_p4
-
-# Left join
-colnames(invert_2022_p1)
-colnames(invert_2022_p2)
-colnames(invert_2022_p3)
-colnames(invert_2022_p4)
-  
 ```
 
-Benchmarking the download time to compare with ALA4R parallel method
+
+### Join the different parts together
+
+```{r}
+# Left join these together
+# 2022 version
+colnames(invert_2022_p1); ncol(invert_2022_p1)
+colnames(invert_2022_p2); ncol(invert_2022_p2)
+colnames(invert_2022_p3); ncol(invert_2022_p3)
+
+length(IA_fields)
+
+# 2022 version
+left_join(invert_2022_p1, invert_2022_p2, by = "recordID") %>% 
+  left_join(., invert_2022_p3, by = "recordID") -> invert_2022
+
+readr::write_csv(invert_2022, "output/invert_2022.csv")
+```
+
+### Benchmarking the download time to compare with ALA4R parallel method
+
+Note year == 2022 has been removed
 
 ```{r}
 # devtools::install_github("jabiru/tictoc")
 library(tictoc)
 
-tic("galah download")
+tic("Full invertebrates galah download")
 galah_call() %>% 
-  galah_filter(
-    taxonConceptID == galah_identify("Animalia")$identifier, 
-    taxonConceptID != galah_identify("Chordata")$identifier, # Filters NOT Chordata
-    basisOfRecord == specimen_only # Filters to specimen only
-  ) %>% 
-  galah_select(fields) %>%  
-  atlas_occurrences() -> invert_all
-toc()
+  galah_identify(afd_taxon_phylums) %>% 
+  galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
+  galah_filter(basisOfRecord == specimen_only) %>% 
+  galah_select(all_of(IA_fields_split$`1`)) %>%
+  atlas_occurrences() -> invert_p1
 
-# galah download: 1949.915 sec elapsed
-1949.915/60 # 32 mins
+galah_call() %>% 
+  galah_identify(afd_taxon_phylums) %>% 
+  galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
+  galah_filter(basisOfRecord == specimen_only)
+  galah_select(all_of(IA_fields_split$`2`)) %>% 
+  atlas_occurrences() -> invert_p2
+  
+  
+  galah_call() %>% 
+  galah_identify(afd_taxon_phylums) %>% 
+  galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
+  galah_filter(basisOfRecord == specimen_only)
+  galah_select(all_of(IA_fields_split$`3`)) %>% 
+  atlas_occurrences() -> invert_p3
+toc()
+```
+
+### Using Coordinate Cleaner to further clean the records data
+
+Check out https://docs.ropensci.org/CoordinateCleaner/
+
+An really powerful too to remove occurrence records that are in the seas! Not a perfect solution but a great first pass
+
+```{r}
+invert_2022 %>% 
+  data.frame() %>% 
+  clean_coordinates(lon = "decimalLongitude", lat = "decimalLatitude", 
+                    species = "scientificName") -> cc_flags
+
+summary(cc_flags)
+plot(cc_flags, lon = "decimalLongitude", lat = "decimalLatitude")
+
+# Exclude sea records
+cc_flags$.sea
+
+invert_2022_cc <- invert_2022[cc_flags$.sea,]
+
+# Get map of Australia
+aus <- st_transform(ozmaps::ozmap_country, 4326)
+
+ggplot() + 
+  geom_sf(data = aus, 
+          colour = "black", 
+          fill = "white")  + 
+  geom_point(data = invert_2022_cc, 
+             mapping = aes(decimalLongitude, decimalLatitude), 
+             colour = "black", size = 0.8, alpha = 0.005) +
+  coord_sf(xlim=c(110, 152), 
+           ylim=c(-5,-44)) 
+
 ```
 
 ### Checks of downloads 
