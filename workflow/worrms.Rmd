@@ -16,7 +16,7 @@ https://mmisw.org/ont/ioos/marine_biogeography
 ```{r}
 # install.packages("worrms") https://docs.ropensci.org/worrms/index.html
 
-pacman::p_load(tidyverse, worrms)
+pacman::p_load(tidyverse, worrms, here)
 ```
 
 Read in AFD list
@@ -97,30 +97,82 @@ myfiles <- purrr::map(filenms,
                      readRDS) |> bind_rows()
 
 #write.csv(myfiles, "output/worrms_marine_splist.csv")
-myfiles <- read.csv("output/worrms_marine_splist.csv")
+myfiles <- read_csv("output/worrms_marine_splist.csv")
 ```
 
-## Exclude marine species found by WoRMs by VALID_NAME
+## Looking at bulk download
+
+You can request a download of WoRMS here: https://www.marinespecies.org/usersrequest.php. 
+Looks like they update once a month!
+
+No valid name just scientific name
 
 ```{r}
-myfiles$scientificname |> length()
-myfiles$valid_name |> length()
+species <- fread(here("data", "WoRMS_download_2022-10-01", "speciesprofile.txt"))
+taxa <- fread(here("data", "WoRMS_download_2022-10-01", "taxon.txt"))
 
-(myfiles$scientificname == myfiles$valid_name) |> janitor::tabyl()
+# create a GRIIS list
+worms_list <- taxa |>  
+  full_join(species, by = "taxonID") 
 
-afd_taxonomy |> filter(! VALID_NAME %in% myfiles$scientificname) # 90,230
-afd_taxonomy |> filter(! VALID_NAME %in% myfiles$valid_name) # 92,730
+worms_list
 
-afd_taxonomy$VALID_NAME
+names(worms_list)
+
+afd_taxonomy |> filter(! VALID_NAME %in% worms_list$scientificName) # 91,550
+afd_taxonomy |> filter(VALID_NAME %in% worms_list$scientificName) # 21,046 species excluded
 ```
+
+## Trying to say csv/.txt in seperate parts so its more manageable
+
+Each file must have a unique ID so things can be joined together. I suspect AphiaID would do the trick
 
 ```{r}
-myfiles |> filter(isTerrestrial == FALSE & isFreshwater == FALSE & isBrackish == FALSE) |> 
-  pull(isMarine) |> tabyl()
+myfiles
 
+names(myfiles)
+myfiles <- myfiles[-1] # Remove first column (row numbers)
 
-myfiles |> filter(isMarine == TRUE) |> 
-  pull(isMarine) |> tabyl()
+# Clean the list
+myfiles %>% filter(!duplicated(AphiaID)) -> myfiles_clean
+
+# Split by cols like WoRMS bulk download
+names(species)
+names(taxa)
+
+# Select the 'species' columns
+myfiles_clean %>% dplyr::select(1, starts_with("is")) -> my_species
+myfiles_clean %>% dplyr::select(-starts_with("is")) -> my_taxa
+
+# Save these files and check size
+write_tsv(my_species, file = here("output", "worms" ,"species_data.txt")) # 463 KB
+write_tsv(my_taxa, file = here("output", "worms" ,"taxonomic_data.txt")) #14 MB
+
+# Can I read these in an join?
+test_species <- read_tsv(here("output", "worms" ,"species_data.txt"))
+test_taxa <- read_tsv(here("output", "worms" ,"taxonomic_data.txt")) # Throw warnings
+
+# create a GRIIS list
+test_list <- test_taxa |>  
+  inner_join(test_species, by = "AphiaID") 
 ```
 
- 
+## Exclude marine species found by WoRMs by VALID_NAME with API query data
+
+Options to exclude by scientificname or valid name
+
+```{r}
+test_list$scientificname |> length()
+test_list$valid_name |> length()
+
+(test_list$scientificname == test_list$valid_name) |> janitor::tabyl()
+
+# Exclude the matches
+afd_taxonomy |> filter(! VALID_NAME %in% test_list$scientificname) # 90,230
+afd_taxonomy |> filter(! VALID_NAME %in% test_list$valid_name) # 92,730
+
+## The excluded taxa
+afd_taxonomy |> filter(VALID_NAME %in% test_list$scientificname) # 21,004 species excluded
+afd_taxonomy |> filter(VALID_NAME %in% test_list$valid_name) # 18,493  species excluded
+```
+

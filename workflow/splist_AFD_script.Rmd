@@ -63,7 +63,9 @@ afd_species <- afd_species[which(! afd_species$VALID_NAME %in% griis_species$Sup
 
 ### Using World Register of Marine species
 
-Passing taxonomic names to: `wm_records_names()` will return a dataframe of marine species! There is a limit of about 100 species in each API query so it can take a while! I have done this already and saved the output as a .csv. This file is still a bit too big to commit to GitHub, so I think net steps is to split it up and save as smaller components and then commit separately, join them in the workflow before to cross matching and excluding.
+Passing taxonomic names to: `wm_records_names()` will return a dataframe of marine species! There is a limit of about 100 species in each API query so it can take a while! I have done this already and saved the output as a .csv. This file is still a bit too big to commit to GitHub, so I think next steps is to split it up and save as smaller components and then commit separately, join them in the workflow before to cross matching and excluding.
+
+For more info: https://docs.ropensci.org/worrms/
 
 ```{r}
 worms <- read_csv("output/worrms_marine_splist.csv")
