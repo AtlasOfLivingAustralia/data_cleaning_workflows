@@ -77,7 +77,7 @@ message("Removing the following AFD species with GRIIS ...")
 updated_griis_afd <- afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_ala_tidy$scientific_name)]
 
 message("Updated AFD with species excluded ...")
-nogriis_afd <- afd_species[! afd_species$VALID_NAME %in% griis_ala_tidy$scientific_name, ]
+afd_species <- afd_species[! afd_species$VALID_NAME %in% griis_ala_tidy$scientific_name, ]
 ```
 
 #### Old workflow for removing invasive species
@@ -92,7 +92,7 @@ message("AFD species in GRIIS - Global Register of Introduced and Invasive Speci
 afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)]
 
 message("Removing the following AFD species with GRIIS ...")
-old_griis_afd <- afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)]
+afd_species <- afd_species[! afd_species$VALID_NAME %in% griis_species$Supplied.Name,]
 ```
 
 #### Difference between found matches with updated list and old list
@@ -153,18 +153,18 @@ marine_worms |>
   select(valid_name, scientificname) 
 
 ## First which species are excluded because they are marine 
-nogriis_afd |> 
+afd_species |> 
   filter(VALID_NAME %in% marine_worms$valid_name) |>
   select(VALID_NAME) ->  excluded_mar_species
   
 nrow(excluded_mar_species) # 5,850
 
 ## Exclude these species 
-nogriis_afd |> 
+afd_species |> 
   filter(! VALID_NAME %in% marine_worms$valid_name) -> nomarine_nogriis_afd_species
 
 # Checking
-nrow(nomarine_nogriis_afd_species) + nrow(excluded_mar_species) == nrow(nogriis_afd)
+nrow(nomarine_nogriis_afd_species) + nrow(excluded_mar_species) == nrow(afd_species)
 
 # Further exclusion using scientificname
 ## Which species are excluded by scientificname
@@ -178,7 +178,7 @@ nrow(excluded_mar_species_scientificname) # 575
 nomarine_nogriis_afd_species |> 
   filter(! VALID_NAME %in% marine_worms$scientificname) -> nomarine_nogriis_afd_species_snm
 
-nrow(nomarine_nogriis_afd_species_snm) + nrow(excluded_mar_species) + nrow(excluded_mar_species_scientificname) == nrow(nogriis_afd)
+nrow(nomarine_nogriis_afd_species_snm) + nrow(excluded_mar_species) + nrow(excluded_mar_species_scientificname) == nrow(afd_species)
 
 ### Reporting 
 message(paste("Found ", nrow(excluded_mar_species), " marine species by validname in WoRMS"))
@@ -225,7 +225,7 @@ afd_species$COMPLETE_NAME[duplicated(afd_species$COMPLETE_NAME) | duplicated(afd
 
 message(cat("#duplicates in COMPLETE_NAME (including first appearance) : ", length(dup_temp)))
 message("duplicated COMPLETE_NAME: ")
-dup_temp$COMPLETE_NAME
+dup_temp
 
 # readr::write_csv(temp, "output/afd_completename_repeats.csv")
 
@@ -258,6 +258,10 @@ These are the ones excluded:
 afd_species |> filter(TAXON_GUID %in% removed_dups) |> pull(COMPLETE_NAME)
 
 temp$COMPLETE_NAME
+
+# Which of the 12 taxa are kept? 
+dup_flagged <- afd_species[duplicated(afd_species$COMPLETE_NAME) | duplicated(afd_species$COMPLETE_NAME, fromLast=TRUE),]
+dup_flagged %>% filter(! TAXON_GUID %in% removed_dups) %>% pull(COMPLETE_NAME)
 ```
 
 ## Various checks and tallies
