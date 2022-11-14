@@ -43,8 +43,44 @@ afd_species |>
 
 ### Remove invasive species 
 
-Notes: *ALA still working to update this section on removing invasive/introduce species
-Code below is written by Payal. In the next version of the `galah`, I believe we can access the GRIIS list directly through `galah`
+The original workflow uses the GRIIS list downloaded from the ALA website. The code below uses a more up-to-date list from the ALA which is not currently on the website.
+
+```{r}
+# Read in the various txt files that make up the GRIIS list
+distribution <- fread("data/dwca-griis-australia-v1.6/distribution.txt")
+species <- fread("data/dwca-griis-australia-v1.6/speciesprofile.txt")
+taxa <- fread("data/dwca-griis-australia-v1.6/taxon-edited.txt", fill = TRUE)
+
+
+# Create the GRIIS list
+griis_list <- taxa |>  
+  full_join(distribution, by = "id") |>  
+  full_join(species, by = "id")
+
+# Use galah::search_taxa() to get tidy names and filter by noIssues
+griis_ala_raw <- data.frame(search_taxa(griis_list$scientificName))
+
+# Pre-process the GRIIS list and filter by noIssues and no missing values in species
+griis_ala_tidy <- griis_ala_raw |>  
+  filter(issues == "noIssue",
+         !is.na(species)) |>  
+  dplyr::select(search_term, taxon_concept_id, scientific_name, scientific_name_authorship)
+
+# Cross matching AFD to updated GRIIS list and reporting
+message(cat("number of AFD species listed in GRIIS: "),
+        length(which(afd_species$VALID_NAME %in% griis_ala_tidy$scientific_name)))
+
+message("AFD species in GRIIS - Global Register of Introduced and Invasive Species - Australia: ")
+
+# Excluding from AFD list
+message("Removing the following AFD species with GRIIS ...")
+updated_griis_afd <- afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_ala_tidy$scientific_name)]
+
+message("Updated AFD with species excluded ...")
+nogriis_afd <- afd_species[! afd_species$VALID_NAME %in% griis_ala_tidy$scientific_name, ]
+```
+
+#### Old workflow for removing invasive species
 
 ```{r ##}
 griis_species <- read.csv("data/GRIIS_Global_Register_of_Introduced_and_Invasive_Species_Australia.csv")
@@ -55,67 +91,100 @@ message(cat("number of AFD species listed in GRIIS: "),
 message("AFD species in GRIIS - Global Register of Introduced and Invasive Species - Australia: ")
 afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)]
 
-message("Removing AFD species in GRIIS ...")
-afd_species <- afd_species[which(! afd_species$VALID_NAME %in% griis_species$Supplied.Name),]
+message("Removing the following AFD species with GRIIS ...")
+old_griis_afd <- afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)]
+```
+
+#### Difference between found matches with updated list and old list
+
+My recommendation is to use both lists for now and we can let Doug know that there 
+
+```{r}
+setdiff(updated_griis_afd, old_griis_afd) # Taxa captured in new list
+data.frame(setdiff(old_griis_afd, updated_griis_afd)) %>% search_taxa() # Taxa in old list that are not in ALA
+
+# Are any of species from old_griis_afd that is not in updated_griis_afd (i.e. not flagged in ALA search_taxa) found in the updated griis_list
+# Get the genus
+species <- paste(stringr::word(setdiff(old_griis_afd, updated_griis_afd), 2), collapse = "|")
+genus <- paste(stringr::word(setdiff(old_griis_afd, updated_griis_afd), 1), collapse = "|")
+wholenm <- paste(setdiff(old_griis_afd, updated_griis_afd), collapse = "|")
+
+# Regex the genus to scientificName
+str_subset(griis_list$scientificName, pattern = species) # Would these be synonms I wonder
+str_subset(griis_list$scientificName, pattern = genus) # Would these be synonms I wonder
+str_subset(griis_list$scientificName, pattern = wholenm) # Yes 2 full matches
 ```
 
 ### Remove Marine species
 
 ### Using World Register of Marine species
 
-Passing taxonomic names to: `wm_records_names()` will return a dataframe of marine species! There is a limit of about 100 species in each API query so it can take a while! I have done this already and saved the output as a .csv. This file is still a bit too big to commit to GitHub, so I think next steps is to split it up and save as smaller components and then commit separately, join them in the workflow before to cross matching and excluding.
+Passing taxonomic names to: `worrms::wm_records_names()` will return a dataframe of marine species! There is a limit of about 100 species in each API query so it can take a while! I have done this already and saved the output as a .csv. 
 
 For more info: https://docs.ropensci.org/worrms/
 
+You can request a download of WoRMS here: https://www.marinespecies.org/usersrequest.php. which they update once a month
+Issue is there is n valid name just scientific name
+We would need to make decisions about taxonomic status and do a pre-process ourselves. A very general clean gives me about  6,108 species - see workflow/worrms.rmd
+
 ```{r}
-worms <- read_csv("output/worrms_marine_splist.csv")
+worms <- read_csv("data/worms/worrms_marine_splist.csv")
 names(worms)
 
-## Exclude marine species found by WoRMs by VALID_NAME
-
+## Any missing values in scientificname, valid_name?
 is.na(worms$scientificname) |> table()
 is.na(worms$valid_name) |> table()
 
 ## Do valid name match scientific name?
 (worms$valid_name == worms$scientificname) |> janitor::tabyl()
 
-## Which names don't match? I suggest cross-checking with AFD using both scientific and valid for these marine species
-worms |> 
+## WoRMS has these really helpful identifiers of habitat occupancy of each taxa
+## IA wants to exclude marine species exclusively so TRUE for isMarine and NA/FALSE for the others
+worms %>% select(starts_with("is")) %>% colSums(., na.rm = TRUE)
+
+## Number of strictly marine species
+worms %>%
+  filter(isMarine == 1,
+         isBrackish == 0, isTerrestrial == 0, isFreshwater == 0, isExtinct == 0) -> marine_worms # 6768 species
+
+## Which names don't match? I suggest cross-checking with AFD using both scientificname and valid_name for these marine species
+marine_worms |> 
   filter(! valid_name == scientificname) |> 
   select(valid_name, scientificname) 
 
 ## First which species are excluded because they are marine 
-afd_species |> 
-  filter(VALID_NAME %in% worms$valid_name) |>
+nogriis_afd |> 
+  filter(VALID_NAME %in% marine_worms$valid_name) |>
   select(VALID_NAME) ->  excluded_mar_species
   
-nrow(excluded_mar_species) # 18,494
+nrow(excluded_mar_species) # 5,850
 
 ## Exclude these species 
-afd_species |> 
-  filter(! VALID_NAME %in% worms$valid_name) -> afd_species_nomarine
+nogriis_afd |> 
+  filter(! VALID_NAME %in% marine_worms$valid_name) -> nomarine_nogriis_afd_species
 
 # Checking
-nrow(afd_species_nomarine) + nrow( excluded_mar_species) == nrow(afd_species)
+nrow(nomarine_nogriis_afd_species) + nrow(excluded_mar_species) == nrow(nogriis_afd)
 
-# Further exclusion uing scientificname
+# Further exclusion using scientificname
 ## Which species are excluded by scientificname
-afd_species_nomarine |> 
-  filter(VALID_NAME %in% worms$scientificname) |> 
+nomarine_nogriis_afd_species |> 
+  filter(VALID_NAME %in% marine_worms$scientificname) |> 
   select(VALID_NAME) -> excluded_mar_species_scientificname
 
-## Further exclude excluded_mar_species_scientificname
-afd_species_nomarine |> 
-  filter(! VALID_NAME %in% worms$scientificname) -> afd_species_nomarine_snm
+nrow(excluded_mar_species_scientificname) # 575
 
-nrow(afd_species_nomarine_snm) + nrow( excluded_mar_species) + nrow(excluded_mar_species_scientificname) == nrow(afd_species)
+## Further exclude excluded_mar_species_scientificname
+nomarine_nogriis_afd_species |> 
+  filter(! VALID_NAME %in% marine_worms$scientificname) -> nomarine_nogriis_afd_species_snm
+
+nrow(nomarine_nogriis_afd_species_snm) + nrow(excluded_mar_species) + nrow(excluded_mar_species_scientificname) == nrow(nogriis_afd)
 
 ### Reporting 
 message(paste("Found ", nrow(excluded_mar_species), " marine species by validname in WoRMS"))
 message(paste("After exclusion by validname, a further", nrow(excluded_mar_species_scientificname), "marine species were found by scientificname in WoRMS"))
-message(paste("The total number of AFD species remaining following complete exclusion is ", nrow(afd_species_nomarine_snm)))
+message(paste("The total number of AFD species remaining following complete exclusion is ", nrow(nomarine_nogriis_afd_species_snm)))
 ```
-
 
 ## Identifying duplicates 
 

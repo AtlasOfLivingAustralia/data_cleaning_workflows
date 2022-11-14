@@ -60,8 +60,9 @@ afd_species_ls |> pull(scientificname) -> marine_afd
 afd_taxonomy |> filter(! VALID_NAME %in% marine_afd) -> afd_taxonomy_nomarine
 ```
 
-```{r}
 ## Code for for loop to query their API - slow, 1hr 
+
+```{r}
 afd_species <- unique(afd_taxonomy$VALID_NAME) 
 
 afd_species_chunks <- split(afd_species, ceiling(seq_along(afd_species)/120))
@@ -83,7 +84,7 @@ try(worrms::wm_records_names(afd_species_chunks[[i]]) -> tmp)
 }
 ```
 
-## Read in all the .rds and bind
+### Read in all the .rds and bind
 
 ```{r}
 dir <- "output/rds/"
@@ -100,30 +101,7 @@ myfiles <- purrr::map(filenms,
 myfiles <- read_csv("output/worrms_marine_splist.csv")
 ```
 
-## Looking at bulk download
-
-You can request a download of WoRMS here: https://www.marinespecies.org/usersrequest.php. 
-Looks like they update once a month!
-
-No valid name just scientific name
-
-```{r}
-species <- fread(here("data", "WoRMS_download_2022-10-01", "speciesprofile.txt"))
-taxa <- fread(here("data", "WoRMS_download_2022-10-01", "taxon.txt"))
-
-# create a GRIIS list
-worms_list <- taxa |>  
-  full_join(species, by = "taxonID") 
-
-worms_list
-
-names(worms_list)
-
-afd_taxonomy |> filter(! VALID_NAME %in% worms_list$scientificName) # 91,550
-afd_taxonomy |> filter(VALID_NAME %in% worms_list$scientificName) # 21,046 species excluded
-```
-
-## Trying to say csv/.txt in seperate parts so its more manageable
+### Trying to save csv/.txt in seperate parts so its more manageable
 
 Each file must have a unique ID so things can be joined together. I suspect AphiaID would do the trick
 
@@ -157,7 +135,7 @@ test_list <- test_taxa |>
   inner_join(test_species, by = "AphiaID") 
 ```
 
-## Exclude marine species found by WoRMs by VALID_NAME with API query data
+### Exclude marine species found by WoRMs by VALID_NAME with API query data
 
 Options to exclude by scientificname or valid name
 
@@ -174,5 +152,35 @@ afd_taxonomy |> filter(! VALID_NAME %in% test_list$valid_name) # 92,730
 ## The excluded taxa
 afd_taxonomy |> filter(VALID_NAME %in% test_list$scientificname) # 21,004 species excluded
 afd_taxonomy |> filter(VALID_NAME %in% test_list$valid_name) # 18,493  species excluded
+```
+
+
+## Looking at bulk download
+
+You can request a download of WoRMS here: https://www.marinespecies.org/usersrequest.php. 
+Looks like they update once a month!
+
+No valid name just scientific name
+
+```{r}
+species <- fread(here("ignore", "WoRMS_download_2022-10-01", "speciesprofile.txt"), quote = "")
+taxa <- fread(here("ignore", "WoRMS_download_2022-10-01", "taxon.txt"), quote = "")
+
+# create a GRIIS list
+worms_list <- taxa |>  
+  full_join(species, by = "taxonID") 
+
+worms_list
+names(worms_list)
+
+## Number of strictly marine species
+worms_list %>%
+  filter(!specificEpithet == "",
+         taxonomicStatus == "accepted",
+         isMarine == 1,
+         isTerrestrial == 0, isFreshwater == 0, isExtinct == 0) -> accepted_marine_worms  # 57414 specie
+
+
+afd_species |> filter(VALID_NAME %in% accepted_marine_worms$scientificName) # 6,108 matched
 ```
 
