@@ -51,7 +51,6 @@ distribution <- fread("data/dwca-griis-australia-v1.6/distribution.txt")
 species <- fread("data/dwca-griis-australia-v1.6/speciesprofile.txt")
 taxa <- fread("data/dwca-griis-australia-v1.6/taxon-edited.txt", fill = TRUE)
 
-
 # Create the GRIIS list
 griis_list <- taxa |>  
   full_join(distribution, by = "id") |>  
@@ -89,7 +88,7 @@ message(cat("number of AFD species listed in GRIIS: "),
         length(which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)))
 
 message("AFD species in GRIIS - Global Register of Introduced and Invasive Species - Australia: ")
-afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)]
+old_griis_afd <- afd_species$VALID_NAME[which(afd_species$VALID_NAME %in% griis_species$Supplied.Name)]
 
 message("Removing the following AFD species with GRIIS ...")
 afd_species <- afd_species[! afd_species$VALID_NAME %in% griis_species$Supplied.Name,]
@@ -97,10 +96,13 @@ afd_species <- afd_species[! afd_species$VALID_NAME %in% griis_species$Supplied.
 
 #### Difference between found matches with updated list and old list
 
-My recommendation is to use both lists for now and we can let Doug know that there 
+My recommendation is to use both lists for now and we can let Donald know that there. Under development here to explore differences between lists? 
 
 ```{r}
 setdiff(updated_griis_afd, old_griis_afd) # Taxa captured in new list
+
+setdiff(old_griis_afd, updated_griis_afd) # Taxa captured by old list but now in updated on 
+
 data.frame(setdiff(old_griis_afd, updated_griis_afd)) %>% search_taxa() # Taxa in old list that are not in ALA
 
 # Are any of species from old_griis_afd that is not in updated_griis_afd (i.e. not flagged in ALA search_taxa) found in the updated griis_list
@@ -115,7 +117,7 @@ str_subset(griis_list$scientificName, pattern = genus) # Would these be synonms 
 str_subset(griis_list$scientificName, pattern = wholenm) # Yes 2 full matches
 ```
 
-### Remove Marine species
+## Remove Marine species
 
 ### Using World Register of Marine species
 
@@ -126,6 +128,8 @@ For more info: https://docs.ropensci.org/worrms/
 You can request a download of WoRMS here: https://www.marinespecies.org/usersrequest.php. which they update once a month
 Issue is there is n valid name just scientific name
 We would need to make decisions about taxonomic status and do a pre-process ourselves. A very general clean gives me about  6,108 species - see workflow/worrms.rmd
+
+- PB to export species list of semi-marine, marine/brackish to experts to cross verify this list
 
 ```{r}
 worms <- read_csv("data/worms/worrms_marine_splist.csv")

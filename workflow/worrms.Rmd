@@ -98,7 +98,7 @@ myfiles <- purrr::map(filenms,
                      readRDS) |> bind_rows()
 
 #write.csv(myfiles, "output/worrms_marine_splist.csv")
-myfiles <- read_csv("output/worrms_marine_splist.csv")
+myfiles <- read_csv("data/worms/worrms_marine_splist.csv")
 ```
 
 ### Trying to save csv/.txt in seperate parts so its more manageable
@@ -178,7 +178,7 @@ worms_list %>%
   filter(!specificEpithet == "",
          taxonomicStatus == "accepted",
          isMarine == 1,
-         isTerrestrial == 0, isFreshwater == 0, isExtinct == 0) -> accepted_marine_worms  # 57414 specie
+         isTerrestrial == 0, isFreshwater == 0, isExtinct == 0) -> accepted_marine_worms  # 57,414 specie
 
 
 afd_species |> filter(VALID_NAME %in% accepted_marine_worms$scientificName) # 6,108 matched
