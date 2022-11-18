@@ -8,7 +8,17 @@ Data cleaning is a critical step in any research on biodiversity. It constitutes
 
 List here the components of data cleaning.
 
-Add a graph with main steps!
+![](images/diagram_1.png)
+
+## Expect result
+
+A data that is:
+- accurate
+- comprehensive
+- consistent
+- relevant
+- uniform
+
 
 ## Limitations
 
@@ -17,6 +27,5 @@ Different types of research require different data cleaning steps.
 ## How to use this book
 
 List here
-
 
 See @knuth84 for additional discussion of literate programming.

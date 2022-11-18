@@ -1,4 +1,6 @@
-# Step 2. Cleaning and correcting your data
+# Step 2. Standarizing your data
+
+Cleaning and correcting
 
 ## Taxonomy
 

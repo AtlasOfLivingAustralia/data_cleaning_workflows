@@ -30,9 +30,11 @@ Familiarise yourself with the distribution of your data. Before you get started 
 
 Understanding your metadata provides context to the structure of the data, and how the data was collected etc. this includes check coordinate errors as missing a negative 
 
-## First-look clean-up
+## Initial clean-up
 
 Remove records from doubtful sources. Sometimes the source iof the data is questionable and it's better to discard it straight form the beginning: from drawings, photographs or multimedia objects.
+
+## Rebuild missing data
 
 ## ALA specific
 
