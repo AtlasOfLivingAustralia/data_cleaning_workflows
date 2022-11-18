@@ -1,5 +1,3 @@
-![](logo.jpg){width="700"}
-
 # Welcome {.unnumbered}
 
 This is a book created by the Science and Decision Support team at the [Atlas of Living Australia (ALA)](https://www.ala.org.au/) to support researchers and decision makers on a consistent process of cleaning up biodiversity datasets, obtained or not from ALA.

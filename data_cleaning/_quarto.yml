@@ -12,7 +12,7 @@ book:
     right: |
       This book was built with <a href="https://quarto.org/">Quarto</a>.
 
-#  cover-image: ala.png
+  cover-image: logo.png
   chapters:
     - index.qmd
     - intro.qmd

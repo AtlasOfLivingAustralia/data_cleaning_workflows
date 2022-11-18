@@ -4,7 +4,7 @@
     "href": "index.html",
     "title": "ALA Data Cleaning",
     "section": "",
-    "text": "Welcome\nThis is a book created by the Science and Decision Support team at the Atlas of Living Australia (ALA) to support researchers and decision makers on a consistent process of cleaning up biodiversity datasets, obtained or not from ALA.\nThis is a free and live document. If you have questions or suggestions please reach us at (e-mail)."
+    "text": "This is a book created by the Science and Decision Support team at the Atlas of Living Australia (ALA) to support researchers and decision makers on a consistent process of cleaning up biodiversity datasets, obtained or not from ALA.\nThis is a free and live document. If you have questions or suggestions please reach us at (e-mail)."
   },
   {
     "objectID": "intro.html",
@@ -138,5 +138,47 @@
     "title": "4  Step 3. Improving your data",
     "section": "4.1 Text here",
     "text": "4.1 Text here\nhere"
+  },
+  {
+    "objectID": "cleaning.html#taxonomy",
+    "href": "cleaning.html#taxonomy",
+    "title": "3  Step 2. Cleaning and correcting your data",
+    "section": "3.1 Taxonomy",
+    "text": "3.1 Taxonomy\nhere"
+  },
+  {
+    "objectID": "cleaning.html#distribution-data",
+    "href": "cleaning.html#distribution-data",
+    "title": "3  Step 2. Cleaning and correcting your data",
+    "section": "3.2 Distribution data",
+    "text": "3.2 Distribution data\nhere"
+  },
+  {
+    "objectID": "cleaning.html#ecological-data",
+    "href": "cleaning.html#ecological-data",
+    "title": "3  Step 2. Cleaning and correcting your data",
+    "section": "3.3 Ecological data",
+    "text": "3.3 Ecological data\nhere"
+  },
+  {
+    "objectID": "improving.html#text-2",
+    "href": "improving.html#text-2",
+    "title": "4  Step 3. Improving your data",
+    "section": "4.2 Text 2",
+    "text": "4.2 Text 2\nhere"
+  },
+  {
+    "objectID": "cleaning.html#distribution",
+    "href": "cleaning.html#distribution",
+    "title": "3  Step 2. Cleaning and correcting your data",
+    "section": "3.2 Distribution",
+    "text": "3.2 Distribution\nhere"
+  },
+  {
+    "objectID": "cleaning.html#ecology",
+    "href": "cleaning.html#ecology",
+    "title": "3  Step 2. Cleaning and correcting your data",
+    "section": "3.3 Ecology",
+    "text": "3.3 Ecology\nhere"
   }
 ]
