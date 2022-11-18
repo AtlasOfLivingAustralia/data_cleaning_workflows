@@ -1,0 +1,22 @@
+# Introduction
+
+## Importance of Data Cleaning
+
+Data cleaning is a critical step in any research on biodiversity. It constitutes fixing or/and removing incorrect, doubtful, mislabelled, or incomplete data within a dataset. It guarantees that the researcher uses the most trustful data to perform research. It is important to be consistent in the process. Blablabla.
+
+## Components
+
+List here the components of data cleaning.
+
+Add a graph with main steps!
+
+## Limitations
+
+Different types of research require different data cleaning steps.
+
+## How to use this book
+
+List here
+
+
+See @knuth84 for additional discussion of literate programming.

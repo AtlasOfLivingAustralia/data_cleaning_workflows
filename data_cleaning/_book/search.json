@@ -1,0 +1,142 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "ALA Data Cleaning",
+    "section": "",
+    "text": "Welcome\nThis is a book created by the Science and Decision Support team at the Atlas of Living Australia (ALA) to support researchers and decision makers on a consistent process of cleaning up biodiversity datasets, obtained or not from ALA.\nThis is a free and live document. If you have questions or suggestions please reach us at (e-mail)."
+  },
+  {
+    "objectID": "intro.html",
+    "href": "intro.html",
+    "title": "1  Introduction",
+    "section": "",
+    "text": "This is a book created from markdown and executable code.\nSee Knuth (1984) for additional discussion of literate programming.\n\n\n\n\nKnuth, Donald E. 1984. “Literate Programming.” Comput. J. 27 (2): 97–111. https://doi.org/10.1093/comjnl/27.2.97."
+  },
+  {
+    "objectID": "summary.html",
+    "href": "summary.html",
+    "title": "5  Summary",
+    "section": "",
+    "text": "In summary, this book has no content whatsoever."
+  },
+  {
+    "objectID": "references.html",
+    "href": "references.html",
+    "title": "References",
+    "section": "",
+    "text": "Knuth, Donald E. 1984. “Literate Programming.” Comput.\nJ. 27 (2): 97–111. https://doi.org/10.1093/comjnl/27.2.97."
+  },
+  {
+    "objectID": "preparation.html",
+    "href": "preparation.html",
+    "title": "2  Preparation",
+    "section": "",
+    "text": "In summary, this book has no content whatsoever."
+  },
+  {
+    "objectID": "intro.html#importance-of-data-cleaning",
+    "href": "intro.html#importance-of-data-cleaning",
+    "title": "1  Introduction",
+    "section": "1.1 Importance of Data Cleaning",
+    "text": "1.1 Importance of Data Cleaning\nData cleaning is a critical step in any research on biodiversity. It constitutes fixing or/and removing incorrect, doubtful, mislabelled, or incomplete data within a dataset. It guarantees that the researcher uses the most trustful data to perform research. It is important to be consistent in the process. Blablabla."
+  },
+  {
+    "objectID": "intro.html#components",
+    "href": "intro.html#components",
+    "title": "1  Introduction",
+    "section": "1.2 Components",
+    "text": "1.2 Components\nList here the components of data cleaning.\nAdd a graph with main steps!"
+  },
+  {
+    "objectID": "intro.html#limitations",
+    "href": "intro.html#limitations",
+    "title": "1  Introduction",
+    "section": "1.3 Limitations",
+    "text": "1.3 Limitations\nDifferent types of research require different data cleaning steps."
+  },
+  {
+    "objectID": "intro.html#how-to-use-this-book",
+    "href": "intro.html#how-to-use-this-book",
+    "title": "1  Introduction",
+    "section": "1.4 How to use this book",
+    "text": "1.4 How to use this book\nList here\nSee Knuth (1984) for additional discussion of literate programming.\n\n\n\n\nKnuth, Donald E. 1984. “Literate Programming.” Comput. J. 27 (2): 97–111. https://doi.org/10.1093/comjnl/27.2.97."
+  },
+  {
+    "objectID": "preparation.html#determine-a-naming-authority",
+    "href": "preparation.html#determine-a-naming-authority",
+    "title": "2  Step 1. Download and prepare your data",
+    "section": "2.1 Determine a naming authority",
+    "text": "2.1 Determine a naming authority\nYour study can focus on a species or community or maybe you are interested on all species that can occur within a region. Independent of it, a taxonomic name check is fundamental.\nIn Australia for plants people use APC (with APNI) for animals AFD-this provides a list of accepted and authoritative name which can be used as a template.\nBook and papers can also be fundamental to understand taxonomic history. Remember that sometimes the names are just not up to date - it worth to check possible alternatives and double-check the original paper instead of just elimitate a data point. Also, taxonomic groups societies (e.g. ASH) can provide up-to-date lists.\n\n2.1.1 EXTRA: taxonomic group societies links\nASH - link"
+  },
+  {
+    "objectID": "preparation.html#download-occurence-data",
+    "href": "preparation.html#download-occurence-data",
+    "title": "2  Step 1. Download and prepare your data",
+    "section": "2.2 Download occurence data",
+    "text": "2.2 Download occurence data\nbe careful here with possible taxonomic limitations - know your data"
+  },
+  {
+    "objectID": "preparation.html#merge-datasets",
+    "href": "preparation.html#merge-datasets",
+    "title": "2  Step 1. Download and prepare your data",
+    "section": "2.3 Merge datasets",
+    "text": "2.3 Merge datasets\nIf you’ve collected data from multiple places, It’s important to standardise and collate it"
+  },
+  {
+    "objectID": "preparation.html#familiarise-yourself-with-your-data",
+    "href": "preparation.html#familiarise-yourself-with-your-data",
+    "title": "2  Step 1. Download and prepare your data",
+    "section": "2.4 Familiarise yourself with your data",
+    "text": "2.4 Familiarise yourself with your data\nFamiliarise yourself with the distribution of your data. Before you get started on any data cleaning it can help to use exploraoty visuals (like plotting the data on a map) to see what it looks like. Other tools can also help for example if you’re know your dat set should only have positive values. would add an “extra step” here to fix obvious coordinate errors (sometimes the corrdinateds are just inverted)."
+  },
+  {
+    "objectID": "preparation.html#check-your-metadata",
+    "href": "preparation.html#check-your-metadata",
+    "title": "2  Step 1. Download and prepare your data",
+    "section": "2.5 Check your metadata",
+    "text": "2.5 Check your metadata\nUnderstanding your metadata provides context to the structure of the data, and how the data was collected etc. this includes check coordinate errors as missing a negative"
+  },
+  {
+    "objectID": "preparation.html#first-look-clean-up",
+    "href": "preparation.html#first-look-clean-up",
+    "title": "2  Step 1. Download and prepare your data",
+    "section": "2.6 First-look clean-up",
+    "text": "2.6 First-look clean-up\nRemove records from doubtful sources. Sometimes the source iof the data is questionable and it’s better to discard it straight form the beginning: from drawings, photographs or multimedia objects."
+  },
+  {
+    "objectID": "preparation.html#ala-specific",
+    "href": "preparation.html#ala-specific",
+    "title": "2  Step 1. Download and prepare your data",
+    "section": "2.7 ALA specific",
+    "text": "2.7 ALA specific\nFilter by basis of record. This can be useful when downloading data or after to make sure you are only trying to clean and deal with the type of records you want. It can ensure consistency when getting data frommultiple places. Examples of basis of record filters include: exlcuding citisen science data, only including herbarium data etc"
+  },
+  {
+    "objectID": "preparation.html#extra-r-packages-that-can-help-on-data-preparation",
+    "href": "preparation.html#extra-r-packages-that-can-help-on-data-preparation",
+    "title": "2  Step 1. Download and prepare your data",
+    "section": "2.8 EXTRA: R packages that can help on data preparation?",
+    "text": "2.8 EXTRA: R packages that can help on data preparation?"
+  },
+  {
+    "objectID": "index.html#acknowledgements",
+    "href": "index.html#acknowledgements",
+    "title": "ALA Data Cleaning",
+    "section": "Acknowledgements",
+    "text": "Acknowledgements\nWrite names here"
+  },
+  {
+    "objectID": "cleaning.html#text-here",
+    "href": "cleaning.html#text-here",
+    "title": "3  Step 2. Cleaning and correcting your data",
+    "section": "3.1 Text here",
+    "text": "3.1 Text here\nhere"
+  },
+  {
+    "objectID": "improving.html#text-here",
+    "href": "improving.html#text-here",
+    "title": "4  Step 3. Improving your data",
+    "section": "4.1 Text here",
+    "text": "4.1 Text here\nhere"
+  }
+]

@@ -1,0 +1,34 @@
+project:
+  type: book
+
+book:
+  title: "ALA Data Cleaning"
+  reader-mode: true
+#  author: "Atlas of Living Australia"
+#  date: "18/11/2022"
+  page-footer:
+    left: |
+      Data Cleaning booklet is a product of the Atlas of Living Australia.
+    right: |
+      This book was built with <a href="https://quarto.org/">Quarto</a>.
+
+#  cover-image: ala.png
+  chapters:
+    - index.qmd
+    - intro.qmd
+    - preparation.qmd
+    - cleaning.qmd
+    - improving.qmd
+    - summary.qmd
+    - references.qmd
+
+bibliography: references.bib
+
+format:
+  html:
+    theme: cosmo
+  pdf:
+    documentclass: scrreprt
+
+editor: visual
+

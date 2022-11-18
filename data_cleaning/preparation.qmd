@@ -1,0 +1,41 @@
+# Step 1. Download and prepare your data 
+
+## Determine a naming authority
+
+Your study can focus on a species or community or maybe you are interested on all species that can occur within a region. Independent of it, a taxonomic name check is fundamental.
+
+In Australia for plants people use APC (with APNI) for animals AFD-this provides a list of accepted and authoritative name which can be used as a template.
+
+Book and papers can also be fundamental to understand taxonomic history.
+Remember that sometimes the names are just not up to date - it worth to check possible alternatives and double-check the original paper instead of just elimitate a data point. Also, taxonomic groups societies (e.g. ASH) can provide up-to-date lists.
+
+### EXTRA: taxonomic group societies links
+
+ASH - link
+
+## Download occurence data 
+
+be careful here with possible taxonomic limitations - know your data
+
+## Merge datasets
+
+If you've collected data from multiple places, It's important to standardise and collate it
+
+
+## Familiarise yourself with your data
+
+Familiarise yourself with the distribution of your data. Before you get started on any data cleaning it can help to use exploraoty visuals (like plotting the data on a map) to see what it looks like. Other tools can also help for example if you're know your dat set should only have positive values.  would add an "extra step" here to fix obvious coordinate errors (sometimes the corrdinateds are just inverted).
+
+## Check your metadata
+
+Understanding your metadata provides context to the structure of the data, and how the data was collected etc. this includes check coordinate errors as missing a negative 
+
+## First-look clean-up
+
+Remove records from doubtful sources. Sometimes the source iof the data is questionable and it's better to discard it straight form the beginning: from drawings, photographs or multimedia objects.
+
+## ALA specific
+
+Filter by basis of record. This can be useful when downloading data or after to make sure you are only trying to clean and deal with the type of records you want. It can ensure consistency when getting data frommultiple places. Examples of basis of record filters include: exlcuding citisen science data, only including herbarium data etc 
+
+## EXTRA: R packages that can help on data preparation?
