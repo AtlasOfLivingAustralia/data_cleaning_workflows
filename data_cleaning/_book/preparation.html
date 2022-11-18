@@ -117,7 +117,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./cleaning.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Step 2. Cleaning and correcting your data</span></a>
+  <a href="./cleaning.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Step 2. Standarizing your data</span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -152,9 +152,10 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#merge-datasets" id="toc-merge-datasets" class="nav-link" data-scroll-target="#merge-datasets"><span class="toc-section-number">2.3</span>  Merge datasets</a></li>
   <li><a href="#familiarise-yourself-with-your-data" id="toc-familiarise-yourself-with-your-data" class="nav-link" data-scroll-target="#familiarise-yourself-with-your-data"><span class="toc-section-number">2.4</span>  Familiarise yourself with your data</a></li>
   <li><a href="#check-your-metadata" id="toc-check-your-metadata" class="nav-link" data-scroll-target="#check-your-metadata"><span class="toc-section-number">2.5</span>  Check your metadata</a></li>
-  <li><a href="#first-look-clean-up" id="toc-first-look-clean-up" class="nav-link" data-scroll-target="#first-look-clean-up"><span class="toc-section-number">2.6</span>  First-look clean-up</a></li>
-  <li><a href="#ala-specific" id="toc-ala-specific" class="nav-link" data-scroll-target="#ala-specific"><span class="toc-section-number">2.7</span>  ALA specific</a></li>
-  <li><a href="#extra-r-packages-that-can-help-on-data-preparation" id="toc-extra-r-packages-that-can-help-on-data-preparation" class="nav-link" data-scroll-target="#extra-r-packages-that-can-help-on-data-preparation"><span class="toc-section-number">2.8</span>  EXTRA: R packages that can help on data preparation?</a></li>
+  <li><a href="#initial-clean-up" id="toc-initial-clean-up" class="nav-link" data-scroll-target="#initial-clean-up"><span class="toc-section-number">2.6</span>  Initial clean-up</a></li>
+  <li><a href="#rebuild-missing-data" id="toc-rebuild-missing-data" class="nav-link" data-scroll-target="#rebuild-missing-data"><span class="toc-section-number">2.7</span>  Rebuild missing data</a></li>
+  <li><a href="#ala-specific" id="toc-ala-specific" class="nav-link" data-scroll-target="#ala-specific"><span class="toc-section-number">2.8</span>  ALA specific</a></li>
+  <li><a href="#extra-r-packages-that-can-help-on-data-preparation" id="toc-extra-r-packages-that-can-help-on-data-preparation" class="nav-link" data-scroll-target="#extra-r-packages-that-can-help-on-data-preparation"><span class="toc-section-number">2.9</span>  EXTRA: R packages that can help on data preparation?</a></li>
   </ul>
 </nav>
     </div>
@@ -204,16 +205,19 @@ ul.task-list li input[type="checkbox"] {
 <h2 data-number="2.5" class="anchored" data-anchor-id="check-your-metadata"><span class="header-section-number">2.5</span> Check your metadata</h2>
 <p>Understanding your metadata provides context to the structure of the data, and how the data was collected etc. this includes check coordinate errors as missing a negative</p>
 </section>
-<section id="first-look-clean-up" class="level2" data-number="2.6">
-<h2 data-number="2.6" class="anchored" data-anchor-id="first-look-clean-up"><span class="header-section-number">2.6</span> First-look clean-up</h2>
+<section id="initial-clean-up" class="level2" data-number="2.6">
+<h2 data-number="2.6" class="anchored" data-anchor-id="initial-clean-up"><span class="header-section-number">2.6</span> Initial clean-up</h2>
 <p>Remove records from doubtful sources. Sometimes the source iof the data is questionable and it’s better to discard it straight form the beginning: from drawings, photographs or multimedia objects.</p>
 </section>
-<section id="ala-specific" class="level2" data-number="2.7">
-<h2 data-number="2.7" class="anchored" data-anchor-id="ala-specific"><span class="header-section-number">2.7</span> ALA specific</h2>
+<section id="rebuild-missing-data" class="level2" data-number="2.7">
+<h2 data-number="2.7" class="anchored" data-anchor-id="rebuild-missing-data"><span class="header-section-number">2.7</span> Rebuild missing data</h2>
+</section>
+<section id="ala-specific" class="level2" data-number="2.8">
+<h2 data-number="2.8" class="anchored" data-anchor-id="ala-specific"><span class="header-section-number">2.8</span> ALA specific</h2>
 <p>Filter by basis of record. This can be useful when downloading data or after to make sure you are only trying to clean and deal with the type of records you want. It can ensure consistency when getting data frommultiple places. Examples of basis of record filters include: exlcuding citisen science data, only including herbarium data etc</p>
 </section>
-<section id="extra-r-packages-that-can-help-on-data-preparation" class="level2" data-number="2.8">
-<h2 data-number="2.8" class="anchored" data-anchor-id="extra-r-packages-that-can-help-on-data-preparation"><span class="header-section-number">2.8</span> EXTRA: R packages that can help on data preparation?</h2>
+<section id="extra-r-packages-that-can-help-on-data-preparation" class="level2" data-number="2.9">
+<h2 data-number="2.9" class="anchored" data-anchor-id="extra-r-packages-that-can-help-on-data-preparation"><span class="header-section-number">2.9</span> EXTRA: R packages that can help on data preparation?</h2>
 
 
 </section>
@@ -360,7 +364,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   </div>
   <div class="nav-page nav-page-next">
       <a href="./cleaning.html" class="pagination-link">
-        <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Step 2. Cleaning and correcting your data</span></span> <i class="bi bi-arrow-right-short"></i>
+        <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Step 2. Standarizing your data</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

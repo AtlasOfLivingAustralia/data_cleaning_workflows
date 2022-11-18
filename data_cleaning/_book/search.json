@@ -38,8 +38,8 @@
     "objectID": "intro.html#importance-of-data-cleaning",
     "href": "intro.html#importance-of-data-cleaning",
     "title": "1  Introduction",
-    "section": "1.1 Importance of Data Cleaning",
-    "text": "1.1 Importance of Data Cleaning\nData cleaning is a critical step in any research on biodiversity. It constitutes fixing or/and removing incorrect, doubtful, mislabelled, or incomplete data within a dataset. It guarantees that the researcher uses the most trustful data to perform research. It is important to be consistent in the process. Blablabla."
+    "section": "1.1 Importance of data cleaning",
+    "text": "1.1 Importance of data cleaning\nData cleaning is a process of identifying, fixing or/and removing incorrect, doubtful, mislabeled, or incomplete data within a dataset. It is a critical step in any research on biodiversity, as it guarantees the most trustful data to perform analyses for research. The anecdote “garbage in, garbage out” reflects this idea - a study analysis is as good as the data used.\nData problems can come from many sources, from the precision of the coordinate points during collection in the field to the combination of multiple data sources, where mismatches can happen. For this reason, the data cleaning process will vary from different datasets, making it hard to point out a “work for all” solution.\nAlthough data cleaning can be time-consuming, an established and consistent process will result in quality data to be used in future analyses."
   },
   {
     "objectID": "intro.html#components",
@@ -52,15 +52,15 @@
     "objectID": "intro.html#limitations",
     "href": "intro.html#limitations",
     "title": "1  Introduction",
-    "section": "1.3 Limitations",
-    "text": "1.3 Limitations\nDifferent types of research require different data cleaning steps."
+    "section": "1.4 Limitations",
+    "text": "1.4 Limitations\n\nType and quality of the information available\nDifferent types of research require different data cleaning steps\netc etc"
   },
   {
     "objectID": "intro.html#how-to-use-this-book",
     "href": "intro.html#how-to-use-this-book",
     "title": "1  Introduction",
-    "section": "1.4 How to use this book",
-    "text": "1.4 How to use this book\nList here\nSee Knuth (1984) for additional discussion of literate programming.\n\n\n\n\nKnuth, Donald E. 1984. “Literate Programming.” Comput. J. 27 (2): 97–111. https://doi.org/10.1093/comjnl/27.2.97."
+    "section": "1.5 How to use this book",
+    "text": "1.5 How to use this book\nList here\nSee Knuth (1984) for additional discussion of literate programming.\n\n\n\n\nKnuth, Donald E. 1984. “Literate Programming.” Comput. J. 27 (2): 97–111. https://doi.org/10.1093/comjnl/27.2.97."
   },
   {
     "objectID": "preparation.html#determine-a-naming-authority",
@@ -108,15 +108,15 @@
     "objectID": "preparation.html#ala-specific",
     "href": "preparation.html#ala-specific",
     "title": "2  Step 1. Download and prepare your data",
-    "section": "2.7 ALA specific",
-    "text": "2.7 ALA specific\nFilter by basis of record. This can be useful when downloading data or after to make sure you are only trying to clean and deal with the type of records you want. It can ensure consistency when getting data frommultiple places. Examples of basis of record filters include: exlcuding citisen science data, only including herbarium data etc"
+    "section": "2.8 ALA specific",
+    "text": "2.8 ALA specific\nFilter by basis of record. This can be useful when downloading data or after to make sure you are only trying to clean and deal with the type of records you want. It can ensure consistency when getting data frommultiple places. Examples of basis of record filters include: exlcuding citisen science data, only including herbarium data etc"
   },
   {
     "objectID": "preparation.html#extra-r-packages-that-can-help-on-data-preparation",
     "href": "preparation.html#extra-r-packages-that-can-help-on-data-preparation",
     "title": "2  Step 1. Download and prepare your data",
-    "section": "2.8 EXTRA: R packages that can help on data preparation?",
-    "text": "2.8 EXTRA: R packages that can help on data preparation?"
+    "section": "2.9 EXTRA: R packages that can help on data preparation?",
+    "text": "2.9 EXTRA: R packages that can help on data preparation?"
   },
   {
     "objectID": "index.html#acknowledgements",
@@ -142,7 +142,7 @@
   {
     "objectID": "cleaning.html#taxonomy",
     "href": "cleaning.html#taxonomy",
-    "title": "3  Step 2. Cleaning and correcting your data",
+    "title": "3  Step 2. Standarizing your data",
     "section": "3.1 Taxonomy",
     "text": "3.1 Taxonomy\nhere"
   },
@@ -170,15 +170,57 @@
   {
     "objectID": "cleaning.html#distribution",
     "href": "cleaning.html#distribution",
-    "title": "3  Step 2. Cleaning and correcting your data",
+    "title": "3  Step 2. Standarizing your data",
     "section": "3.2 Distribution",
     "text": "3.2 Distribution\nhere"
   },
   {
     "objectID": "cleaning.html#ecology",
     "href": "cleaning.html#ecology",
-    "title": "3  Step 2. Cleaning and correcting your data",
+    "title": "3  Step 2. Standarizing your data",
     "section": "3.3 Ecology",
     "text": "3.3 Ecology\nhere"
+  },
+  {
+    "objectID": "intro.html#expect-result",
+    "href": "intro.html#expect-result",
+    "title": "1  Introduction",
+    "section": "1.3 Expect result",
+    "text": "1.3 Expect result\nA data that is: - accurate - comprehensive - consistent - relevant - uniform"
+  },
+  {
+    "objectID": "preparation.html#initial-clean-up",
+    "href": "preparation.html#initial-clean-up",
+    "title": "2  Step 1. Download and prepare your data",
+    "section": "2.6 Initial clean-up",
+    "text": "2.6 Initial clean-up\nRemove records from doubtful sources. Sometimes the source iof the data is questionable and it’s better to discard it straight form the beginning: from drawings, photographs or multimedia objects."
+  },
+  {
+    "objectID": "preparation.html#rebuild-missing-data",
+    "href": "preparation.html#rebuild-missing-data",
+    "title": "2  Step 1. Download and prepare your data",
+    "section": "2.7 Rebuild missing data",
+    "text": "2.7 Rebuild missing data"
+  },
+  {
+    "objectID": "intro.html#characteristics-of-a-quality-data",
+    "href": "intro.html#characteristics-of-a-quality-data",
+    "title": "1  Introduction",
+    "section": "1.2 Characteristics of a quality data",
+    "text": "1.2 Characteristics of a quality data\n\nAccurate. describe here\nComprehensive. describe here\nConsistent. describe here\nRelevant. describe here\nUniform. describe here\n\nfrom (https://www.iteratorshq.com/blog/data-cleaning-in-5-easy-steps/)"
+  },
+  {
+    "objectID": "intro.html#data-cleaning-process",
+    "href": "intro.html#data-cleaning-process",
+    "title": "1  Introduction",
+    "section": "1.3 Data cleaning process",
+    "text": "1.3 Data cleaning process\nIn the next chapters you will take a deep dive into the different steps of the data cleaning process. In can be separated into three main steps: Data preparition, standarization and enrichment (Figure 1).\n\n\n\nFigure 1. Data cleaning process"
+  },
+  {
+    "objectID": "intro.html#importance-of-data-cceaning",
+    "href": "intro.html#importance-of-data-cceaning",
+    "title": "1  Introduction",
+    "section": "1.1 Importance of data Cceaning",
+    "text": "1.1 Importance of data Cceaning\nData cleaning is a process of identifying, fixing or/and removing incorrect, doubtful, mislabeled, or incomplete data within a dataset. It is a critical step in any research on biodiversity, as it guarantees the most trustful data to perform analyses for research. The anecdote “garbage in, garbage out” reflects this idea - a study analysis is as good as the data used.\nData problems can come from many sources, from the precision of the coordinate points during collection in the field to the combination of multiple data sources, where mismatches can happen. For this reason, the data cleaning process will vary from different datasets, making it hard to point out a “work for all” solution.\nAlthough data cleaning can be time-consuming, an established and consistent process will result in quality data to be used in future analyses."
   }
 ]

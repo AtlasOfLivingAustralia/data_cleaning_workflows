@@ -1,28 +1,36 @@
 # Introduction
 
-## Importance of Data Cleaning
+## Importance of data cleaning
 
-Data cleaning is a critical step in any research on biodiversity. It constitutes fixing or/and removing incorrect, doubtful, mislabelled, or incomplete data within a dataset. It guarantees that the researcher uses the most trustful data to perform research. It is important to be consistent in the process. Blablabla.
+Data cleaning is a process of identifying, fixing or/and removing incorrect, doubtful, mislabeled, or incomplete data within a dataset.  It is a critical step in any research on biodiversity, as it guarantees the most trustful data to perform analyses for research. The anecdote "garbage in, garbage out" reflects this idea - a study analysis is as good as the data used.
 
-## Components
 
-List here the components of data cleaning.
+Data problems can come from many sources, from the precision of the coordinate points during collection in the field to the combination of multiple data sources, where mismatches can happen. For this reason, the data cleaning process will vary from different datasets, making it hard to point out a "work for all" solution.
 
-![](images/diagram_1.png)
+Although data cleaning can be time-consuming, an established and consistent process will result in quality data to be used in future analyses.
 
-## Expect result
 
-A data that is:
-- accurate
-- comprehensive
-- consistent
-- relevant
-- uniform
+## Characteristics of a quality data
 
+- **Accurate.** describe here
+- **Comprehensive.** describe here
+- **Consistent.** describe here
+- **Relevant.** describe here
+- **Uniform.** describe here
+
+from (https://www.iteratorshq.com/blog/data-cleaning-in-5-easy-steps/)
+
+## Data cleaning process
+
+In the next chapters you will take a deep dive into the different steps of the data cleaning process. In can be separated into three main steps: Data preparition, standarization and enrichment (Figure 1).
+
+![Figure 1. Data cleaning process](images/diagram_1.png)
 
 ## Limitations
 
-Different types of research require different data cleaning steps.
+- Type and quality of the information available
+- Different types of research require different data cleaning steps
+- etc etc
 
 ## How to use this book
 
