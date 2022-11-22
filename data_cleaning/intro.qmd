@@ -2,7 +2,7 @@
 
 ## Importance of data cleaning
 
-Data cleaning is a process of identifying, fixing or/and removing incorrect, doubtful, mislabeled, or incomplete data within a dataset.  It is a critical step in any research on biodiversity, as it guarantees the most trustful data to perform analyses for research. The anecdote "garbage in, garbage out" reflects this idea - a study analysis is as good as the data used.
+Data cleaning is a process of identifying, fixing or/and removing incorrect, doubtful, mislabeled, or incomplete data within a dataset. It is a critical step in any research on biodiversity, as it guarantees the most trustful data to perform analyses for research. The anecdote "garbage in, garbage out" reflects this idea - a study analysis is as good as the data used.
 
 
 Data problems can come from many sources, from the precision of the coordinate points during collection in the field to the combination of multiple data sources, where mismatches can happen. For this reason, the data cleaning process will vary from different datasets, making it hard to point out a "work for all" solution.
@@ -22,7 +22,7 @@ from (https://www.iteratorshq.com/blog/data-cleaning-in-5-easy-steps/)
 
 ## Data cleaning process
 
-In the next chapters you will take a deep dive into the different steps of the data cleaning process. In can be separated into three main steps: Data preparition, standarization and enrichment (Figure 1).
+In the following chapters, we will dive deep into the different steps of the data-cleaning process. It can be separated into three main steps: Data preparation, standardization, and enrichment (Figure 1).
 
 ![Figure 1. Data cleaning process](images/diagram_1.png)
 

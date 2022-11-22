@@ -19,6 +19,7 @@ book:
     - preparation.qmd
     - cleaning.qmd
     - improving.qmd
+    - example.qmd
     - summary.qmd
     - references.qmd
 

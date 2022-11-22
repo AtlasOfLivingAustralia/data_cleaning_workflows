@@ -1,43 +1,64 @@
-# Step 1. Download and prepare your data 
+# Step 1. Data download and preparation
+
+This section describes the initial steps and some important points that should be considered when obtaining species distribution records. It is essential an understand and familiarization with the data prior to data cleaning.
 
 ## Determine a naming authority
 
-Your study can focus on a species or community or maybe you are interested on all species that can occur within a region. Independent of it, a taxonomic name check is fundamental.
+Obtaining distribution data can be done in two ways. One is when the study is focused on a specific species or community. In this case, the search is performed using the scientific and common name of the species or group of species. Another is when there is interest in obtaining a list of all species present in a given location. In this case, the region name or area boundaries can be used to delimit the area of interest.
 
-In Australia for plants people use APC (with APNI) for animals AFD-this provides a list of accepted and authoritative name which can be used as a template.
+Regardless of the study focus, a knowledge of taxonomy is essential to verify the data obtained. For this, different organizations provide updated lists of species or even details of history and taxonomic changes.
 
-Book and papers can also be fundamental to understand taxonomic history.
-Remember that sometimes the names are just not up to date - it worth to check possible alternatives and double-check the original paper instead of just elimitate a data point. Also, taxonomic groups societies (e.g. ASH) can provide up-to-date lists.
+In Australia, the [Australian Plant Name Index (APNI)](https://www.anbg.gov.au/apni/) is the primary naming authority for plants. At the same time, the [Australian Faunal Directory (AFD)](https://biodiversity.org.au/afd/home) is the main taxonomic catalog for animal species, providing a list of accepted and authoritative names as a template.
 
-### EXTRA: taxonomic group societies links
 
-ASH - link
+Yet, it is fundamental to understand the taxonomic history of the interest species. Changes in taxonomy, such as species split, new higher level classification (as genera), or species descriptions, highlight the importance of keeping up-to-date with taxonomic literature. This can be achieved via specialized books and scientific papers. Most taxonomic group societies released annual updates on taxonomy. The [Atlas of Living Australia (ALA)](www.ala.org.au) can also be used to investigate taxonomic changes.
 
-## Download occurence data 
+### Australian taxonomic group societies
 
-be careful here with possible taxonomic limitations - know your data
+**VERTEBRATES** 
+
+- Amphibians and reptiles - [Australian Herpetological Society](https://ahs.org.au/)  
+- Birds - [Birdlife Australia](https://www.birdlife.org.au/)  
+- Fish - [Australian Society for Fish Biology](https://www.asfb.org.au/)  
+- Mammals - [The Australian Mammal Society](https://australianmammals.org.au/)  
+
+
+**INVERTEBRATES**
+
+- Arachnology - [Australasian Arachnological Society](www.australasianarachnologicalsociety.org)  
+- Entomology - [Australian Entomological Society](https://www.austentsoc.org.au/)  
+- Malacology - [The Malacological Society of Australasia](https://www.malsocaus.org/)  
+- Nematology - [Australasian Association of Nematologists](https://www.nematologists.org.au/)  
+
+## Download occurrence data 
+
+There are many ways to obtain species or region of interest occurrence data. A literature search using web search engineers such as Google Scholar. Data can also be obtained directly from data infrastructure websites such as the [Global Biodiversity Information Facility (GBIF)](https://www.gbif.org/) or citizen science initiatives, such as [iNaturalist](https://www.inaturalist.org/). Australia counts on [ALA](www.ala.org.au), an open-access Australia's biodiversity database that aggregates data from a broad range of projects and initiatives, museums and universities, and data uploaded directly into the platform.
+
+An alternative to downloading data directly from project websites is to use R packages explicitly created for data occurrence download (see a list in chapter xx or below). The ALA has developed an R package exclusively to obtain data from ALA. [Galah](https://galah.ala.org.au/) enables users to locate and download species occurrence records (observations, specimens, eDNA records, etc.), taxonomic information, or associated media such as images or sounds, and to restrict their queries to particular taxa or locations.
+
 
 ## Merge datasets
 
-If you've collected data from multiple places, It's important to standardise and collate it
+If the data was obtained from multiple places, it is important to standardize the data fields and merge the data carefully. 
 
 
-## Familiarise yourself with your data
+## Familiarise with the data and metadata
 
-Familiarise yourself with the distribution of your data. Before you get started on any data cleaning it can help to use exploraoty visuals (like plotting the data on a map) to see what it looks like. Other tools can also help for example if you're know your dat set should only have positive values.  would add an "extra step" here to fix obvious coordinate errors (sometimes the corrdinateds are just inverted).
+Before getting started with data cleaning, a visual inspection of the entire dataset can save time and solve easy-to-spot errors. It can improve the knowledge of the available data and can be done with it. Understanding the metadata provides context to the structure of the data and information on how the data was collected.
 
-## Check your metadata
+A plot of the occurrence data on a map can follow it. This simple step can highlight coordinates with missing data or even inverted or erroneous coordinates (as points floating in the ocean while focusing on terrestrial species and vice versa).  
 
-Understanding your metadata provides context to the structure of the data, and how the data was collected etc. this includes check coordinate errors as missing a negative 
+Other tools, such as looking for only positive values if that is what is expected, can also be used in this initial data familiarization step.
 
 ## Initial clean-up
 
-Remove records from doubtful sources. Sometimes the source iof the data is questionable and it's better to discard it straight form the beginning: from drawings, photographs or multimedia objects.
+Although systematic data cleaning is required, some apparent mistakes observed during the initial visualization of the data and metadata can be fixed straight away. It includes removing records from unlikely sources, removing unnecessary details for the study, and fixing minor coordinates errors, such as inverted coordinates. 
 
-## Rebuild missing data
+## Rebuild missing data??
 
-## ALA specific
+## Optional steps on data preparation
 
-Filter by basis of record. This can be useful when downloading data or after to make sure you are only trying to clean and deal with the type of records you want. It can ensure consistency when getting data frommultiple places. Examples of basis of record filters include: exlcuding citisen science data, only including herbarium data etc 
+When handling data from the ALA, some filters can help obtain only the type of records required for the study. Filter by "basis of record", for example, can ensure consistency when getting data from multiple places. For example, it is possible to exclude data originating from citizen science projects or only include data from herbariums and natural history museums. 
 
-## EXTRA: R packages that can help on data preparation?
+
+## EXTRA: R packages that can help with data preparation?

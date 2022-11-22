@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>ALA Data Cleaning - 2&nbsp; Step 1. Download and prepare your data</title>
+<title>ALA Data Cleaning - 2&nbsp; Step 1. Data download and preparation</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -70,7 +70,7 @@ ul.task-list li input[type="checkbox"] {
   <header id="quarto-header" class="headroom fixed-top">
   <nav class="quarto-secondary-nav" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
     <div class="container-fluid d-flex justify-content-between">
-      <h1 class="quarto-secondary-nav-title"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Step 1. Download and prepare your data</span></h1>
+      <h1 class="quarto-secondary-nav-title"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Step 1. Data download and preparation</span></h1>
       <button type="button" class="quarto-btn-toggle btn" aria-label="Show secondary navigation">
         <i class="bi bi-chevron-right"></i>
       </button>
@@ -112,22 +112,27 @@ ul.task-list li input[type="checkbox"] {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./preparation.html" class="sidebar-item-text sidebar-link active"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Step 1. Download and prepare your data</span></a>
+  <a href="./preparation.html" class="sidebar-item-text sidebar-link active"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Step 1. Data download and preparation</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./cleaning.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Step 2. Standarizing your data</span></a>
+  <a href="./cleaning.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Step 2. Data cleaning and standardization</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./improving.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Step 3. Improving your data</span></a>
+  <a href="./improving.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Step 3. Data Enrichment</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./summary.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Summary</span></a>
+  <a href="./example.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Work Example</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./summary.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Summary</span></a>
   </div>
 </li>
         <li class="sidebar-item">
@@ -146,16 +151,15 @@ ul.task-list li input[type="checkbox"] {
   <ul>
   <li><a href="#determine-a-naming-authority" id="toc-determine-a-naming-authority" class="nav-link active" data-scroll-target="#determine-a-naming-authority"><span class="toc-section-number">2.1</span>  Determine a naming authority</a>
   <ul class="collapse">
-  <li><a href="#extra-taxonomic-group-societies-links" id="toc-extra-taxonomic-group-societies-links" class="nav-link" data-scroll-target="#extra-taxonomic-group-societies-links"><span class="toc-section-number">2.1.1</span>  EXTRA: taxonomic group societies links</a></li>
+  <li><a href="#australian-taxonomic-group-societies" id="toc-australian-taxonomic-group-societies" class="nav-link" data-scroll-target="#australian-taxonomic-group-societies"><span class="toc-section-number">2.1.1</span>  Australian taxonomic group societies</a></li>
   </ul></li>
-  <li><a href="#download-occurence-data" id="toc-download-occurence-data" class="nav-link" data-scroll-target="#download-occurence-data"><span class="toc-section-number">2.2</span>  Download occurence data</a></li>
+  <li><a href="#download-occurrence-data" id="toc-download-occurrence-data" class="nav-link" data-scroll-target="#download-occurrence-data"><span class="toc-section-number">2.2</span>  Download occurrence data</a></li>
   <li><a href="#merge-datasets" id="toc-merge-datasets" class="nav-link" data-scroll-target="#merge-datasets"><span class="toc-section-number">2.3</span>  Merge datasets</a></li>
-  <li><a href="#familiarise-yourself-with-your-data" id="toc-familiarise-yourself-with-your-data" class="nav-link" data-scroll-target="#familiarise-yourself-with-your-data"><span class="toc-section-number">2.4</span>  Familiarise yourself with your data</a></li>
-  <li><a href="#check-your-metadata" id="toc-check-your-metadata" class="nav-link" data-scroll-target="#check-your-metadata"><span class="toc-section-number">2.5</span>  Check your metadata</a></li>
-  <li><a href="#initial-clean-up" id="toc-initial-clean-up" class="nav-link" data-scroll-target="#initial-clean-up"><span class="toc-section-number">2.6</span>  Initial clean-up</a></li>
-  <li><a href="#rebuild-missing-data" id="toc-rebuild-missing-data" class="nav-link" data-scroll-target="#rebuild-missing-data"><span class="toc-section-number">2.7</span>  Rebuild missing data</a></li>
-  <li><a href="#ala-specific" id="toc-ala-specific" class="nav-link" data-scroll-target="#ala-specific"><span class="toc-section-number">2.8</span>  ALA specific</a></li>
-  <li><a href="#extra-r-packages-that-can-help-on-data-preparation" id="toc-extra-r-packages-that-can-help-on-data-preparation" class="nav-link" data-scroll-target="#extra-r-packages-that-can-help-on-data-preparation"><span class="toc-section-number">2.9</span>  EXTRA: R packages that can help on data preparation?</a></li>
+  <li><a href="#familiarise-with-the-data-and-metadata" id="toc-familiarise-with-the-data-and-metadata" class="nav-link" data-scroll-target="#familiarise-with-the-data-and-metadata"><span class="toc-section-number">2.4</span>  Familiarise with the data and metadata</a></li>
+  <li><a href="#initial-clean-up" id="toc-initial-clean-up" class="nav-link" data-scroll-target="#initial-clean-up"><span class="toc-section-number">2.5</span>  Initial clean-up</a></li>
+  <li><a href="#rebuild-missing-data" id="toc-rebuild-missing-data" class="nav-link" data-scroll-target="#rebuild-missing-data"><span class="toc-section-number">2.6</span>  Rebuild missing data??</a></li>
+  <li><a href="#optional-steps-on-data-preparation" id="toc-optional-steps-on-data-preparation" class="nav-link" data-scroll-target="#optional-steps-on-data-preparation"><span class="toc-section-number">2.7</span>  Optional steps on data preparation</a></li>
+  <li><a href="#extra-r-packages-that-can-help-with-data-preparation" id="toc-extra-r-packages-that-can-help-with-data-preparation" class="nav-link" data-scroll-target="#extra-r-packages-that-can-help-with-data-preparation"><span class="toc-section-number">2.8</span>  EXTRA: R packages that can help with data preparation?</a></li>
   </ul>
 </nav>
     </div>
@@ -164,7 +168,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title d-none d-lg-block"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Step 1. Download and prepare your data</span></h1>
+<h1 class="title d-none d-lg-block"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Step 1. Data download and preparation</span></h1>
 </div>
 
 
@@ -179,45 +183,65 @@ ul.task-list li input[type="checkbox"] {
 
 </header>
 
+<p>This section describes the initial steps and some important points that should be considered when obtaining species distribution records. It is essential an understand and familiarization with the data prior to data cleaning.</p>
 <section id="determine-a-naming-authority" class="level2" data-number="2.1">
 <h2 data-number="2.1" class="anchored" data-anchor-id="determine-a-naming-authority"><span class="header-section-number">2.1</span> Determine a naming authority</h2>
-<p>Your study can focus on a species or community or maybe you are interested on all species that can occur within a region. Independent of it, a taxonomic name check is fundamental.</p>
-<p>In Australia for plants people use APC (with APNI) for animals AFD-this provides a list of accepted and authoritative name which can be used as a template.</p>
-<p>Book and papers can also be fundamental to understand taxonomic history. Remember that sometimes the names are just not up to date - it worth to check possible alternatives and double-check the original paper instead of just elimitate a data point. Also, taxonomic groups societies (e.g.&nbsp;ASH) can provide up-to-date lists.</p>
-<section id="extra-taxonomic-group-societies-links" class="level3" data-number="2.1.1">
-<h3 data-number="2.1.1" class="anchored" data-anchor-id="extra-taxonomic-group-societies-links"><span class="header-section-number">2.1.1</span> EXTRA: taxonomic group societies links</h3>
-<p>ASH - link</p>
+<p>Obtaining distribution data can be done in two ways. One is when the study is focused on a specific species or community. In this case, the search is performed using the scientific and common name of the species or group of species. Another is when there is interest in obtaining a list of all species present in a given location. In this case, the region name or area boundaries can be used to delimit the area of interest.</p>
+<p>Regardless of the study focus, a knowledge of taxonomy is essential to verify the data obtained. For this, different organizations provide updated lists of species or even details of history and taxonomic changes.</p>
+<p>In Australia, the <a href="https://www.anbg.gov.au/apni/">Australian Plant Name Index (APNI)</a> is the primary naming authority for plants. At the same time, the <a href="https://biodiversity.org.au/afd/home">Australian Faunal Directory (AFD)</a> is the main taxonomic catalog for animal species, providing a list of accepted and authoritative names as a template.</p>
+<p>Yet, it is fundamental to understand the taxonomic history of the interest species. Changes in taxonomy, such as species split, new higher level classification (as genera), or species descriptions, highlight the importance of keeping up-to-date with taxonomic literature. This can be achieved via specialized books and scientific papers. Most taxonomic group societies released annual updates on taxonomy. The <a href="www.ala.org.au">Atlas of Living Australia (ALA)</a> can also be used to investigate taxonomic changes.</p>
+<section id="australian-taxonomic-group-societies" class="level3" data-number="2.1.1">
+<h3 data-number="2.1.1" class="anchored" data-anchor-id="australian-taxonomic-group-societies"><span class="header-section-number">2.1.1</span> Australian taxonomic group societies</h3>
+<p><strong>VERTEBRATES</strong></p>
+<ul>
+<li>Amphibians and reptiles - <a href="https://ahs.org.au/">Australian Herpetological Society</a><br>
+</li>
+<li>Birds - <a href="https://www.birdlife.org.au/">Birdlife Australia</a><br>
+</li>
+<li>Fish - <a href="https://www.asfb.org.au/">Australian Society for Fish Biology</a><br>
+</li>
+<li>Mammals - <a href="https://australianmammals.org.au/">The Australian Mammal Society</a></li>
+</ul>
+<p><strong>INVERTEBRATES</strong></p>
+<ul>
+<li>Arachnology - <a href="www.australasianarachnologicalsociety.org">Australasian Arachnological Society</a><br>
+</li>
+<li>Entomology - <a href="https://www.austentsoc.org.au/">Australian Entomological Society</a><br>
+</li>
+<li>Malacology - <a href="https://www.malsocaus.org/">The Malacological Society of Australasia</a><br>
+</li>
+<li>Nematology - <a href="https://www.nematologists.org.au/">Australasian Association of Nematologists</a></li>
+</ul>
 </section>
 </section>
-<section id="download-occurence-data" class="level2" data-number="2.2">
-<h2 data-number="2.2" class="anchored" data-anchor-id="download-occurence-data"><span class="header-section-number">2.2</span> Download occurence data</h2>
-<p>be careful here with possible taxonomic limitations - know your data</p>
+<section id="download-occurrence-data" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="download-occurrence-data"><span class="header-section-number">2.2</span> Download occurrence data</h2>
+<p>There are many ways to obtain species or region of interest occurrence data. A literature search using web search engineers such as Google Scholar. Data can also be obtained directly from data infrastructure websites such as the <a href="https://www.gbif.org/">Global Biodiversity Information Facility (GBIF)</a> or citizen science initiatives, such as <a href="https://www.inaturalist.org/">iNaturalist</a>. Australia counts on <a href="www.ala.org.au">ALA</a>, an open-access Australia’s biodiversity database that aggregates data from a broad range of projects and initiatives, museums and universities, and data uploaded directly into the platform.</p>
+<p>An alternative to downloading data directly from project websites is to use R packages explicitly created for data occurrence download (see a list in chapter xx or below). The ALA has developed an R package exclusively to obtain data from ALA. <a href="https://galah.ala.org.au/">Galah</a> enables users to locate and download species occurrence records (observations, specimens, eDNA records, etc.), taxonomic information, or associated media such as images or sounds, and to restrict their queries to particular taxa or locations.</p>
 </section>
 <section id="merge-datasets" class="level2" data-number="2.3">
 <h2 data-number="2.3" class="anchored" data-anchor-id="merge-datasets"><span class="header-section-number">2.3</span> Merge datasets</h2>
-<p>If you’ve collected data from multiple places, It’s important to standardise and collate it</p>
+<p>If the data was obtained from multiple places, it is important to standardize the data fields and merge the data carefully.</p>
 </section>
-<section id="familiarise-yourself-with-your-data" class="level2" data-number="2.4">
-<h2 data-number="2.4" class="anchored" data-anchor-id="familiarise-yourself-with-your-data"><span class="header-section-number">2.4</span> Familiarise yourself with your data</h2>
-<p>Familiarise yourself with the distribution of your data. Before you get started on any data cleaning it can help to use exploraoty visuals (like plotting the data on a map) to see what it looks like. Other tools can also help for example if you’re know your dat set should only have positive values. would add an “extra step” here to fix obvious coordinate errors (sometimes the corrdinateds are just inverted).</p>
+<section id="familiarise-with-the-data-and-metadata" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="familiarise-with-the-data-and-metadata"><span class="header-section-number">2.4</span> Familiarise with the data and metadata</h2>
+<p>Before getting started with data cleaning, a visual inspection of the entire dataset can save time and solve easy-to-spot errors. It can improve the knowledge of the available data and can be done with it. Understanding the metadata provides context to the structure of the data and information on how the data was collected.</p>
+<p>A plot of the occurrence data on a map can follow it. This simple step can highlight coordinates with missing data or even inverted or erroneous coordinates (as points floating in the ocean while focusing on terrestrial species and vice versa).</p>
+<p>Other tools, such as looking for only positive values if that is what is expected, can also be used in this initial data familiarization step.</p>
 </section>
-<section id="check-your-metadata" class="level2" data-number="2.5">
-<h2 data-number="2.5" class="anchored" data-anchor-id="check-your-metadata"><span class="header-section-number">2.5</span> Check your metadata</h2>
-<p>Understanding your metadata provides context to the structure of the data, and how the data was collected etc. this includes check coordinate errors as missing a negative</p>
+<section id="initial-clean-up" class="level2" data-number="2.5">
+<h2 data-number="2.5" class="anchored" data-anchor-id="initial-clean-up"><span class="header-section-number">2.5</span> Initial clean-up</h2>
+<p>Although systematic data cleaning is required, some apparent mistakes observed during the initial visualization of the data and metadata can be fixed straight away. It includes removing records from unlikely sources, removing unnecessary details for the study, and fixing minor coordinates errors, such as inverted coordinates.</p>
 </section>
-<section id="initial-clean-up" class="level2" data-number="2.6">
-<h2 data-number="2.6" class="anchored" data-anchor-id="initial-clean-up"><span class="header-section-number">2.6</span> Initial clean-up</h2>
-<p>Remove records from doubtful sources. Sometimes the source iof the data is questionable and it’s better to discard it straight form the beginning: from drawings, photographs or multimedia objects.</p>
+<section id="rebuild-missing-data" class="level2" data-number="2.6">
+<h2 data-number="2.6" class="anchored" data-anchor-id="rebuild-missing-data"><span class="header-section-number">2.6</span> Rebuild missing data??</h2>
 </section>
-<section id="rebuild-missing-data" class="level2" data-number="2.7">
-<h2 data-number="2.7" class="anchored" data-anchor-id="rebuild-missing-data"><span class="header-section-number">2.7</span> Rebuild missing data</h2>
+<section id="optional-steps-on-data-preparation" class="level2" data-number="2.7">
+<h2 data-number="2.7" class="anchored" data-anchor-id="optional-steps-on-data-preparation"><span class="header-section-number">2.7</span> Optional steps on data preparation</h2>
+<p>When handling data from the ALA, some filters can help obtain only the type of records required for the study. Filter by “basis of record”, for example, can ensure consistency when getting data from multiple places. For example, it is possible to exclude data originating from citizen science projects or only include data from herbariums and natural history museums.</p>
 </section>
-<section id="ala-specific" class="level2" data-number="2.8">
-<h2 data-number="2.8" class="anchored" data-anchor-id="ala-specific"><span class="header-section-number">2.8</span> ALA specific</h2>
-<p>Filter by basis of record. This can be useful when downloading data or after to make sure you are only trying to clean and deal with the type of records you want. It can ensure consistency when getting data frommultiple places. Examples of basis of record filters include: exlcuding citisen science data, only including herbarium data etc</p>
-</section>
-<section id="extra-r-packages-that-can-help-on-data-preparation" class="level2" data-number="2.9">
-<h2 data-number="2.9" class="anchored" data-anchor-id="extra-r-packages-that-can-help-on-data-preparation"><span class="header-section-number">2.9</span> EXTRA: R packages that can help on data preparation?</h2>
+<section id="extra-r-packages-that-can-help-with-data-preparation" class="level2" data-number="2.8">
+<h2 data-number="2.8" class="anchored" data-anchor-id="extra-r-packages-that-can-help-with-data-preparation"><span class="header-section-number">2.8</span> EXTRA: R packages that can help with data preparation?</h2>
 
 
 </section>
@@ -364,7 +388,7 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
   </div>
   <div class="nav-page nav-page-next">
       <a href="./cleaning.html" class="pagination-link">
-        <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Step 2. Standarizing your data</span></span> <i class="bi bi-arrow-right-short"></i>
+        <span class="nav-page-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Step 2. Data cleaning and standardization</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
