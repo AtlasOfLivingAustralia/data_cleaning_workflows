@@ -12,13 +12,25 @@ book:
     right: |
       This book was built with <a href="https://quarto.org/">Quarto</a>.
 
-  cover-image: images/logo.jpg
+  cover-image: images/book_cover2.jpg 
   chapters:
     - index.qmd
     - intro.qmd
-    - preparation.qmd
-    - cleaning.qmd
-    - improving.qmd
+    
+    - part: preparation.qmd 
+      chapters:
+        - naming-authority.qmd
+        - download-data.qmd
+        - merge-data.qmd
+        - familiarise-data.qmd
+        
+    - part: cleaning.qmd
+      chapters:
+        - taxonomic.qmd
+        - spatial.qmd
+        - ecological.qmd
+    
+    - part: improving.qmd
     - example.qmd
     - summary.qmd
     - references.qmd

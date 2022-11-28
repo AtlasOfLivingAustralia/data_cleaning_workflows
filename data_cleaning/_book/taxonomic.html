@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>ALA Data Cleaning - 1&nbsp; Introduction</title>
+<title>ALA Data Cleaning - 6&nbsp; Taxonomy</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,25 +20,6 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1.6em;
   vertical-align: middle;
 }
-div.csl-bib-body { }
-div.csl-entry {
-  clear: both;
-}
-.hanging div.csl-entry {
-  margin-left:2em;
-  text-indent:-2em;
-}
-div.csl-left-margin {
-  min-width:2em;
-  float:left;
-}
-div.csl-right-inline {
-  margin-left:2em;
-  padding-left:1em;
-}
-div.csl-indent {
-  margin-left: 2em;
-}
 </style>
 
 
@@ -49,8 +30,8 @@ div.csl-indent {
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./preparation.html" rel="next">
-<link href="./index.html" rel="prev">
+<link href="./spatial.html" rel="next">
+<link href="./cleaning.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -89,7 +70,7 @@ div.csl-indent {
   <header id="quarto-header" class="headroom fixed-top">
   <nav class="quarto-secondary-nav" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
     <div class="container-fluid d-flex justify-content-between">
-      <h1 class="quarto-secondary-nav-title"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Introduction</span></h1>
+      <h1 class="quarto-secondary-nav-title"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Taxonomy</span></h1>
       <button type="button" class="quarto-btn-toggle btn" aria-label="Show secondary navigation">
         <i class="bi bi-chevron-right"></i>
       </button>
@@ -126,7 +107,7 @@ div.csl-indent {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./intro.html" class="sidebar-item-text sidebar-link active"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Introduction</span></a>
+  <a href="./intro.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Introduction</span></a>
   </div>
 </li>
         <li class="sidebar-item sidebar-item-section">
@@ -169,7 +150,7 @@ div.csl-indent {
       <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./taxonomic.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Taxonomy</span></a>
+  <a href="./taxonomic.html" class="sidebar-item-text sidebar-link active"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Taxonomy</span></a>
   </div>
 </li>
           <li class="sidebar-item">
@@ -205,11 +186,16 @@ div.csl-indent {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#importance-of-data-cleaning" id="toc-importance-of-data-cleaning" class="nav-link active" data-scroll-target="#importance-of-data-cleaning"><span class="toc-section-number">1.1</span>  Importance of data cleaning</a></li>
-  <li><a href="#characteristics-of-a-quality-data" id="toc-characteristics-of-a-quality-data" class="nav-link" data-scroll-target="#characteristics-of-a-quality-data"><span class="toc-section-number">1.2</span>  Characteristics of a quality data</a></li>
-  <li><a href="#data-cleaning-process" id="toc-data-cleaning-process" class="nav-link" data-scroll-target="#data-cleaning-process"><span class="toc-section-number">1.3</span>  Data cleaning process</a></li>
-  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations"><span class="toc-section-number">1.4</span>  Limitations</a></li>
-  <li><a href="#how-to-use-this-book" id="toc-how-to-use-this-book" class="nav-link" data-scroll-target="#how-to-use-this-book"><span class="toc-section-number">1.5</span>  How to use this book</a></li>
+  <li><a href="#standarize-scientific-names" id="toc-standarize-scientific-names" class="nav-link active" data-scroll-target="#standarize-scientific-names"><span class="toc-section-number">6.0.1</span>  Standarize scientific names</a></li>
+  <li><a href="#taxonomic-cleaning" id="toc-taxonomic-cleaning" class="nav-link" data-scroll-target="#taxonomic-cleaning"><span class="toc-section-number">6.0.2</span>  Taxonomic cleaning</a></li>
+  <li><a href="#optional-taxonomic-cleaning" id="toc-optional-taxonomic-cleaning" class="nav-link" data-scroll-target="#optional-taxonomic-cleaning"><span class="toc-section-number">6.0.3</span>  Optional taxonomic cleaning</a></li>
+  <li><a href="#spatial-data" id="toc-spatial-data" class="nav-link" data-scroll-target="#spatial-data"><span class="toc-section-number">6.1</span>  Spatial data</a>
+  <ul class="collapse">
+  <li><a href="#coordinates-correction-or-wrangling" id="toc-coordinates-correction-or-wrangling" class="nav-link" data-scroll-target="#coordinates-correction-or-wrangling"><span class="toc-section-number">6.1.1</span>  Coordinates correction (or wrangling?)</a></li>
+  <li><a href="#coordinates-cleaning" id="toc-coordinates-cleaning" class="nav-link" data-scroll-target="#coordinates-cleaning"><span class="toc-section-number">6.1.2</span>  Coordinates cleaning</a></li>
+  </ul></li>
+  <li><a href="#ecology" id="toc-ecology" class="nav-link" data-scroll-target="#ecology"><span class="toc-section-number">6.2</span>  Ecology</a></li>
+  <li><a href="#checklist-of-data-standardization" id="toc-checklist-of-data-standardization" class="nav-link" data-scroll-target="#checklist-of-data-standardization"><span class="toc-section-number">6.3</span>  Checklist of data standardization</a></li>
   </ul>
 </nav>
     </div>
@@ -218,7 +204,7 @@ div.csl-indent {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title d-none d-lg-block"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Introduction</span></h1>
+<h1 class="title"><span id="sec-taxonomy" class="quarto-section-identifier d-none d-lg-block"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Taxonomy</span></span></h1>
 </div>
 
 
@@ -233,56 +219,66 @@ div.csl-indent {
 
 </header>
 
-<section id="importance-of-data-cleaning" class="level2" data-number="1.1">
-<h2 data-number="1.1" class="anchored" data-anchor-id="importance-of-data-cleaning"><span class="header-section-number">1.1</span> Importance of data cleaning</h2>
-<p>Data cleaning is a process of identifying, fixing or/and removing incorrect, doubtful, mislabeled, or incomplete data within a dataset. It is a critical step in any research on biodiversity, as it guarantees the most trustful data to perform analyses for research. The anecdote “garbage in, garbage out” reflects this idea - a study analysis is as good as the data used.</p>
-<p>Data problems can come from many sources, from the precision of the coordinate points during collection in the field to the combination of multiple data sources, where mismatches can happen. For this reason, the data cleaning process will vary from different datasets, making it hard to point out a “work for all” solution.</p>
-<p>Although data cleaning can be time-consuming, an established and consistent process will result in quality data to be used in future analyses.</p>
+<p>The following steps assume that the taxonomic history of the included species is known and correct and out-of-date names and synonymy have been fixed during the data preparation.</p>
+<section id="standarize-scientific-names" class="level3" data-number="6.0.1">
+<h3 data-number="6.0.1" class="anchored" data-anchor-id="standarize-scientific-names"><span class="header-section-number">6.0.1</span> Standarize scientific names</h3>
+<p>Ensure that the spelling is correct and fix errors as they appear. It is essential to decide on a standard way to record the scientific names and be consistent. For example, it can always start with upper case and separate the names with an underline, as in “Moloch_horridus”. It is also important to check if high hierarchy taxonomic classification is correct and not missed, as family and order.</p>
 </section>
-<section id="characteristics-of-a-quality-data" class="level2" data-number="1.2">
-<h2 data-number="1.2" class="anchored" data-anchor-id="characteristics-of-a-quality-data"><span class="header-section-number">1.2</span> Characteristics of a quality data</h2>
+<section id="taxonomic-cleaning" class="level3" data-number="6.0.2">
+<h3 data-number="6.0.2" class="anchored" data-anchor-id="taxonomic-cleaning"><span class="header-section-number">6.0.2</span> Taxonomic cleaning</h3>
 <ul>
-<li><strong>Accurate.</strong> describe here</li>
-<li><strong>Comprehensive.</strong> describe here</li>
-<li><strong>Consistent.</strong> describe here</li>
-<li><strong>Relevant.</strong> describe here</li>
-<li><strong>Uniform.</strong> describe here</li>
-</ul>
-<p>from (https://www.iteratorshq.com/blog/data-cleaning-in-5-easy-steps/)</p>
-</section>
-<section id="data-cleaning-process" class="level2" data-number="1.3">
-<h2 data-number="1.3" class="anchored" data-anchor-id="data-cleaning-process"><span class="header-section-number">1.3</span> Data cleaning process</h2>
-<p>In the following chapters, we will dive deep into the different steps of the data-cleaning process. It can be separated into three main steps: Data preparation, standardization, and enrichment (Figure 1).</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="images/diagram_1.png" class="img-fluid figure-img"></p>
-<p></p><figcaption class="figure-caption">Figure 1. Data cleaning process</figcaption><p></p>
-</figure>
-</div>
-</section>
-<section id="limitations" class="level2" data-number="1.4">
-<h2 data-number="1.4" class="anchored" data-anchor-id="limitations"><span class="header-section-number">1.4</span> Limitations</h2>
-<ul>
-<li>Type and quality of the information available</li>
-<li>Different types of research require different data cleaning steps</li>
-<li>etc etc</li>
+<li><p>Remove non-identifiable specimens: If a species is not discernible with checks of spelling and taxonomy, then it should be removed.</p></li>
+<li><p>Remove records with insufficient taxon identification: If a record is not identified down to the species level and this level of detail is needed for the study, then the record should be removed.</p></li>
+<li><p>Remove records with miss-identified taxonomy: Incorrectly identified species, or unrecognized species names compared to a naming authority, should be removed.</p></li>
 </ul>
 </section>
-<section id="how-to-use-this-book" class="level2" data-number="1.5">
-<h2 data-number="1.5" class="anchored" data-anchor-id="how-to-use-this-book"><span class="header-section-number">1.5</span> How to use this book</h2>
-<p>List here</p>
-<p>See <span class="citation" data-cites="knuth84">Knuth (<a href="references.html#ref-knuth84" role="doc-biblioref">1984</a>)</span> for additional discussion of literate programming.<br>
-See <span class="citation" data-cites="boyle22">Boyle (<a href="references.html#ref-boyle22" role="doc-biblioref">2022</a>)</span> for additional info</p>
+<section id="optional-taxonomic-cleaning" class="level3" data-number="6.0.3">
+<h3 data-number="6.0.3" class="anchored" data-anchor-id="optional-taxonomic-cleaning"><span class="header-section-number">6.0.3</span> Optional taxonomic cleaning</h3>
+<p>These steps can be applicable depending on the research aim.</p>
+<ul>
+<li><p>Remove non-native species: This step is a common requirement. A list can be obtained from the <a href="https://griis.org/">Global Register of Introduced and Invasive Species (GRIIS)</a></p></li>
+<li><p>Remove domesticated specimens.</p></li>
+<li><p>Remove extinct species.</p></li>
+<li><p>Remove specific taxa/life stages depending on the study: For example, if working with terrestrial data, it is necessary to remove marine taxa.</p></li>
+</ul>
+</section>
+<section id="spatial-data" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="spatial-data"><span class="header-section-number">6.1</span> Spatial data</h2>
+<p>Now that the taxonomic data is cleaned, it is important to plot your data on a map again and clean up the distribution data.</p>
+<section id="coordinates-correction-or-wrangling" class="level3" data-number="6.1.1">
+<h3 data-number="6.1.1" class="anchored" data-anchor-id="coordinates-correction-or-wrangling"><span class="header-section-number">6.1.1</span> Coordinates correction (or wrangling?)</h3>
+<p>Many coordinates issues can be solved with data manipulation instead of discarding the data immediately, as they are often data entry errors. Here are some examples:</p>
+<ul>
+<li><p>Correct flipped coordinates: Data visualizations can help to detect flipped coordinates. Flipped coordinates typically appear as a clustering of points, whereby swapping the latitude and longitude will place the coordinates where they are expected.</p></li>
+<li><p>Correct poorly formatted coordinates: Different datasets can provide coordinates in different formats, so it is crucial to correct the format of the coordinates before discarding any points.</p></li>
+<li><p>Correct numerical sign confusion: As with flipped coordinates, if there is a clustering of points mirrored to another hemisphere, consider swapping the sign and correct rather than discard the points.</p></li>
+<li><p>Correct/check for records with coordinates in a different country than is listed in the country field: The coordinates could be wrong or just the country listed. Note that the country should only be changed to match the coordinates if the data is trustworthy.</p></li>
+<li><p>Correct/check for records with locality but no occurrence/georeference (if possible): If you have a good locality, consider georeferencing for coordinates rather than discarding the missing data entry. If the locality is not precise, this will likely yield lower-quality data points.</p></li>
+</ul>
+</section>
+<section id="coordinates-cleaning" class="level3" data-number="6.1.2">
+<h3 data-number="6.1.2" class="anchored" data-anchor-id="coordinates-cleaning"><span class="header-section-number">6.1.2</span> Coordinates cleaning</h3>
+<p>After completing the manipulation of the coordinates, if there are still errors, consider removing the data entry:</p>
+<ul>
+<li><p>Remove records with null or missing coordinates that could not be georeferenced: It can be records missing partial or complete information. Maintaining missing values can cause errors, as many analysis do not accept missing values. If the information is not available elsewhere or an alteration of the data would deprove the entry value, consider remove it.</p></li>
+<li><p>Remove records with zero coordinates that could not be georeferenced: When plotting it on a map, zero coordinates will be found around the point at zero latitudes and longitudes. These records will not accurately represent their valid location and must be removed.</p></li>
+<li><p>Remove records plotted away from the known species distribution area: They are easily identifiable as outliers. It is essential to check the metadata to ensure that it is a data entry error and not a real outlier. In some cases, it worth to go back and check the literature before discard the entry. There are several ways of dealing with this issue, but one option can be to mask data to remove points from falling off a determined area.</p></li>
+<li><p>Remove records with low coordinate precision: Coordinate precision is vital for the accuracy of models. However, different studies may have different precision cut-offs. For example, coordinate precision below 100km represents the grain size of many macroecological analyses. Some studies have used a cut-off of spatial resolution &gt;25,000m or precision with less than three decimal places (add a reference here). It is important to note that rasterized collections often have a significant proportion of records that might have low coordinate precision.</p></li>
+<li><p>Remove records with coordinates assigned to country and province centroids: There are many fonts that deal with centroid data, such as Centre of Country, botanic gardens, zoos, country capitals, biodiversity institutions, urban areas, and gbif headquarters. This issue can happen for several reasons and sometimes can be tricky to spot. Exploratory visuals can help support findings, making it easier to spot clusterings of points. Centroids are common when records are being assigned from georeferencing based on vague locality descriptions or from incorrect georeferencing. Sometimes, records are erroneously entered with the physical location of the specimen or because they represent individuals from captivity or horticulture, which were not clearly labeled as such. In a few cases, zoos and botanic gardens might be where the record was sighted. However, in this case, it is not naturally occurring and should be removed. Records in urban areas may not want to be removed by everyone, but it is essential to note that it could be old data or have vague locality descriptions.</p></li>
+<li><p>Remove records outside of the country of interest: In some cases, records outside the country of origin may be outliers. In other cases, they may be perfectly valid. It is important to analyze case-by-case and remove the record if necessary.</p></li>
+<li><p>Remove records where longitude and latitude are equal: High likelihood that this is not where the record was recorded and, therefore, should be checked and (possibly) removed.</p></li>
+</ul>
+</section>
+</section>
+<section id="ecology" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="ecology"><span class="header-section-number">6.2</span> Ecology</h2>
+<p>When the information on the ecological requirements of the species is available and important for the study, ecological data checking, cleaning and standardization is necessary. Examples include morphological measurements that should be in the same metric, information regarding life stages, and habitat preference.</p>
+</section>
+<section id="checklist-of-data-standardization" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="checklist-of-data-standardization"><span class="header-section-number">6.3</span> Checklist of data standardization</h2>
+<p>Add here a downloadable checklist of issues to be checked.</p>
 
 
-<div id="refs" class="references csl-bib-body hanging-indent" role="doc-bibliography" style="display: none">
-<div id="ref-boyle22" class="csl-entry" role="doc-biblioentry">
-Boyle, B. L. 2022. <span>“Geographic Name Resolution Service: A Tool for the Standardization and Indexing of World Political Division Names, with Applications to Species Distribution Modeling.”</span> <em>bioRxiv</em> 27 (2): 97–111. <a href="https://doi.org/10.1101/2022.04.25.489424">https://doi.org/10.1101/2022.04.25.489424</a>.
-</div>
-<div id="ref-knuth84" class="csl-entry" role="doc-biblioentry">
-Knuth, Donald E. 1984. <span>“Literate Programming.”</span> <em>Comput. J.</em> 27 (2): 97–111. <a href="https://doi.org/10.1093/comjnl/27.2.97">https://doi.org/10.1093/comjnl/27.2.97</a>.
-</div>
-</div>
 </section>
 
 </main> <!-- /main -->
@@ -421,13 +417,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./index.html" class="pagination-link">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Welcome</span>
+      <a href="./cleaning.html" class="pagination-link">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Data cleaning and standardization</span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./preparation.html" class="pagination-link">
-        <span class="nav-page-text">Data download and preparation</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./spatial.html" class="pagination-link">
+        <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Spatial data</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>

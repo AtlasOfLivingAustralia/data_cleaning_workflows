@@ -36,4 +36,5 @@ In the following chapters, we will dive deep into the different steps of the dat
 
 List here
 
-See @knuth84 for additional discussion of literate programming.
+See @knuth84 for additional discussion of literate programming.  
+See @boyle22 for additional info

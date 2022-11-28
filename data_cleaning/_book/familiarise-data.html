@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>ALA Data Cleaning - 1&nbsp; Introduction</title>
+<title>ALA Data Cleaning - 5&nbsp; Familiarise with the data and metadata and initial clean-up</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -20,25 +20,6 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1.6em;
   vertical-align: middle;
 }
-div.csl-bib-body { }
-div.csl-entry {
-  clear: both;
-}
-.hanging div.csl-entry {
-  margin-left:2em;
-  text-indent:-2em;
-}
-div.csl-left-margin {
-  min-width:2em;
-  float:left;
-}
-div.csl-right-inline {
-  margin-left:2em;
-  padding-left:1em;
-}
-div.csl-indent {
-  margin-left: 2em;
-}
 </style>
 
 
@@ -49,8 +30,8 @@ div.csl-indent {
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./preparation.html" rel="next">
-<link href="./index.html" rel="prev">
+<link href="./cleaning.html" rel="next">
+<link href="./merge-data.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
@@ -89,7 +70,7 @@ div.csl-indent {
   <header id="quarto-header" class="headroom fixed-top">
   <nav class="quarto-secondary-nav" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
     <div class="container-fluid d-flex justify-content-between">
-      <h1 class="quarto-secondary-nav-title"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Introduction</span></h1>
+      <h1 class="quarto-secondary-nav-title"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Familiarise with the data and metadata and initial clean-up</span></h1>
       <button type="button" class="quarto-btn-toggle btn" aria-label="Show secondary navigation">
         <i class="bi bi-chevron-right"></i>
       </button>
@@ -126,7 +107,7 @@ div.csl-indent {
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./intro.html" class="sidebar-item-text sidebar-link active"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Introduction</span></a>
+  <a href="./intro.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Introduction</span></a>
   </div>
 </li>
         <li class="sidebar-item sidebar-item-section">
@@ -154,14 +135,14 @@ div.csl-indent {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./familiarise-data.html" class="sidebar-item-text sidebar-link"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Familiarise with the data and metadata and initial clean-up</span></a>
+  <a href="./familiarise-data.html" class="sidebar-item-text sidebar-link active"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Familiarise with the data and metadata and initial clean-up</span></a>
   </div>
 </li>
       </ul>
   </li>
         <li class="sidebar-item sidebar-item-section">
       <div class="sidebar-item-container"> 
-            <a href="./cleaning.html" class="sidebar-item-text sidebar-link">Data cleaning and standardization</a>
+            <a href="./cleaning.html" class="sidebar-item-text sidebar-link">Step 2. Data cleaning and standardization</a>
           <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">
             <i class="bi bi-chevron-right ms-2"></i>
           </a> 
@@ -205,11 +186,10 @@ div.csl-indent {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#importance-of-data-cleaning" id="toc-importance-of-data-cleaning" class="nav-link active" data-scroll-target="#importance-of-data-cleaning"><span class="toc-section-number">1.1</span>  Importance of data cleaning</a></li>
-  <li><a href="#characteristics-of-a-quality-data" id="toc-characteristics-of-a-quality-data" class="nav-link" data-scroll-target="#characteristics-of-a-quality-data"><span class="toc-section-number">1.2</span>  Characteristics of a quality data</a></li>
-  <li><a href="#data-cleaning-process" id="toc-data-cleaning-process" class="nav-link" data-scroll-target="#data-cleaning-process"><span class="toc-section-number">1.3</span>  Data cleaning process</a></li>
-  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations"><span class="toc-section-number">1.4</span>  Limitations</a></li>
-  <li><a href="#how-to-use-this-book" id="toc-how-to-use-this-book" class="nav-link" data-scroll-target="#how-to-use-this-book"><span class="toc-section-number">1.5</span>  How to use this book</a></li>
+  <li><a href="#initial-clean-up" id="toc-initial-clean-up" class="nav-link active" data-scroll-target="#initial-clean-up"><span class="toc-section-number">5.1</span>  Initial clean-up</a></li>
+  <li><a href="#rebuild-missing-data" id="toc-rebuild-missing-data" class="nav-link" data-scroll-target="#rebuild-missing-data"><span class="toc-section-number">5.2</span>  Rebuild missing data??</a></li>
+  <li><a href="#optional-steps-on-data-preparation" id="toc-optional-steps-on-data-preparation" class="nav-link" data-scroll-target="#optional-steps-on-data-preparation"><span class="toc-section-number">5.3</span>  Optional steps on data preparation</a></li>
+  <li><a href="#extra-r-packages-that-can-help-with-data-preparation" id="toc-extra-r-packages-that-can-help-with-data-preparation" class="nav-link" data-scroll-target="#extra-r-packages-that-can-help-with-data-preparation"><span class="toc-section-number">5.4</span>  EXTRA: R packages that can help with data preparation?</a></li>
   </ul>
 </nav>
     </div>
@@ -218,7 +198,7 @@ div.csl-indent {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title d-none d-lg-block"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Introduction</span></h1>
+<h1 class="title"><span id="sec-familiarise-data" class="quarto-section-identifier d-none d-lg-block"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Familiarise with the data and metadata and initial clean-up</span></span></h1>
 </div>
 
 
@@ -233,56 +213,24 @@ div.csl-indent {
 
 </header>
 
-<section id="importance-of-data-cleaning" class="level2" data-number="1.1">
-<h2 data-number="1.1" class="anchored" data-anchor-id="importance-of-data-cleaning"><span class="header-section-number">1.1</span> Importance of data cleaning</h2>
-<p>Data cleaning is a process of identifying, fixing or/and removing incorrect, doubtful, mislabeled, or incomplete data within a dataset. It is a critical step in any research on biodiversity, as it guarantees the most trustful data to perform analyses for research. The anecdote “garbage in, garbage out” reflects this idea - a study analysis is as good as the data used.</p>
-<p>Data problems can come from many sources, from the precision of the coordinate points during collection in the field to the combination of multiple data sources, where mismatches can happen. For this reason, the data cleaning process will vary from different datasets, making it hard to point out a “work for all” solution.</p>
-<p>Although data cleaning can be time-consuming, an established and consistent process will result in quality data to be used in future analyses.</p>
+<p>Before getting started with data cleaning, a visual inspection of the entire dataset can save time and solve easy-to-spot errors. It can improve the knowledge of the available data and can be done with it. Understanding the metadata provides context to the structure of the data and information on how the data was collected.</p>
+<p>A plot of the occurrence data on a map can follow it. This simple step can highlight coordinates with missing data or even inverted or erroneous coordinates (as points floating in the ocean while focusing on terrestrial species and vice versa).</p>
+<p>Other tools, such as looking for only positive values if that is what is expected, can also be used in this initial data familiarization step.</p>
+<section id="initial-clean-up" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="initial-clean-up"><span class="header-section-number">5.1</span> Initial clean-up</h2>
+<p>Although systematic data cleaning is required, some apparent mistakes observed during the initial visualization of the data and metadata can be fixed straight away. It includes removing records from unlikely sources, removing unnecessary details for the study, and fixing typos, incorrect capitalization and minor coordinates errors, such as inverted coordinates.</p>
 </section>
-<section id="characteristics-of-a-quality-data" class="level2" data-number="1.2">
-<h2 data-number="1.2" class="anchored" data-anchor-id="characteristics-of-a-quality-data"><span class="header-section-number">1.2</span> Characteristics of a quality data</h2>
-<ul>
-<li><strong>Accurate.</strong> describe here</li>
-<li><strong>Comprehensive.</strong> describe here</li>
-<li><strong>Consistent.</strong> describe here</li>
-<li><strong>Relevant.</strong> describe here</li>
-<li><strong>Uniform.</strong> describe here</li>
-</ul>
-<p>from (https://www.iteratorshq.com/blog/data-cleaning-in-5-easy-steps/)</p>
+<section id="rebuild-missing-data" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="rebuild-missing-data"><span class="header-section-number">5.2</span> Rebuild missing data??</h2>
 </section>
-<section id="data-cleaning-process" class="level2" data-number="1.3">
-<h2 data-number="1.3" class="anchored" data-anchor-id="data-cleaning-process"><span class="header-section-number">1.3</span> Data cleaning process</h2>
-<p>In the following chapters, we will dive deep into the different steps of the data-cleaning process. It can be separated into three main steps: Data preparation, standardization, and enrichment (Figure 1).</p>
-<div class="quarto-figure quarto-figure-center">
-<figure class="figure">
-<p><img src="images/diagram_1.png" class="img-fluid figure-img"></p>
-<p></p><figcaption class="figure-caption">Figure 1. Data cleaning process</figcaption><p></p>
-</figure>
-</div>
+<section id="optional-steps-on-data-preparation" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="optional-steps-on-data-preparation"><span class="header-section-number">5.3</span> Optional steps on data preparation</h2>
+<p>When handling data from the ALA, some filters can help obtain only the type of records required for the study. Filter by “basis of record”, for example, can ensure consistency when getting data from multiple places. For example, it is possible to exclude data originating from citizen science projects or only include data from herbariums and natural history museums.</p>
 </section>
-<section id="limitations" class="level2" data-number="1.4">
-<h2 data-number="1.4" class="anchored" data-anchor-id="limitations"><span class="header-section-number">1.4</span> Limitations</h2>
-<ul>
-<li>Type and quality of the information available</li>
-<li>Different types of research require different data cleaning steps</li>
-<li>etc etc</li>
-</ul>
-</section>
-<section id="how-to-use-this-book" class="level2" data-number="1.5">
-<h2 data-number="1.5" class="anchored" data-anchor-id="how-to-use-this-book"><span class="header-section-number">1.5</span> How to use this book</h2>
-<p>List here</p>
-<p>See <span class="citation" data-cites="knuth84">Knuth (<a href="references.html#ref-knuth84" role="doc-biblioref">1984</a>)</span> for additional discussion of literate programming.<br>
-See <span class="citation" data-cites="boyle22">Boyle (<a href="references.html#ref-boyle22" role="doc-biblioref">2022</a>)</span> for additional info</p>
+<section id="extra-r-packages-that-can-help-with-data-preparation" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="extra-r-packages-that-can-help-with-data-preparation"><span class="header-section-number">5.4</span> EXTRA: R packages that can help with data preparation?</h2>
 
 
-<div id="refs" class="references csl-bib-body hanging-indent" role="doc-bibliography" style="display: none">
-<div id="ref-boyle22" class="csl-entry" role="doc-biblioentry">
-Boyle, B. L. 2022. <span>“Geographic Name Resolution Service: A Tool for the Standardization and Indexing of World Political Division Names, with Applications to Species Distribution Modeling.”</span> <em>bioRxiv</em> 27 (2): 97–111. <a href="https://doi.org/10.1101/2022.04.25.489424">https://doi.org/10.1101/2022.04.25.489424</a>.
-</div>
-<div id="ref-knuth84" class="csl-entry" role="doc-biblioentry">
-Knuth, Donald E. 1984. <span>“Literate Programming.”</span> <em>Comput. J.</em> 27 (2): 97–111. <a href="https://doi.org/10.1093/comjnl/27.2.97">https://doi.org/10.1093/comjnl/27.2.97</a>.
-</div>
-</div>
 </section>
 
 </main> <!-- /main -->
@@ -421,13 +369,13 @@ window.document.addEventListener("DOMContentLoaded", function (event) {
 </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
-      <a href="./index.html" class="pagination-link">
-        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Welcome</span>
+      <a href="./merge-data.html" class="pagination-link">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Merge datasets</span></span>
       </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./preparation.html" class="pagination-link">
-        <span class="nav-page-text">Data download and preparation</span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./cleaning.html" class="pagination-link">
+        <span class="nav-page-text">Step 2. Data cleaning and standardization</span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
