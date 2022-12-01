@@ -4,7 +4,7 @@ This section describes the initial steps and some important points that should b
 
 There are essentially two scopes of study on getting distribution data:
 
--   **Taxonomic:** In this case, the main aim of the study is to gather data around a specific taxonomic unit. That can be a species or a community. The search is performed using the scientific and common name of the species or group of species.
+-   **Taxonomic:** That's when the main aim of the study is to gather data around a specific taxonomic unit. That can be a species or a community. The search is performed using the scientific and common name of the species or group of species.
 
 (include here a figure of a species map)
 

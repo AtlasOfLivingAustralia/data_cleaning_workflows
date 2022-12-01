@@ -4,19 +4,17 @@
 
 Data cleaning is a process of identifying, fixing or/and removing incorrect, doubtful, mislabeled, or incomplete data within a dataset. It is a critical step in any research on biodiversity, as it guarantees the most trustful data to perform analyses for research. The anecdote "garbage in, garbage out" reflects this idea - a study analysis is as good as the data used.
 
-
 Data problems can come from many sources, from the precision of the coordinate points during collection in the field to the combination of multiple data sources, where mismatches can happen. For this reason, the data cleaning process will vary from different datasets, making it hard to point out a "work for all" solution.
 
 Although data cleaning can be time-consuming, an established and consistent process will result in quality data to be used in future analyses.
 
-
 ## Characteristics of a quality data
 
-- **Accurate.** describe here
-- **Comprehensive.** describe here
-- **Consistent.** describe here
-- **Relevant.** describe here
-- **Uniform.** describe here
+-   **Accurate.** describe here
+-   **Comprehensive.** describe here
+-   **Consistent.** describe here
+-   **Relevant.** describe here
+-   **Uniform.** describe here
 
 from (https://www.iteratorshq.com/blog/data-cleaning-in-5-easy-steps/)
 
@@ -28,13 +26,13 @@ In the following chapters, we will dive deep into the different steps of the dat
 
 ## Limitations
 
-- Type and quality of the information available
-- Different types of research require different data cleaning steps
-- etc etc
+-   Type and quality of the information available
+-   Different types of research require different data cleaning steps
+-   Spatial grain (and where to stop)
 
 ## How to use this book
 
 List here
 
-See @knuth84 for additional discussion of literate programming.  
+See @knuth84 for additional discussion of literate programming.\
 See @boyle22 for additional info

@@ -23,6 +23,7 @@ book:
         - download-data.qmd
         - merge-data.qmd
         - familiarise-data.qmd
+        - optional-preparation.qmd
         
     - part: cleaning.qmd
       chapters:
