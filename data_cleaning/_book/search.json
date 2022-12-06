@@ -16,7 +16,7 @@
   {
     "objectID": "summary.html",
     "href": "summary.html",
-    "title": "6  Summary",
+    "title": "11  Summary",
     "section": "",
     "text": "nice diagram\ndecide where to refer to the R packages\nadd references"
   },
@@ -39,7 +39,7 @@
     "href": "intro.html#importance-of-data-cleaning",
     "title": "1  Introduction",
     "section": "1.1 Importance of data cleaning",
-    "text": "1.1 Importance of data cleaning\nData cleaning is a process of identifying, fixing or/and removing incorrect, doubtful, mislabeled, or incomplete data within a dataset. It is a critical step in any research on biodiversity, as it guarantees the most trustful data to perform analyses for research. The anecdote “garbage in, garbage out” reflects this idea - a study analysis is as good as the data used.\nData problems can come from many sources, from the precision of the coordinate points during collection in the field to the combination of multiple data sources, where mismatches can happen. For this reason, the data cleaning process will vary from different datasets, making it hard to point out a “work for all” solution.\nAlthough data cleaning can be time-consuming, an established and consistent process will result in quality data to be used in future analyses."
+    "text": "1.1 Importance of data cleaning\nData cleaning is a process of identifying, fixing and/or removing incorrect, doubtful, mislabeled, or incomplete data within a dataset. It is a critical step for biodiversity research, increasing the trust in data for analyses and research outputs. The anecdote “garbage in, garbage out” reflects this idea - your analysis and findings are only as good as the data you’ve used.\nIssues with data quality can arise in many different ways, from coordinate precision during collection in the field, to merging multiple data sources together, where mismatches can happen. For this reason, the data cleaning process is highly variable depending on the data set you’re working with, this makes it hard to provide a universal solution.\nAlthough data cleaning can be time-consuming it is essential to ensure high quality outputs, an established and consistent process will assist in high quality data for analysis moving forward."
   },
   {
     "objectID": "intro.html#components",
@@ -207,7 +207,7 @@
     "href": "intro.html#characteristics-of-a-quality-data",
     "title": "1  Introduction",
     "section": "1.2 Characteristics of a quality data",
-    "text": "1.2 Characteristics of a quality data\n\nAccurate. describe here\nComprehensive. describe here\nConsistent. describe here\nRelevant. describe here\nUniform. describe here\n\nfrom (https://www.iteratorshq.com/blog/data-cleaning-in-5-easy-steps/)"
+    "text": "1.2 Characteristics of a quality data\n\nAccurate: How closely does the data reflect what it is trying to represent, how close to the ‘true value’ is it.\nComprehensive: Are all relevant fields filled in, does the data detail everything you need without needing to infer fields or proceed with missing information.\nConsistent. describe here\nRelevant. describe here\nUniform. describe here\n\nfrom (https://www.iteratorshq.com/blog/data-cleaning-in-5-easy-steps/)"
   },
   {
     "objectID": "intro.html#data-cleaning-process",
