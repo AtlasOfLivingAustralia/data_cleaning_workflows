@@ -207,14 +207,14 @@
     "href": "intro.html#characteristics-of-a-quality-data",
     "title": "1  Introduction",
     "section": "1.2 Characteristics of a quality data",
-    "text": "1.2 Characteristics of a quality data\n\nAccurate: How closely does the data reflect what it is trying to represent, how close to the ‘true value’ is it.\nComprehensive: Are all relevant fields filled in, does the data detail everything you need without needing to infer fields or proceed with missing information.\nConsistent. describe here\nRelevant. describe here\nUniform. describe here\n\nfrom (https://www.iteratorshq.com/blog/data-cleaning-in-5-easy-steps/)"
+    "text": "1.2 Characteristics of a quality data\n\nAccurate: How closely does the data reflect what it is trying to represent, how close to the ‘true value’ is it.\nComprehensive: Are all relevant fields filled in, does the data detail everything you need without needing to infer fields or proceed with missing information.\nConsistent/uniform: Are all units the same, with the same level of precision. This information can vary greatly when working with open source data collected by multiple people across space and time.\nRelevant: Is the data you’re using useful for the question/s you’re trying to answer.\n\nfrom (https://www.iteratorshq.com/blog/data-cleaning-in-5-easy-steps/)"
   },
   {
     "objectID": "intro.html#data-cleaning-process",
     "href": "intro.html#data-cleaning-process",
     "title": "1  Introduction",
     "section": "1.3 Data cleaning process",
-    "text": "1.3 Data cleaning process\nIn the following chapters, we will dive deep into the different steps of the data-cleaning process. It can be separated into three main steps: Data preparation, standardization, and enrichment (Figure 1).\n\n\n\nFigure 1. Data cleaning process"
+    "text": "1.3 Data cleaning process\nIn the following chapters, we will take a deep dive into the different steps of the data-cleaning process.We’ll separate it into three main steps: Data preparation, standardization, and enrichment (Figure 1).\n\n\n\nFigure 1. Data cleaning process"
   },
   {
     "objectID": "intro.html#importance-of-data-cceaning",

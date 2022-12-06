@@ -1,18 +1,18 @@
 # Download occurrence data {#sec-download-data}
 
-There are many ways to obtain species or region of interest occurrence data. A literature search using web search engineers such as Google Scholar. Data can also be obtained directly from data infrastructure websites such as the [Global Biodiversity Information Facility (GBIF)](https://www.gbif.org/) or citizen science initiatives, such as [iNaturalist](https://www.inaturalist.org/). Australia counts on [ALA](www.ala.org.au), an open-access Australia's biodiversity database that aggregates data from a broad range of projects and initiatives, museums and universities, and data uploaded directly into the platform.
+There are many ways to obtain species or region of interest occurrence data. For example a literature based search using web search engines such as Google Scholar. Data can also be obtained directly from data infrastructure websites such as the [Global Biodiversity Information Facility (GBIF)](https://www.gbif.org/) or citizen science initiatives, such as [iNaturalist](https://www.inaturalist.org/). Australia counts on the [Atlas of Living Australia (ALA)](www.ala.org.au), an open-access biodiversity database that aggregates data from a broad range of projects and initiatives, museums and universities, where data is uploaded directly into the platform.
 
-An alternative to downloading data directly from project websites is to use R packages explicitly created for data occurrence download (see a list in chapter xx or below). The ALA has developed an R package exclusively to obtain data from ALA. [Galah](https://galah.ala.org.au/) enables users to locate and download species occurrence records (observations, specimens, eDNA records, etc.), taxonomic information, or associated media such as images or sounds, and to restrict their queries to particular taxa or locations.
+An alternative to downloading data directly from project websites is to use R packages explicitly created for data occurrence downloads (see a list in chapter xx or below). The ALA has developed an R package exclusively to obtain data from the ALA. [galah](https://galah.ala.org.au/) enables users to locate and download species occurrence records (observations, specimens, eDNA records, etc.), taxonomic information, or associated media such as images or sounds, and to restrict their queries to particular taxa or locations.
 
 ## Merge datasets
 
-When combining data from multiple places, it is important to standardize the data fields and merge the data carefully, as there is chance data will be incorectly formatted or mislabeled.
+When combining data from multiple places, it is important to standardize the data fields and merge the data carefully. There is a chance data will be incorrectly formatted and/or mislabeled.
 
 -   discuss here biosec issues, higher taxonomy is not always the same;
 
 ## Familiarise with the data and metadata
 
-Before getting started with data cleaning, a visual inspection of the entire dataset can save time and solve easy-to-spot errors. It can improve the knowledge of the available data and can be done with it. Understanding the metadata provides context to the structure of the data and information on how the data was collected.
+Before you get started with any data cleaning, a visual inspection of the entire dataset can save time and solve easy-to-spot errors. It can improve your knowledge of the data you're working with and what you might be able to do or what you might be limited by. Taking the time to understand the metadata will provide context to the structure of the data and information on how the data was collected. It may also outline or provide insights into the limitations of the data.
 
 A plot of the occurrence data on a map can follow it. This simple step can highlight coordinates with missing data or even inverted or erroneous coordinates (as points floating in the ocean while focusing on terrestrial species and vice versa).
 
