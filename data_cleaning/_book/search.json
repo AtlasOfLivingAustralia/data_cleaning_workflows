@@ -354,14 +354,14 @@
     "href": "download-data.html#merge-datasets",
     "title": "3  Download occurrence data",
     "section": "3.1 Merge datasets",
-    "text": "3.1 Merge datasets\nWhen combining data from multiple places, it is important to standardize the data fields and merge the data carefully, as there is chance data will be incorectly formatted or mislabeled.\n\ndiscuss here biosec issues, higher taxonomy is not always the same;"
+    "text": "3.1 Merge datasets\nWhen combining data from multiple places, it is important to standardize the data fields and merge the data carefully. There is a chance data will be incorrectly formatted and/or mislabeled.\n\ndiscuss here biosec issues, higher taxonomy is not always the same;"
   },
   {
     "objectID": "download-data.html#familiarise-with-the-data-and-metadata",
     "href": "download-data.html#familiarise-with-the-data-and-metadata",
     "title": "3  Download occurrence data",
     "section": "3.2 Familiarise with the data and metadata",
-    "text": "3.2 Familiarise with the data and metadata\nBefore getting started with data cleaning, a visual inspection of the entire dataset can save time and solve easy-to-spot errors. It can improve the knowledge of the available data and can be done with it. Understanding the metadata provides context to the structure of the data and information on how the data was collected.\nA plot of the occurrence data on a map can follow it. This simple step can highlight coordinates with missing data or even inverted or erroneous coordinates (as points floating in the ocean while focusing on terrestrial species and vice versa).\nOther tools, such as looking for only positive values if that is what is expected, can also be used in this initial data familiarization step."
+    "text": "3.2 Familiarise with the data and metadata\nBefore you get started with any data cleaning, a visual inspection of the entire dataset can save time and solve easy-to-spot errors. It can improve your knowledge of the data you’re working with and what you might be able to do or what you might be limited by. Taking the time to understand the metadata will provide context to the structure of the data and information on how the data was collected. It may also outline or provide insights into the limitations of the data.\nA plot of the occurrence data on a map can follow it. This simple step can highlight coordinates with missing data or even inverted or erroneous coordinates (as points floating in the ocean while focusing on terrestrial species and vice versa).\nOther tools, such as looking for only positive values if that is what is expected, can also be used in this initial data familiarization step."
   },
   {
     "objectID": "download-data.html#initial-clean-up",
@@ -522,7 +522,7 @@
     "href": "naming-authority.html#taxonomic-shortfalls",
     "title": "2  Determine a naming authority",
     "section": "2.1 Taxonomic shortfalls",
-    "text": "2.1 Taxonomic shortfalls\nRecent studies describes many taxonomic shortfalls (ref), as differences on species concepts, subspecies and other subspecific categories, and groups that change the taxonomy all the time.\nThere is a large number of databases on species list\nbarcode - database of genetic sequences to determine species\nProblems to be considered when checking taxonomy: - issue of incorrect taxonomy indentification - synonimies"
+    "text": "2.1 Taxonomic shortfalls\nRecent studies have described many taxonomic shortfalls (ref), such as differences in species concepts, subspecies and other sub-specific categories, and groups who’s taxonomy changes all the time.\nThere is a large number of databases on species list\nbarcode - database of genetic sequences to determine species\nProblems to be considered when checking taxonomy: - issue of incorrect taxonomy identification - synonymies"
   },
   {
     "objectID": "naming-authority.html#chosing-a-naming-authority",
@@ -537,5 +537,12 @@
     "title": "2  Determine a naming authority",
     "section": "2.3 Australian taxonomic group societies",
     "text": "2.3 Australian taxonomic group societies\nVERTEBRATES\n\nAmphibians and reptiles - Australian Herpetological Society\n\nBirds - Birdlife Australia\n\nFish - Australian Society for Fish Biology\n\nMammals - The Australian Mammal Society\n\nINVERTEBRATES\n\nArachnology - Australasian Arachnological Society\n\nEntomology - Australian Entomological Society\n\nMalacology - The Malacological Society of Australasia\n\nNematology - Australasian Association of Nematologists"
+  },
+  {
+    "objectID": "naming-authority.html#choosing-a-naming-authority",
+    "href": "naming-authority.html#choosing-a-naming-authority",
+    "title": "2  Determine a naming authority",
+    "section": "2.2 Choosing a naming authority",
+    "text": "2.2 Choosing a naming authority\nAntes de começar qualquer estudo em biodiversidade, é essencial um conhecimento da sua unidade de estudo, seja ela uma espécie ou grupo de espécies. em taxonomia do\nA knowledge of taxonomy is essential to verify the data obtained. For this, different organizations provide updated lists of species or even details of history and taxonomic changes.\nIn Australia, the Australian Plant Name Index (APNI) is the primary naming authority for plants. At the same time, the Australian Faunal Directory (AFD) is the main taxonomic catalog for animal species, providing a list of accepted and authoritative names as a template.\nYet, it is fundamental to understand the taxonomic history of the interest species. Changes in taxonomy, such as species split, new higher level classification (as genera), or species descriptions, highlight the importance of keeping up-to-date with taxonomic literature. This can be achieved via specialized books and scientific papers. Most taxonomic group societies released annual updates on taxonomy. The Atlas of Living Australia (ALA) can also be used to investigate taxonomic changes."
   }
 ]
