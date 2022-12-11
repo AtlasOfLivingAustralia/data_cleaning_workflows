@@ -3,28 +3,108 @@ title: "caab"
 author: "Fonti Kar"
 date: "2022-10-17"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(here, tidyverse, janitor, skimr, stringr)
+
+source("scripts/remove_improper_names_v2.R") # Version Fonti created
 ```
 
-## R Markdown
+## CAAB List
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+CAAB stands for the Codes for Australian Aquatic Biota. The original version can be found [here](http://www.cmar.csiro.au/oldcaab/). The interface has since been updated and accessed through via[https://www.cmar.csiro.au/data/caab/](https://www.cmar.csiro.au/data/caab/).
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+CAAB offers a bulk ['dump' download](http://www.marine.csiro.au/datacentre/caab/caab_dump_latest.xlsx) which may be useful for excluding marine species from the Australian Faunal Directory for IA. I've converted the excel file into a .csv.
 
-```{r cars}
-summary(cars)
+I believe NESP was able to be called via `ALA4R` in the past using code developed by Matilda. So IA is interested to know if CAAB is still a viable solution to the marine exclusion problem. 
+
+One benefit of the CAAB is that it is limited to Australian species so the download is smaller and 
+
+### Read in CAAB list and AFD list
+
+```{r}
+caab_dump <- read_csv(here("ignore", "data", "caab_dump_latest.csv"))
+skim(caab_dump)
+
+afd_species <- read_csv(here("output", "afd_splist_full.csv"))
+
+skim(afd_species)
 ```
 
-## Including Plots
+### Common columns between CAAB and AFD
 
-You can also embed plots, for example:
+IA uses `VALID_NAME` for excluding GRIIS species and marine species with WoRMS
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+names(afd_species)
+names(caab_dump)
+
+# Looks a little messy, looks of spp.  and odd formatting
+caab_dump$SCIENTIFIC_NAME 
+
+# Can probably concatenate these together and exclude NAs
+caab_dump %>% select(GENUS, SPECIES) 
+caab_dump %>% mutate(scientificName = ifelse(is.na(GENUS) | is.na(SPECIES),
+                                            NA, 
+                                            paste(GENUS, SPECIES))
+                     ) -> caab_dump
+
+#  How many NA? 
+is.na(caab_dump$scientificName) %>% table() #21K Not ideal! 
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+### Are there any improper names?
+
+Number of retained is about the same! Will stick with the original SCIENTIFIC_NAME for rest of workflow
+
+```{r}
+x <- remove_improper_names_v2(caab_dump$scientificName) 
+# Cleaning checklist for improper species names...
+# # Improper names (indicated by NAs) in updated species list: 1276
+# Original number of species: 65770
+# Number of species removed: 1276
+# Number of species retained: 43243
+# Proprotion of species removed: 0.019400942679033
+# Is #species retained = #species in raw list - #species removed? : FALSE
+
+y <- remove_improper_names_v2(caab_dump$SCIENTIFIC_NAME) 
+# Cleaning checklist for improper species names...
+# # Improper names (indicated by NAs) in updated species list: 22558
+# Original number of species: 65770
+# Number of species removed: 22569
+# Number of species retained: 43206
+# Proprotion of species removed: 0.343150372510263
+# Is #species retained = #species in raw list - #species removed? : FALSE
+```
+
+### Looking at cleaned CAAB names
+
+I see some `var.`. will exclude these for now
+
+```{r}
+# Subspecies
+str_subset(y$updated_list, pattern = "var. ") 
+str_subset(y$updated_list, pattern = "var. ") %>% length()
+
+ # Exclude these subspecies
+cleaned_caab <- str_remove(y$updated_list, pattern = "var. ")
+```
+
+### Cross matching with AFD using updated list
+
+```{r}
+message(which(afd_species$VALID_NAME %in% cleaned_caab) %>% length(), " AFD species matched with CAAB database")
+message("Excluding AFD species found in CAAB database:")
+afd_species %>% filter(! VALID_NAME %in% cleaned_caab) -> afd_species_cleaned 
+message(cat("Proportion of AFD species excluded:", afd_species %>% filter(VALID_NAME %in% cleaned_caab) %>% nrow() / afd_species %>% nrow() ))
+```
+
+## CAAB API
+
+Found here:
+https://www.marine.csiro.au/data/services/caab/

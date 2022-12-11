@@ -10,7 +10,6 @@
 
 remove_improper_names_v2 <- function(name_vector,
                                      allow.higher.taxa = FALSE,
-                                     allow.subspecies = TRUE,
                                      improper.species.list = TRUE){
   
   message("Cleaning checklist for improper species names...")
@@ -59,7 +58,10 @@ remove_improper_names_v2 <- function(name_vector,
                      "spec\\.nov\\.",
                      "cf\\,", 
                      "\\sand\\s",
-                     "\\swith\\s")
+                     "\\swith\\s",
+                     "\\*",
+                     "\\(*\\)", 
+                     "\\:")
   
   ## Record improper species names as identified by taxa modifiers or particular text patterns
   if (improper.species.list){
