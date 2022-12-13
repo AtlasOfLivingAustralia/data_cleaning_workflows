@@ -10,7 +10,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-pacman::p_load(here, tidyverse, janitor, skimr, stringr)
+pacman::p_load(here, tidyverse, janitor, skimr, stringr, jsonlite, httr, job)
 
 source("scripts/remove_improper_names_v2.R") # Version Fonti created
 ```
@@ -106,5 +106,126 @@ message(cat("Proportion of AFD species excluded:", afd_species %>% filter(VALID_
 
 ## CAAB API
 
-Found here:
-https://www.marine.csiro.au/data/services/caab/
+I spoke to Dave Watts at NCMI Hobart who manages the CAAB list. He was very helpful and said that the bulk download isn't regularly updated so its best to query the API he built to access CAAB data. 
+
+He flagged that the Inverts data is currently not actively managed as the previous curator has moved on from the role. 
+
+Importantly, the habitat flags in CAAB data is obtained from WoRMS and there is an ongoing relationship between the two data sources.
+
+Watts also noted that CAAB is likely to capture Australian species that is not yet on WoRMS.
+
+The API is found here: https://www.marine.csiro.au/data/services/caab/
+
+Below I have developed a workflow to query the API and collate the neccesarry data for exclude marine species from the AFD
+
+### A first example
+
+A handy tutorial if you have never worked with APIs in R before: https://www.dataquest.io/blog/r-api-tutorial/
+
+```{r}
+# A definite marine species
+test_species <- c("Hydroides dirampha")
+
+# Replace space with + as that is how API interprets spaces
+species_query <- stringr::str_replace(test_species, " ", "+")
+
+# Set up the API query
+API_address <- c("https://www.marine.csiro.au/data/services/caab/")
+query <-c("?q=")
+
+# Query the API
+res <- GET(glue::glue(API_address,query,species_query))
+```
+
+#### Check out results
+```{r}
+# Look at the results, this is the same if we pasted the query directly in the URL of a browswer
+res$content %>% rawToChar() 
+
+# Convert
+rawToChar(res$content) %>% fromJSON() -> res_formatted
+
+# Check if marine or not  
+res_formatted$habitat
+
+# This might be a nicer output
+res_formatted %>% tibble()
+```
+
+### A function to query CAAB API
+
+```{r}
+query_CAAB <- function(taxon_name){
+# Replace space with + as that is how API interprets spaces
+species_query <- stringr::str_replace_all(taxon_name, " ", "+")
+
+# Set up the API query
+API_address <- c("https://www.marine.csiro.au/data/services/caab/")
+query <-c("?q=")
+
+# Query the API
+res <- httr::GET(glue::glue(API_address,query,species_query))
+
+# Convert
+rawToChar(res$content) %>% fromJSON() -> res_formatted
+
+# This might be a nicer output
+res_formatted <- res_formatted %>% dplyr::tibble() 
+
+# Handle diff classes types
+if(nrow(res_formatted) > 0){
+  res_formatted %>% mutate(search_term = taxon_name,
+                          CAAB_code = as.character(CAAB_code),
+                           Parent_Id = as.character(Parent_Id))
+  }
+}
+
+query_CAAB("Hydroides dirampha") # Works :)=
+```
+
+#### Trying to loop through a short species list
+
+```{r}
+set.seed(10)
+
+sp_list <- sample(afd_species$VALID_NAME, 100)
+
+res_ls <- purrr::map_df(.x = sp_list, 
+                        .f = ~query_CAAB(.x))
+
+# Looking at output
+res_ls %>% filter(habitat == "") %>% View() # These look like Marine species but no habitat info
+```
+
+### RStudio background job
+
+```{r}
+cleaned_names <- remove_improper_names_v2(afd_species$VALID_NAME)
+cleaned_names$updated_list
+
+ls <- split(cleaned_names$updated_list, ceiling(seq_along(cleaned_names$updated_list)/1000))
+
+res_ls <- purrr::map_df(.x = ls[[1]], 
+                        .f = ~query_CAAB(.x))
+
+res_ls_2 <- purrr::map_df(.x = ls[[2]], 
+                        .f = ~query_CAAB(.x))
+
+res_ls <- purrr::map_df(.x = cleaned_names$updated_list, 
+                        .f = ~query_CAAB(.x))
+
+# Bad name  "Lamispina\001 horstii" I think this is a unicode
+# "Brancuporus\022 pennifoldae"
+
+job({
+  res_ls <- purrr::map_df(.x = cleaned_names$updated_list, 
+                          .f = ~query_CAAB(.x))
+  saveRDS(res_ls, "output/CAAB_api_output.rds")
+  })
+```
+
+
+
+
+
+

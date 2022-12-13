@@ -61,7 +61,10 @@ remove_improper_names_v2 <- function(name_vector,
                      "\\swith\\s",
                      "\\*",
                      "\\(*\\)", 
-                     "\\:")
+                     "\\:",
+                     "\\\\0",
+                     "[:digit:]",
+                     "\\\\|[^[:print:]]")
   
   ## Record improper species names as identified by taxa modifiers or particular text patterns
   if (improper.species.list){
