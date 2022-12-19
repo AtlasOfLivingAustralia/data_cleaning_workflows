@@ -199,6 +199,8 @@ res_ls %>% filter(habitat == "") %>% View() # These look like Marine species but
 
 ### RStudio background job
 
+Nope too many issues with the AFD
+
 ```{r}
 cleaned_names <- remove_improper_names_v2(afd_species$VALID_NAME)
 cleaned_names$updated_list
@@ -224,7 +226,98 @@ job({
   })
 ```
 
+#### Test for loop
 
+```{r}
+# AFD taxa as list 
+cleaned_names <- remove_improper_names_v2(afd_species$VALID_NAME)
+cleaned_afd_taxon_names <- cleaned_names$updated_list
+
+afd_taxon_nm_ls <- as.list(cleaned_afd_taxon_names)
+
+# Index vector to track progress
+loop_index_1 <- 0  
+
+# Test seems to work well! 
+test <- afd_taxon_nm_ls[1:100]
+
+res_ls <- list()
+
+for (i in 1:length(test)) {
+  # Print progress
+  loop_index_1 <- loop_index_1 + 1
+  print(paste0(test[[i]], ":", loop_index_1,"/", length(test)))
+
+  try(res_ls[[i]] <- 
+        query_CAAB(test[[i]])
+      ) 
+}
+
+
+# Test RStudio job
+job({
+  
+  # Index vector to track progress
+  loop_index_1 <- 0  
+  
+  # Test seems to work well! 
+  test <- afd_taxon_nm_ls[1:100]
+  
+  # Empty result list
+  res_ls <- list()
+  
+  for (i in 1:length(test)) {
+    # Print progress
+    loop_index_1 <- loop_index_1 + 1
+    print(paste0(test[[i]], ":", loop_index_1,"/", length(test)))
+    
+    try(res_ls[[i]] <- 
+          query_CAAB(test[[i]])
+    ) 
+  }
+  
+  CAAB_result <- bind_rows(res_ls)
+  
+  write.csv(CAAB_result, "output/CAAB_AFD_result_test.csv", row.names = FALSE)
+  
+})
+```
+
+### Full loop
+
+```{r}
+# AFD taxa as list 
+cleaned_names <- remove_improper_names_v2(afd_species$VALID_NAME)
+cleaned_afd_taxon_names <- cleaned_names$updated_list
+
+afd_taxon_nm_ls <- as.list(cleaned_afd_taxon_names)
+
+# RStudio Job
+
+job({
+  
+  # Create empty list to populate API result
+  res_ls <- list()
+  
+  # Index vector
+  loop_index_1 <- 0  
+  
+  for (i in 1:length(afd_taxon_nm_ls)) {
+    # Print progress
+    loop_index_1 <- loop_index_1 + 1
+    print(paste0(afd_taxon_nm_ls[[i]], ":", loop_index_1,"/", length(afd_taxon_nm_ls)))
+    
+    try(res_ls[[i]] <- 
+          query_CAAB(afd_taxon_nm_ls[[i]])
+    ) 
+  }
+  
+  CAAB_result <- bind_rows(res_ls)
+  
+  write.csv(CAAB_result, "output/CAAB_AFD_result.csv", row.names = FALSE)
+  
+})
+```
 
 
 
