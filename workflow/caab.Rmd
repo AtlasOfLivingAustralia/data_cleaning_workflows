@@ -285,6 +285,8 @@ job({
 
 ### Full loop
 
+Tool 5 hours and 28 minutes to run
+
 ```{r}
 # AFD taxa as list 
 cleaned_names <- remove_improper_names_v2(afd_species$VALID_NAME)
@@ -319,6 +321,99 @@ job({
 })
 ```
 
+#### Cross matching with API CAAB output
 
+Not a lot of matches, just under 20k and not all of them need to be excluded due to freshwater habitat
+
+```{r}
+CAAB_AFD <- read_csv("output/CAAB_AFD_result.csv")
+
+glimpse(CAAB_AFD)
+
+# Which AFD taxon DIDN'T match with CAAB?
+setdiff(afd_species$VALID_NAME, CAAB_AFD$search_term) %>% length() # 94908 taxa that didn't match
+
+# Matches are: 
+CAAB_AFD$search_term %>% length() #  19647
+```
+
+#### Habitat variable for CAAB species
+
+The habitat variable for CAAB is a lot more detailed compared to WoRMS. IA just wants to exclude strictly Marine. So anything that is both Marine AND something else we would keep
+
+```{r}
+# A counts table of habitat terms
+janitor::tabyl(CAAB_AFD$habitat) %>% arrange(desc(n)) # %>% write.csv(.,"output/CAAB_habitat_tally.csv")
+
+# How many species are strictly marine e.g Marine unspecified<br>, Pelagic, 
+patterns <- paste("^Marine unspecified$", "Pelagic", sep = "|")
+
+stringr::str_subset(CAAB_AFD$habitat, pattern = regex(patterns, ignore_case = TRUE)) 
+
+# Which species are strictly Marine
+CAAB_AFD %>% 
+  filter( stringr::str_detect(CAAB_AFD$habitat, pattern = regex(patterns, ignore_case = TRUE)) ) %>% 
+  pull(search_term) -> strictly_marine_CAAB
+
+# Excluding strictly marine species
+afd_species %>% filter(VALID_NAME %in% strictly_marine_CAAB) #109 species
+```
+
+# Overlap with WoRMs
+
+```{r}
+worms <- read_csv("data/worms/worrms_marine_splist.csv")
+names(worms)
+
+## Number of strictly marine species
+worms %>%
+  filter(isMarine == 1,
+         isBrackish == 0, isTerrestrial == 0, isFreshwater == 0, isExtinct == 0) -> marine_worms # 6768 species
+
+## First which species are excluded because they are marine 
+afd_species |> 
+  filter(VALID_NAME %in% marine_worms$valid_name) |>
+  select(VALID_NAME) ->  excluded_mar_species
+  
+nrow(excluded_mar_species) # 5,850
+
+# Further exclusion using scientificname
+## Which species are excluded by scientificname
+nomarine_nogriis_afd_species |> 
+  filter(VALID_NAME %in% marine_worms$scientificname) |> 
+  select(VALID_NAME) -> excluded_mar_species_scientificname
+
+nomarine_nogriis_afd_species |> 
+  filter(VALID_NAME %in% marine_worms$scientificname) |> 
+  select(VALID_NAME) -> excluded_mar_species_scientificname
+
+nrow(excluded_mar_species_scientificname) # 575
+
+# Overlap with valid_name and scientific_name
+
+marine_worms$valid_name %in% strictly_marine_CAAB %>% sum() # 11
+
+marine_worms$valid_name[which(marine_worms$valid_name %in% strictly_marine_CAAB)]
+marine_worms$scientificname[which(marine_worms$scientificname %in% strictly_marine_CAAB)] # 12
+
+# 1 taxa diff
+setdiff(marine_worms$scientificname[which(marine_worms$scientificname %in% strictly_marine_CAAB)],
+        marine_worms$valid_name[which(marine_worms$valid_name %in% strictly_marine_CAAB)])
+
+```
+
+
+
+### Discussion with Dave
+
+```{r}
+CAAB_AFD %>%  filter(is.na(habitat)) %>% pull(CAAB_code) %>% stringr::str_count()
+
+CAAB_AFD %>% pull(CAAB_code) %>% stringr::str_count() -> CAAB_code_counts
+
+CAAB_AFD %>% slice(which(CAAB_code_counts == 6)) %>% pull(search_term)
+
+CAAB_AFD %>%  filter(habitat == "NA")
+```
 
 
