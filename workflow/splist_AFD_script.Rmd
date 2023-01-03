@@ -132,7 +132,7 @@ We would need to make decisions about taxonomic status and do a pre-process ours
 - PB to export species list of semi-marine, marine/brackish to experts to cross verify this list
 
 ```{r}
-worms <- read_csv("data/worms/worrms_marine_splist.csv")
+worms <- read_csv("data/worms/worms_afd_query_results.csv")
 names(worms)
 
 ## Any missing values in scientificname, valid_name?
@@ -149,7 +149,7 @@ worms %>% select(starts_with("is")) %>% colSums(., na.rm = TRUE)
 ## Number of strictly marine species
 worms %>%
   filter(isMarine == 1,
-         isBrackish == 0, isTerrestrial == 0, isFreshwater == 0, isExtinct == 0) -> marine_worms # 6768 species
+         isBrackish == 0, isTerrestrial == 0, isFreshwater == 0, isExtinct == 0) -> marine_worms # 7024 species
 
 ## Which names don't match? I suggest cross-checking with AFD using both scientificname and valid_name for these marine species
 marine_worms |> 
@@ -161,7 +161,7 @@ afd_species |>
   filter(VALID_NAME %in% marine_worms$valid_name) |>
   select(VALID_NAME) ->  excluded_mar_species
   
-nrow(excluded_mar_species) # 5,850
+nrow(excluded_mar_species) # 6,026 
 
 ## Exclude these species 
 afd_species |> 
@@ -176,7 +176,7 @@ nomarine_nogriis_afd_species |>
   filter(VALID_NAME %in% marine_worms$scientificname) |> 
   select(VALID_NAME) -> excluded_mar_species_scientificname
 
-nrow(excluded_mar_species_scientificname) # 575
+nrow(excluded_mar_species_scientificname) # 643
 
 ## Further exclude excluded_mar_species_scientificname
 nomarine_nogriis_afd_species |> 
