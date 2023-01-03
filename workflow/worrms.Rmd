@@ -16,7 +16,7 @@ https://mmisw.org/ont/ioos/marine_biogeography
 ```{r}
 # install.packages("worrms") https://docs.ropensci.org/worrms/index.html
 
-pacman::p_load(tidyverse, worrms, here)
+pacman::p_load(tidyverse, worrms, here, job)
 ```
 
 Read in AFD list
@@ -63,9 +63,42 @@ afd_taxonomy |> filter(! VALID_NAME %in% marine_afd) -> afd_taxonomy_nomarine
 ## Code for for loop to query their API - slow, 1hr 
 
 ```{r}
+# The AFD species we want to check with WoRMS
 afd_species <- unique(afd_taxonomy$VALID_NAME) 
 
+# Split the species list to chunks of 120 species
 afd_species_chunks <- split(afd_species, ceiling(seq_along(afd_species)/120))
+
+
+
+# Create empty list to populate
+worms_ls <- list()
+
+for (i in 1:length(afd_species_chunks[1:5])) {
+  
+message(cat("Working on", names(afd_species_chunks)[i], "/", length(afd_species_chunks)))
+  
+try(worrms::wm_records_names(afd_species_chunks[[i]]) -> tmp)
+    
+    tmp |> bind_rows() -> worms_ls[[i]]
+    
+}
+
+# Collapse the list down
+worms_afd_query_results <- worms_ls %>% bind_rows()
+
+# Save as a .csv
+write_csv(worms_afd_query_results, "output/worms_afd_query_results.csv")
+```
+
+## Make the loop into a background RStudio job
+
+This took 1hr and 6 mins
+
+```{r}
+job({
+  # Create empty list to populate
+worms_ls <- list()
 
 for (i in 1:length(afd_species_chunks)) {
   
@@ -73,66 +106,16 @@ message(cat("Working on", names(afd_species_chunks)[i], "/", length(afd_species_
   
 try(worrms::wm_records_names(afd_species_chunks[[i]]) -> tmp)
     
-    tmp |> bind_rows() -> afd_marine
+    tmp |> bind_rows() -> worms_ls[[i]]
     
-    if(nrow(afd_marine) > 0){
-    filenm <- paste0("output/rds/afd_marine", "_", names(afd_species_chunks)[i], ".rds")
-  
-    saveRDS(afd_marine, filenm)
-  }
-  
 }
-```
 
-### Read in all the .rds and bind
+# Collapse the list down
+worms_afd_query_results <- worms_ls %>% bind_rows()
 
-```{r}
-dir <- "output/rds/"
-files <- list.files("output/rds/") 
-files |> length()
-filenms <- paste0(dir, files)
-
-#myfiles = lapply(filenms, readRDS)
-
-myfiles <- purrr::map(filenms, 
-                     readRDS) |> bind_rows()
-
-#write.csv(myfiles, "output/worrms_marine_splist.csv")
-myfiles <- read_csv("data/worms/worrms_marine_splist.csv")
-```
-
-### Trying to save csv/.txt in seperate parts so its more manageable
-
-Each file must have a unique ID so things can be joined together. I suspect AphiaID would do the trick
-
-```{r}
-myfiles
-
-names(myfiles)
-myfiles <- myfiles[-1] # Remove first column (row numbers)
-
-# Clean the list
-myfiles %>% filter(!duplicated(AphiaID)) -> myfiles_clean
-
-# Split by cols like WoRMS bulk download
-names(species)
-names(taxa)
-
-# Select the 'species' columns
-myfiles_clean %>% dplyr::select(1, starts_with("is")) -> my_species
-myfiles_clean %>% dplyr::select(-starts_with("is")) -> my_taxa
-
-# Save these files and check size
-write_tsv(my_species, file = here("output", "worms" ,"species_data.txt")) # 463 KB
-write_tsv(my_taxa, file = here("output", "worms" ,"taxonomic_data.txt")) #14 MB
-
-# Can I read these in an join?
-test_species <- read_tsv(here("output", "worms" ,"species_data.txt"))
-test_taxa <- read_tsv(here("output", "worms" ,"taxonomic_data.txt")) # Throw warnings
-
-# create a GRIIS list
-test_list <- test_taxa |>  
-  inner_join(test_species, by = "AphiaID") 
+# Save as a .csv
+write_csv(worms_afd_query_results, "output/worms_afd_query_results.csv")
+})
 ```
 
 ### Exclude marine species found by WoRMs by VALID_NAME with API query data
@@ -140,18 +123,30 @@ test_list <- test_taxa |>
 Options to exclude by scientificname or valid name
 
 ```{r}
-test_list$scientificname |> length()
-test_list$valid_name |> length()
+worms_afd_query_results <- read_csv("output/worms_afd_query_results.csv")
 
-(test_list$scientificname == test_list$valid_name) |> janitor::tabyl()
+# Clean the list
+worms_afd_query_results %>% filter(duplicated(AphiaID)) %>% nrow()
+worms_afd_query_results %>% filter(!duplicated(AphiaID)) -> worms_afd_query_results
+
+worms_afd_query_results$scientificname |> length()
+worms_afd_query_results$valid_name |> length()
+
+(worms_afd_query_results$scientificname == worms_afd_query_results$valid_name) |> janitor::tabyl()
 
 # Exclude the matches
-afd_taxonomy |> filter(! VALID_NAME %in% test_list$scientificname) # 90,230
-afd_taxonomy |> filter(! VALID_NAME %in% test_list$valid_name) # 92,730
+afd_taxonomy |> filter(! VALID_NAME %in% worms_afd_query_results$scientificname) # 91,577
+afd_taxonomy |> filter(! VALID_NAME %in% worms_afd_query_results$valid_name) # 94,147:
 
 ## The excluded taxa
-afd_taxonomy |> filter(VALID_NAME %in% test_list$scientificname) # 21,004 species excluded
-afd_taxonomy |> filter(VALID_NAME %in% test_list$valid_name) # 18,493  species excluded
+afd_taxonomy |> 
+  filter(VALID_NAME %in% worms_afd_query_results$scientificname) %>% 
+  pull(VALID_NAME)# 21,019 species excluded
+
+
+afd_taxonomy |> 
+  filter(VALID_NAME %in% worms_afd_query_results$valid_name) %>% 
+  pull(VALID_NAME) # 18,448  species excluded
 ```
 
 

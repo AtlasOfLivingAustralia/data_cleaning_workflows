@@ -285,7 +285,7 @@ job({
 
 ### Full loop
 
-Tool 5 hours and 28 minutes to run
+Took 5 hours and 28 minutes to run
 
 ```{r}
 # AFD taxa as list 
