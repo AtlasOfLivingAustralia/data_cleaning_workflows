@@ -172,15 +172,21 @@ write.csv(taxon.counts, "output/taxon_counts.csv")
 ### {galah} for filtering records by assertions
 
 Assertions are used to filter down records ensure the data is fit for use. 
+There was a need to export this, PB sent us a spreadsheet called `qa_assertions.xlsx`, output saved from the ALA4R
+
+The only assertion used to exclude data was `identificationIncorrect` 
 
 To display all assertion fields use:
 
 ```{r}
-show_all("assertions") %>% print(n = 250)
+assertions <- show_all("assertions") %>% print(n = 250)
+
+# Save assertion data as .csv
+write_csv(assertions, "output/assertions.csv")
 ```
 
 Users can filter records using `galah_filter()` as below.  
-Replacing `UNKNOWN_KINGDOM` with whatever assertion name you’d like to use. 
+Replacing `identificationIncorrect` with whatever assertion name you’d like to use. 
 Alternatively, to exclude by multiple assertions, use `c()` 
 
 This method of filtering can also applied to downloading records as well as obtaining counts.
@@ -192,13 +198,13 @@ galah_call()  %>%
     taxonConceptID == galah_identify("Animalia")$identifier, 
     taxonConceptID != galah_identify("Chordata")$identifier, 
     basisOfRecord == specimen_only, # Filters to specimen only
-    UNKNOWN_KINGDOM == FALSE
+    identificationIncorrect == FALSE
   ) %>% 
   galah_group_by(phylum) %>% 
   atlas_counts() 
 
 # For exclusions using multiple assertions
-IA_assertions <- c("UNKNOWN_KINGDOM", "TAXON_MATCH_NONE",
+IA_assertions <- c("UNKNOWN_KINGDOM", "identificationIncorrect",
                    "COORDINATE_PRECISION_MISMATCH", "MISSING_GEODETICDATUM")
 
 galah_call() %>% 
@@ -210,6 +216,20 @@ galah_call() %>%
   ) %>% 
   galah_group_by(phylum) %>% 
   atlas_counts()
+```
+#### Download with assertion fields
+
+NOTE THIS IS CURRENTLY NOT WORKING 
+```{r}
+galah_call() %>% 
+  galah_filter(
+    taxonConceptID == galah_identify("Animalia")$identifier, 
+    taxonConceptID != galah_identify("Chordata")$identifier, 
+    basisOfRecord == specimen_only, # Filters to specimen only
+    identificationIncorrect == FALSE,
+    year == 2022)  %>% # Limiting to 2022 for now
+  galah_select(group = "assertions") %>%
+  atlas_occurrences() -> inverts_assertions
 ```
 
 ### {galah} download occurrence records
@@ -308,12 +328,13 @@ galah_call() %>%
 
 # Current workaround to get taxa in AFD list
 afd_taxon_phylums <- afd_taxon[-which(afd_taxon == "ACANTHOCEPHALA")]
-      
+
 galah_call() %>% 
   galah_identify(afd_taxon_phylums) %>% 
   galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
   galah_filter(basisOfRecord == specimen_only, 
-               year == 2022) %>%  # Limiting to 2022 for now
+               year == 2022, # Limiting to 2022 for now
+               identificationIncorrect == FALSE) %>%  
   galah_select(all_of(IA_fields_split$`1`)) %>%
   atlas_occurrences() -> invert_2022_p1
 
@@ -321,7 +342,8 @@ galah_call() %>%
   galah_identify(afd_taxon_phylums) %>% 
   galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
   galah_filter(basisOfRecord == specimen_only, 
-               year == 2022) %>%  # Limiting to 2022 for now 
+               year == 2022, # Limiting to 2022 for now 
+               identificationIncorrect == FALSE) %>%  
   galah_select(all_of(IA_fields_split$`2`)) %>% 
   atlas_occurrences() -> invert_2022_p2
 
@@ -329,9 +351,122 @@ galah_call() %>%
   galah_identify(afd_taxon_phylums) %>% 
   galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
   galah_filter(basisOfRecord == specimen_only, 
-               year == 2022) %>%  # Limiting to 2022 for now 
+               year == 2022, # Limiting to 2022 for now 
+               identificationIncorrect == FALSE) %>%  
   galah_select(all_of(IA_fields_split$`3`)) %>% 
   atlas_occurrences() -> invert_2022_p3
+```
+
+## Trying Shandiya's solution
+
+```{r}
+# Fields that IA want
+y <- tibble(name = 
+                   c("id",
+                     "dataResourceUid",
+                     "dataResourceName",
+                     "institutionID",
+                     "institutionName",
+                     "collectionID", 
+                     "collectionUid",
+                     "collectionName",
+                     "contentTypes", 
+                     "license", 
+                     "taxonConceptID",
+                     "raw_scientificName",
+                     "raw_vernacularName", 
+                     "scientificName", 
+                     "vernacularName", 
+                     "taxonRank", 
+                     "kingdom",
+                     "phylum",
+                     "class",
+                     "order",
+                     "family",
+                     "genus",
+                     "species",
+                     "subspecies",
+                     "institutionCode",
+                     "collectionCode",
+                     "locality", 
+                     "raw_geodeticDatum", 
+                     "raw_decimalLatitude",
+                     "raw_decimalLongitude", 
+                     "decimalLatitude",
+                     "decimalLongitude",
+                     "coordinatePrecision",
+                     "coordinateUncertaintyInMeters",
+                     "country",
+                     "stateProvince", 
+                     "cl959",
+                     "cl21",
+                     "cl1048",
+                     "minimumElevationInMeters", 
+                     "maximumElevationInMeters", 
+                     "minimumDepthInMeters",
+                     "maximumDepthInMeters",
+                     "individualCount",
+                     "recordedBy",
+                     "eventDate",
+                     "year",
+                     "month",
+                     "verbatimEventDate",
+                     "basisOfRecord",
+                     "raw_basisOfRecord",
+                     "occurrenceStatus",
+                     "raw_sex", 
+                     "sex",
+                     "preparations",
+                     "outlierLayer",
+                     "spatiallyValid", 
+                     "catalogNumber"),
+                 type = "field") 
+
+# Set the call as galah_select
+attr(y, "call") <- "galah_select"
+
+# Split fields into 3 parts for download
+y_ls <- split(y, f = ceiling(seq_along(select$name)/20))
+
+# Add id in 2nd and 3rd list so output can all be joined
+y_ls$`2` <- bind_rows(tibble(name = "id",
+                                type = "field"),
+                         select_ls$`2`)
+
+y_ls$`3` <- bind_rows(tibble(name = "id",
+                                type = "field"),
+                         select_ls$`3`)
+
+# The rest of the galah_call
+get_occ <- function(y){
+  
+  x <- 
+  galah_call() |>
+  galah_identify(afd_taxon_phylums) %>% 
+  galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
+  galah_filter(basisOfRecord == specimen_only, 
+               identificationIncorrect == FALSE) 
+  
+  x$select <- y
+  
+   x |> 
+    atlas_occurrences() |> 
+   arrow::write_parquet(sink = paste0("data/galah/IA_", Sys.Date()))
+   
+   Sys.sleep(600)
+}
+
+job({
+  map(y_ls,
+    get_occ)
+})
+
+```
+
+```{r}
+test <- arrow::read_parquet("data/galah/IA_2023-01-03")
+
+test
 ```
 
 
@@ -353,37 +488,40 @@ left_join(invert_2022_p1, invert_2022_p2, by = "recordID") %>%
 readr::write_csv(invert_2022, "output/invert_2022.csv")
 ```
 
-### Benchmarking the download time to compare with ALA4R parallel method
-
-Note year == 2022 has been removed
+### RStudio job of background download 
 
 ```{r}
-# devtools::install_github("jabiru/tictoc")
-library(tictoc)
-
-tic("Full invertebrates galah download")
+job({
 galah_call() %>% 
   galah_identify(afd_taxon_phylums) %>% 
   galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
-  galah_filter(basisOfRecord == specimen_only) %>% 
+  galah_filter(basisOfRecord == specimen_only,
+               identificationIncorrect == FALSE) %>% 
   galah_select(all_of(IA_fields_split$`1`)) %>%
   atlas_occurrences() -> invert_p1
 
+  saveRDS(invert_p1, "output/invert_p1")
+
 galah_call() %>% 
   galah_identify(afd_taxon_phylums) %>% 
   galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
-  galah_filter(basisOfRecord == specimen_only)
+  galah_filter(basisOfRecord == specimen_only,
+               identificationIncorrect == FALSE) %>% 
   galah_select(all_of(IA_fields_split$`2`)) %>% 
   atlas_occurrences() -> invert_p2
   
+ saveRDS(invert_p2, "output/invert_p2")
   
   galah_call() %>% 
   galah_identify(afd_taxon_phylums) %>% 
   galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
-  galah_filter(basisOfRecord == specimen_only)
+  galah_filter(basisOfRecord == specimen_only,
+               identificationIncorrect == FALSE)
   galah_select(all_of(IA_fields_split$`3`)) %>% 
   atlas_occurrences() -> invert_p3
-toc()
+  
+   saveRDS(invert_p3, "output/invert_p3")
+})
 ```
 
 ### Using Coordinate Cleaner to further clean the records data
