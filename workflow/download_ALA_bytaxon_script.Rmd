@@ -26,7 +26,7 @@ knitr::opts_chunk$set(echo = TRUE,
 rm(list = ls())
 
 # install.packages("pacmac")
-pacman::p_load(data.table, galah, dplyr, CoordinateCleaner, sf, ozmaps)
+pacman::p_load(data.table, galah, dplyr, CoordinateCleaner, sf, ozmaps, job, arrow, purrr)
 ```
 
 ### Setting up server paths
@@ -269,7 +269,7 @@ ALA_fields %>% print(n = 100)
 search_all(fields, "coordinate") 
 
 # Fields that IA want
-IA_fields<- c("id","dataResourceUid","dataResourceName",
+IA_fields<- c("recordID","dataResourceUid","dataResourceName",
               "institutionID","institutionName",
               "collectionID", "collectionUid","collectionName",
               "contentTypes", 
@@ -316,7 +316,7 @@ IA_fields_split$`3` <- c("id", IA_fields_split$`3`)
 
 ### {galah} download: user supplied list of taxa
 
-I realised there are some inverts that are in Chordata, so we definitely don't want to exclude all Chordates. This method would also work with taxon counts above
+I realized there are some inverts that are in Chordata, so we definitely don't want to exclude all Chordates. This method would also work with taxon counts above
 
 ```{r}
 search_taxa(afd_taxon) # Issues with ACANTHOCEPHALA its technically a Phylum but recorded as a class in here https://bie.ala.org.au/species/NZOR-6-53977
@@ -329,13 +329,17 @@ galah_call() %>%
 # Current workaround to get taxa in AFD list
 afd_taxon_phylums <- afd_taxon[-which(afd_taxon == "ACANTHOCEPHALA")]
 
+# Specimen only
+specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
+                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
+
 galah_call() %>% 
   galah_identify(afd_taxon_phylums) %>% 
   galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
-  galah_filter(basisOfRecord == specimen_only, 
+  galah_filter(basisOfRecord == specimen_only,
                year == 2022, # Limiting to 2022 for now
                identificationIncorrect == FALSE) %>%  
-  galah_select(all_of(IA_fields_split$`1`)) %>%
+  galah_select(all_of(IA_fields_split$`1`), group = "assertions") %>%
   atlas_occurrences() -> invert_2022_p1
 
 galah_call() %>% 
@@ -357,7 +361,9 @@ galah_call() %>%
   atlas_occurrences() -> invert_2022_p3
 ```
 
-## Trying Shandiya's solution
+## Download as an arrow::parquet fie using purrr::map
+
+I've set this is a background job for the download. `Sys.sleep(600)` is for taking a 10 minute break so to not overload the API
 
 ```{r}
 # Fields that IA want
@@ -426,47 +432,91 @@ y <- tibble(name =
 attr(y, "call") <- "galah_select"
 
 # Split fields into 3 parts for download
-y_ls <- split(y, f = ceiling(seq_along(select$name)/20))
+y_ls <- split(y, f = ceiling(seq_along(y$name)/20))
 
-# Add id in 2nd and 3rd list so output can all be joined
+# Add id in 2nd and 3rd list so output can all be joined later by id
 y_ls$`2` <- bind_rows(tibble(name = "id",
-                                type = "field"),
-                         select_ls$`2`)
+                             type = "field"),
+                      y_ls$`2`)
 
 y_ls$`3` <- bind_rows(tibble(name = "id",
-                                type = "field"),
-                         select_ls$`3`)
+                             type = "field"),
+                      y_ls$`3`)
 
-# The rest of the galah_call
+# To get all the assertions
+y_ls$`4` <- bind_rows(tibble(name = "id",
+                             type = "field"),
+                      galah_select(group = "assertions"))
+
+# The rest of the galah_call as a function
 get_occ <- function(y){
   
+  # Phylums
+  afd_taxon_phylums <- c("ANNELIDA",
+                         "ARTHROPODA",
+                         "BRACHIOPODA",
+                         "BRYOZOA",
+                         "CHAETOGNATHA",
+                         "GASTROTRICHA",
+                         "GNATHOSTOMULIDA",
+                         "MOLLUSCA",       
+                         "NEMATODA",        
+                         "NEMATOMORPHA",    
+                         "NEMERTEA",       
+                         "ONYCHOPHORA",    
+                         "PLATYHELMINTHES",
+                         "PORIFERA",        
+                         "ROTIFERA",        
+                         "TARDIGRADA")
+  
+  # basisOfRecord filters
+  specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
+                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
   x <- 
   galah_call() |>
   galah_identify(afd_taxon_phylums) %>% 
-  galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", search = FALSE) %>% 
+  galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", 
+                 search = FALSE) |>
   galah_filter(basisOfRecord == specimen_only, 
-               identificationIncorrect == FALSE) 
+               identificationIncorrect == FALSE)
   
   x$select <- y
   
    x |> 
     atlas_occurrences() |> 
-   arrow::write_parquet(sink = paste0("data/galah/IA_", Sys.Date()))
+    arrow::write_parquet(sink = paste0("data/galah/IA_", Sys.time()))
    
    Sys.sleep(600)
 }
 
+## Test it out for one set of fields
+get_occ(y_ls$`4`)
+
+## Background R Studio Job for all lists (errors - can't identify afd_taxon_phylums)
 job({
   map(y_ls,
     get_occ)
 })
 
+## But works if run in console
+map(y_ls,
+    get_occ)
+
 ```
-
+## Read in parquet and join 3 parts together
 ```{r}
-test <- arrow::read_parquet("data/galah/IA_2023-01-03")
+p1 <- open_dataset("data/galah/IA_2023-01-09 12:24:35")
+p2 <- open_dataset("data/galah/IA_2023-01-09 12:41:56")
+p3 <- open_dataset("data/galah/IA_2023-01-09 12:57:59")
 
-test
+p1 %>% 
+  left_join(p2, by = "recordID") %>% 
+  left_join(p3, by = "recordID") %>% 
+  write_csv("output/IA_mass_download.csv")
+  
+  
+
+
 ```
 
 
