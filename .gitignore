@@ -6,6 +6,8 @@ scripts/archive/
 scripts/mbraby/
 scripts/extras/
 doc/
+data/galah/
+data/plants/
 
 # R files #
 ###########
