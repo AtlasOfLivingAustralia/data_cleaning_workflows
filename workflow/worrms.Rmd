@@ -1,5 +1,5 @@
 ---
-title: "Investigating WORMS"
+title: "Querying WORMS database"
 author: "Fonti Kar"
 date: "2022-08-30"
 output: html_document
@@ -19,46 +19,13 @@ https://mmisw.org/ont/ioos/marine_biogeography
 pacman::p_load(tidyverse, worrms, here, job)
 ```
 
-Read in AFD list
+### Read in AFD list
 
 ```{r}
 afd_taxonomy <- read_csv("output/afd_species_clean.csv")
 afd_species <- unique(afd_taxonomy$VALID_NAME) 
 ```
 
-## A small test
-
-```{r}
-set.seed(8)
-
-x <- sample(afd_species, 50) 
-
-test_alltypes_ls <- wm_records_names(x)
-test_alltypes_df <- bind_rows(test_alltypes_ls)
-
-test_df |> select(scientificname, starts_with("is")) 
-
-x[which(x %in% marine_sp)] # Seems to work well! 
-
-```
-
-## Lets expand it
-
-```{r}
-# If I do full list, it runs out of memory, reducing list to 500, 200, 100 seems to work
-# afd_species_ls <- wm_records_names(afd_species) |> bind_rows() 
-
-afd_species_ls <- wm_records_names(afd_species[1:100]) |> bind_rows()
-```
-
-## Workflow to exclude marine species from AFD checklist
-
-```{r}
-afd_species_ls |> pull(scientificname) -> marine_afd
-
-## Excluding the marine species in VALID_NAME
-afd_taxonomy |> filter(! VALID_NAME %in% marine_afd) -> afd_taxonomy_nomarine
-```
 
 ## Code for for loop to query their API - slow, 1hr 
 
@@ -68,8 +35,6 @@ afd_species <- unique(afd_taxonomy$VALID_NAME)
 
 # Split the species list to chunks of 120 species
 afd_species_chunks <- split(afd_species, ceiling(seq_along(afd_species)/120))
-
-
 
 # Create empty list to populate
 worms_ls <- list()
