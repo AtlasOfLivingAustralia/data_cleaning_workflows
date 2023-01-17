@@ -26,7 +26,7 @@ knitr::opts_chunk$set(echo = TRUE,
 rm(list = ls())
 
 # install.packages("pacmac")
-pacman::p_load(data.table, galah, dplyr, CoordinateCleaner, sf, ozmaps, job, arrow, purrr, data.table, ggplot2)
+pacman::p_load(galah, dplyr, CoordinateCleaner, sf, ozmaps, job, arrow, purrr, data.table, ggplot2)
 ```
 
 ### Setting up server paths
@@ -678,16 +678,26 @@ Needs to be split by year or another categorical variable. Currently implementin
 
 ```
 
-
 #### Read in parquets for assertions
 
 Work in progress
 
 ```{r}
+# Read in some example subset
+IA_1940onwards <- open_dataset("output/IA_1940onwards")
+
+path <- "data/galah/assertions/"
+assertions_parq <- list.files(path)
+
+# An example of joining back to data
+assert_acantocephala <- open_dataset(paste0(path, assertions_parq[1]))
+
+IA_1940onwards %>% 
+  left_join(assert_acantocephala, by = "recordID") 
+
 
 
 ```
-
 
 ## Using Coordinate Cleaner to further clean the records data
 
