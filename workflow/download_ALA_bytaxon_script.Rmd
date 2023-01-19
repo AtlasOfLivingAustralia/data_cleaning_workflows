@@ -228,7 +228,7 @@ galah_call() %>%
     basisOfRecord == specimen_only, # Filters to specimen only
     identificationIncorrect == FALSE,
     year == 2022)  %>% # Limiting to 2022 for now
-  galah_select(group = "assertions") %>%
+  galah_select(group = c("basic", "assertions")) %>%
   atlas_occurrences() -> inverts_assertions
 ```
 
@@ -527,7 +527,7 @@ get_occ <- function(y){
   x <- 
   galah_call() |>
   galah_identify(afd_taxon_phylums) %>% 
-  galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572", 
+  galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572",  # seperate galah_identify for acantocephala as it is a homonmym
                  search = FALSE) |>
   galah_filter(basisOfRecord == specimen_only, 
                identificationIncorrect == FALSE)
@@ -675,7 +675,17 @@ Needs to queried seperately at the moment
 Needs to be split by year or another categorical variable. Currently implementing but want to touch base first
 
 ```{r}
-
+specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
+                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
+  
+galah_call() |>
+  galah_identify("ARTHROPODA") %>%
+  galah_filter(basisOfRecord == specimen_only,
+               identificationIncorrect == FALSE) %>%
+  galah_select(group = "assertions") %>%
+  galah_group_by(year) %>% 
+  atlas_counts()
+  
 ```
 
 #### Read in parquets for assertions
@@ -693,9 +703,7 @@ assertions_parq <- list.files(path)
 assert_acantocephala <- open_dataset(paste0(path, assertions_parq[1]))
 
 IA_1940onwards %>% 
-  left_join(assert_acantocephala, by = "recordID") 
-
-
+  left_join(assert_acantocephala, by = "recordID")
 
 ```
 
