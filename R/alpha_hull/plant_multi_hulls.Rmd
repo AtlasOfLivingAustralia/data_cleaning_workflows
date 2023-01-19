@@ -1,0 +1,464 @@
+---
+title: "plant_multi_alphahull"
+author: "Fonti Kar"
+date: "2023-01-19"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      eval = TRUE,
+                      include = TRUE,
+                      fig.align='center')
+
+pacman::p_load(remotes, galah, tidyverse, here, skimr, janitor)
+
+# Configure galah
+galah_config(email = "fonti.kar@gmail.com", 
+             atlas = "Australia",
+             download_reason_id = 10 # testing reason
+             )
+```
+
+## Read in data
+
+```{r}
+vasc <- read_csv(here("data", "plants", "vascularplant.data.csv"))
+
+skim(vasc)
+```
+### Initial clean
+
+```{r}
+### Creating an improved duplicate flag
+vasc <- vasc %>% 
+  group_by(scientific_name) %>% 
+  mutate(duplicate = +duplicated(duplicate_specimen_flag == "potential_duplicate_specimen", "NA")) %>%
+  ungroup()
+
+# vasc <- vasc %>%  
+#   mutate(duplicate = 
+#            case_when(duplicate_specimen_flag  == "potential_duplicate_specimen" ~ 1,
+#                      is.na(duplicate_specimen_flag)  ~ 0)) 
+
+clean_vasc <- vasc %>% 
+  filter(!duplicate == TRUE) %>%  # Exclude duplicate records
+  filter(! duplicated(longitude_used) & ! duplicated(latitude_used)) %>%  # Exclude duplicated coords
+  drop_na(longitude_used, latitude_used) # Exclude records with missing coords
+```
+
+### Exploring potential_duplicate_specimen
+```{r}
+vasc %>% filter(duplicate_specimen_flag  == "potential_duplicate_specimen") %>% pull(scientific_name) %>% unique() -> potential_duplicate_specimen_sp
+
+by_sp <- vasc %>% filter(scientific_name %in% potential_duplicate_specimen_sp) %>% 
+  group_split(scientific_name)
+
+# Different dates
+by_sp[[1]] %>% select(scientific_name, event_date_parsed, ends_with("used"), duplicate_specimen_flag) %>% data.frame()
+
+# Try compute alphahull this dataset
+by_sp[[1]] %>% 
+  filter(is.na(duplicate_specimen_flag)) %>% 
+  select(longitude_used, latitude_used) %>% 
+  ahull(alpha = 2) -> by_sp_1_hull
+
+by_sp_1_hull %>% plot() #seems ok
+
+### Creating an improved duplicate flag
+# This works!
++duplicated(by_sp[[1]]$duplicate_specimen_flag == "potential_duplicate_specimen", "NA")
+```
+
+
+
+### Flag in cleaned dataset which ones are the Other species
+
+```{r}
+clean_vasc <- clean_vasc %>% 
+  mutate(order_v2 = order,
+         order_v2 = ifelse(order_v2 %in% other_orders, "Other Orders", order_v2)) 
+```
+
+### Compile data into tibble to compute alpha hull
+
+```{r}
+nested_vasc <- clean_vasc %>% 
+  select(order, class, scientific_name, longitude_used, latitude_used) %>% 
+  drop_na(order, class) %>% 
+  group_by(order, class, scientific_name) %>%
+  arrange(order, class, scientific_name) %>% 
+  nest(occ = ends_with("used")) 
+
+# Taxa that have more than 2 orders
+problem_taxa <- nested_vasc %>% pull(scientific_name) %>% janitor::tabyl() %>% filter(n > 1)
+nested_vasc %>% filter(scientific_name %in% problem_taxa$.)
+```
+
+### Use galah to name match all scientific names
+
+```{r}
+ala_taxonomy <- search_taxa(unique(clean_vasc$scientific_name)) %>% 
+  select(order, class, search_term) %>% 
+  rename(scientific_name = search_term)
+  
+# Left join these back
+ala_vasc <- clean_vasc %>% 
+  select(scientific_name, longitude_used, latitude_used) %>% 
+  left_join(ala_taxonomy, by = "scientific_name") %>% 
+  select(order, class, scientific_name, longitude_used, latitude_used) 
+
+# Put those smaller orders into a group
+ala_vasc <- ala_vasc %>% 
+  mutate(order_v2 = order,
+         order_v2 = ifelse(order_v2 %in% other_orders, "Other Orders", order_v2)) 
+```
+
+### Exclude taxa that have fewer than 4 obs after dropping NA
+
+```{r}
+data_insuffient_taxa <- ala_vasc %>% 
+  group_by(scientific_name) %>% 
+  summarise(n_obs = n()) %>% 
+  filter(n_obs < 4) 
+
+ala_vasc <- ala_vasc %>% 
+  filter(! scientific_name %in% data_insuffient_taxa$scientific_name)
+```
+
+
+https://community.rstudio.com/t/how-to-keep-running-map-after-an-error/113097/5
+
+```{r}
+# Nest the data
+ala_vasc_nest <- ala_vasc %>% 
+  drop_na(order, order_v2, class) %>% 
+  group_by(order_v2, class, scientific_name) %>%
+  arrange(order_v2, class, scientific_name) %>% 
+  select(order, order_v2, class, scientific_name, longitude_used, latitude_used) %>% 
+  nest(coords = c(longitude_used, latitude_used))
+```
+
+### Compute spatial data 
+
+```{r}
+# Compute ahull
+get_ahull_sf <- function(df, alpha = 2){
+  ahull <- df %>% 
+    alphahull::ahull(alpha = alpha)  |> 
+    hull2spatial::ahull2poly() |> 
+  st_as_sf() |> 
+  st_set_crs(value = 4326)
+  
+  return(ahull)
+}
+
+
+ala_vasc_test <- ala_vasc_nest %>%  
+  mutate(occ_sf = map(coords,
+                 ~ st_as_sf(.x, coords = c("longitude_used", "latitude_used"),
+                            crs = 4326)),
+         ahull_sf = map(coords, 
+                        ~ purrr::possibly(
+                          get_ahull_sf(.x), otherwise = NA
+                          ))
+      
+         
+  )
+
+
+get_hull <- function(tibble){
+  tibble %>% 
+     mutate(ahull_sf = map(coords, 
+                        ~ purrr::possibly(
+                          get_ahull_sf(.x), otherwise = NA
+                          )))
+}
+
+
+get_data_from_doi <- function(tibble_dois){
+  test <- tibble_dois %>%
+    mutate(doi_data = purrr::pmap(.l = list(
+      dois = doi,
+      email = "", ## your email here
+      .flatten = TRUE),
+      .f = purrr::possibly(roadoi::oadoi_fetch, ## the saving function! 
+                           otherwise = NA))) #nreturn NA if no data is found
+  
+    return(test)
+}
+
+
+nested_doi[10,] %>%
+  mutate(doi_data1 = 
+    purrr::map(.x = data,
+               .f = purrr::possibly(get_data_from_doi, otherwise = NA)
+               )
+    )
+ala_vasc_test$ahull_sf
+
+get_ahull_sf(ala_vasc_nest$coords[[21]] , longitude_used, latitude_used)
+plot(ahull(ala_vasc_nest$coords[[21]], alpha = 2))
+plot(ahull(ala_vasc_nest$coords[[32]], alpha = 2))
+plot(ahull(ala_vasc_nest$coords[[44]], alpha = 2))
+plot(ahull(ala_vasc_nest$coords[[80]], alpha = 2))
+
+ala_vasc_nest$coords[[46]] %>% ahull(.,alpha = 2)
+```
+
+### Try a for loop with try
+
+```{r}
+ahull_sf <- list()
+
+for(i in length(ala_vasc_nest$scientific_name) ){
+ahull_sf[[i]] <- 
+    try(get_ahull_sf(ala_vasc_nest$coords[i][[1]], longitude_used, latitude_used))
+} 
+
+ala_vasc_nest$coords[584][[1]] %>% get_ahull_sf()
+```
+
+
+
+```{r}
+set.seed(9)
+
+target_sp <- sample(vasc$scientific_name %>% unique(),1)
+
+target_df <- vasc %>% 
+  filter(scientific_name == target_sp)
+```
+
+
+
+### Clean the data first and make into `sf`
+
+```{r}
+target_df |> 
+  select(longitude_used, latitude_used) |> 
+  filter(!duplicated(longitude_used) & !duplicated(latitude_used)) |> 
+  filter(!is.na(longitude_used) & !is.na(latitude_used)) -> target_clean
+
+target_clean %>% 
+  st_as_sf(coords = c("longitude_used", "latitude_used"), 
+         crs = 4326) -> target_clean_sf
+```
+
+### Function to create alpha hull into `sf` object
+
+```{r}
+target_clean
+
+get_ahull_sf <- function(df, long, lat, alpha = 2){
+  ahull <- df %>% 
+    dplyr::select({{ long }}, {{ lat }}) |> 
+    alphahull::ahull(alpha = alpha)  |> 
+    hull2spatial::ahull2poly() |> 
+  st_as_sf() |> 
+  st_set_crs(value = 4326)
+  
+  return(ahull)
+}
+```
+
+### Plot it
+ 
+```{r}
+aus <- st_transform(ozmaps::ozmap_country, 4326)
+
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_sf(data = target_clean_sf, colour = "black", size = 0.5) +  
+  geom_sf(data = get_ahull_sf(target_clean, longitude_used, latitude_used), fill = "orange", alpha = 0.5) +
+   coord_sf(xlim=c(130, 160), 
+           ylim=c(-15,-45)) +
+  labs(x = "Longtitude (DD)", y = "Latitude (DD)") + 
+  theme_bw()
+```
+
+### Try to compute multiple species ahull 
+
+```{r}
+set.seed(9)
+
+# Select a random set of 5 species with more than 3 occ points after cleaning
+vasc %>% 
+  dplyr::filter(!duplicated(longitude_used) & !duplicated(latitude_used)) |> 
+  dplyr::filter(!is.na(longitude_used) & !is.na(latitude_used)) %>% 
+  group_by(scientific_name) %>% 
+  summarise(n_occ = n()) %>% 
+  filter(n_occ > 4) %>% 
+  pull( scientific_name ) %>% sample(5) -> target_sps
+
+
+# Clean the data
+clean_spatial_data <- function(data, long, lat){
+  data|>
+  dplyr::select(scientific_name, {{long}}, {{lat}}) |> 
+    dplyr::filter(!duplicated({{long}}) & !duplicated({{lat}})) |> 
+    dplyr::filter(!is.na( {{long}} ) & !is.na( {{lat}} ))
+}
+
+# Compute ahull
+get_ahull_sf <- function(df, long, lat, alpha = 2){
+  ahull <- df %>% 
+    dplyr::select({{ long }}, {{ lat }}) |> 
+    alphahull::ahull(alpha = alpha)  |> 
+    hull2spatial::ahull2poly() |> 
+  st_as_sf() |> 
+  st_set_crs(value = 4326)
+  
+  return(ahull)
+}
+
+plant_occ <- tibble(scientific_name = target_sps,
+                    raw_data = map(scientific_name,
+                                   ~ filter(vasc, scientific_name == .x)),
+                    clean_occ = map(raw_data, 
+                                     ~ clean_spatial_data(.x, longitude_used, latitude_used)),
+                    occ_sf = map(clean_occ,
+                                 ~ st_as_sf(.x, coords = c("longitude_used", "latitude_used"),
+                                            crs = 4326)),
+                    ahull_sf = map(clean_occ, 
+                                   ~ get_ahull_sf(.x, longitude_used, latitude_used))
+                    )
+```
+
+### Plot these species' ahulls
+
+```{r}
+plot_ahull <- function(occ_sf, ahull_sf){
+  aus <- st_transform(ozmaps::ozmap_country, 4326)
+  
+  ggplot() + 
+    geom_sf(data = aus, colour = "black", fill = "white")  +
+    geom_sf(data = occ_sf, colour = "black", size = 0.5) +  
+    geom_sf(data = ahull_sf, fill = "orange", alpha = 0.5) +
+  coord_sf(xlim=c(135, 155), 
+           ylim=c(-20,-45)) +
+  labs(x = "Longtitude (DD)", y = "Latitude (DD)") + 
+  theme_bw()
+}
+
+plot_ahull(plant_occ$occ_sf[[1]], plant_occ$ahull_sf[[1]])
+
+plant_occ |> 
+  mutate(ahull_ggplot = map2(.x = occ_sf,
+                             .y = ahull_sf,
+                             .f = ~ plot_ahull(.x , .y)) 
+  ) 
+```
+
+### Relying on one massive `sf` object
+
+```{r}
+# Get family information
+plants <- 
+  bind_rows(plant_occ$ahull_sf) %>%
+  mutate(scientific_name = plant_occ$scientific_name) %>% 
+  left_join(., vasc %>% 
+              filter(scientific_name %in% target_sps) %>% 
+              select(scientific_name, family) %>% 
+              distinct())
+
+
+aus <- st_transform(ozmaps::ozmap_country, 4326)
+
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_sf(data = plants, aes(group = scientific_name, fill = scientific_name), alpha = 0.5) +
+  coord_sf(xlim=c(145, 155), 
+           ylim=c(-20,-45)) +
+  labs(x = "Longtitude (DD)", y = "Latitude (DD)") + 
+  facet_wrap(~family) +
+  theme_bw()
+  
+```
+
+### Try across ALL species that have more than 3 points after cleaning :D 
+
+### Seems like subspecies are an issue with this
+
+```{r}
+library(stringr)
+vasc %>% 
+  filter(duplicate_specimen_flag == "potential_duplicate_specimen") %>% 
+  pull(scientific_name) %>% unique() -> bad_species
+
+```
+
+```{r}
+# Clean the data
+clean_spatial_data <- function(data, long, lat){
+  data|>
+  dplyr::select(scientific_name, {{long}}, {{lat}}) |> 
+    dplyr::filter(!duplicated({{long}}) & !duplicated({{lat}})) |> 
+    dplyr::filter(!is.na( {{long}} ) & !is.na( {{lat}} ))
+}
+
+# Compute ahull
+get_ahull_sf <- function(df, long, lat, alpha = 2){
+  ahull <- df %>% 
+    dplyr::select({{ long }}, {{ lat }}) |> 
+    alphahull::ahull(alpha = alpha)  |> 
+    hull2spatial::ahull2poly() |> 
+  st_as_sf() |> 
+  st_set_crs(value = 4326)
+}
+
+# Get data in order
+plant_dat <- tibble(scientific_name = vasc %>% 
+                      filter(!scientific_name %in% bad_species) %>% 
+                      filter(!duplicated(longitude_used) & !duplicated(latitude_used)) |> 
+                      filter(!is.na(longitude_used) & !is.na(latitude_used)) %>%
+                      group_by(scientific_name) %>% 
+                      summarise(n_occ = n()) %>% 
+                      filter(n_occ > 4) %>% 
+                      pull(scientific_name),
+                    raw_data = map(scientific_name,
+                                   ~ filter(vasc, scientific_name == .x)),
+                    clean_occ = map(raw_data, 
+                                     ~ clean_spatial_data(.x, longitude_used, latitude_used)),
+                    occ_sf = map(clean_occ,
+                                 ~ st_as_sf(.x, coords = c("longitude_used", "latitude_used"),
+                                            crs = 4326)))
+
+# Compute alpha hulls
+plant_dat <- plant_dat %>% 
+  mutate(ahull_sf = map(clean_occ, 
+                        ~ get_ahull_sf(.x, longitude_used, latitude_used)))
+
+# Join family infomation
+plant_dat <- plant_dat %>% left_join(vasc %>% select(scientific_name, family, genus) %>% distinct(), by = "scientific_name")
+
+plant_dat$ahull_sf <- map(plant_dat$ahull_sf,
+                          ~ rename(.x, 
+                                   ahull = geometry))
+
+# plant_dat$ahull_sf <-
+plant_dat$ahull_sf  <- map2(.x =plant_dat$ahull_sf,
+                            .y = plant_dat$scientific_name,
+                            ~ mutate(.x, 
+                                     scientific_name = .y))
+
+# Get family information
+plant_ahull <- bind_rows(plant_dat$ahull_sf) %>%
+  left_join(., plant_dat %>% select(scientific_name, family), by = "scientific_name")
+
+aus <- st_transform(ozmaps::ozmap_country, 4326)
+
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_sf(data = plant_ahull, aes(group = scientific_name, fill = family), alpha = 0.5) +
+  coord_sf(xlim=c(145, 155), 
+           ylim=c(-20,-45)) +
+  labs(x = "Longtitude (DD)", y = "Latitude (DD)") + 
+  facet_wrap(~family) +
+  theme_bw() 
+
+```
+
+
+

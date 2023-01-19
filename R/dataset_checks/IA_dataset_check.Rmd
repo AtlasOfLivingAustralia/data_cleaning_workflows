@@ -1,0 +1,117 @@
+---
+title: "IA Dataset check"
+author: "Fonti Kar"
+date: "2023-01-15"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(remotes, galah, tidyverse, alphahull, sp, sf, ozmaps, hull2spatial, patchwork, here, stringr, skimr)
+```
+
+
+### Configuring ALA account
+```{r}
+galah_config(email = "fonti.kar@gmail.com", 
+             atlas = "Australia",
+             download_reason_id = 10 # testing reason
+             )
+```
+
+### Read in data
+
+```{r}
+inverts <- read_csv(here("data", "inverts", "invertebrate.data.csv"))
+
+str(inverts)
+skim(inverts)
+
+```
+
+### Fix lower case of taxonomy info
+
+```{r}
+inverts <- inverts %>% 
+  mutate(family = str_to_sentence(family),
+         class = str_to_sentence(class)) 
+
+write_csv(inverts, here("data", "invertebrate.data.fixed.csv"))
+```
+
+### Fix missing class and families
+
+- 10 taxa missing family, but cannot find these in ALA taxonomy
+- 78 missing class, but cannot find these in ALA taxonomy
+
+
+```{r}
+ala_family <- inverts %>% 
+  filter(is.na(family)) %>%
+  select(scientific_name) %>% 
+  distinct() %>% 
+  search_taxa() 
+
+names(ala_family) # no family data found
+
+
+ala_class <- inverts %>% 
+  filter(is.na(class)) %>%
+  select(scientific_name) %>% 
+  distinct() %>% 
+  search_taxa() 
+
+names(ala_class)  # no class data found
+```
+
+### Checking if higher taxonomy is consistent
+
+Two suspicious taxa `Incertae Sedis` and `Species Inquirenda` 
+
+```{r}
+# Class
+inverts %>% 
+  select(scientific_name:family) %>% 
+  distinct() %>% 
+  arrange(family, class, scientific_name) %>% 
+  group_by(scientific_name) %>% 
+  summarise(n_class = length(unique(class)),
+            n_fam = length(unique(family))
+            ) %>% 
+  filter(n_class > 1)
+
+# Family
+inverts %>% 
+  select(scientific_name:family) %>% 
+  distinct() %>% 
+  arrange(family, class, scientific_name) %>% 
+  group_by(scientific_name) %>% 
+  summarise(n_class = length(unique(class)),
+            n_fam = length(unique(family))
+            ) %>% 
+  filter(n_fam > 1) 
+```
+
+
+#### Filter out suspiscious taxa
+
+```{r}
+inverts %>% 
+  select(scientific_name:family) %>% 
+  distinct() %>% 
+  arrange(family, class, scientific_name) %>% 
+  group_by(scientific_name) %>% 
+  summarise(n_class = length(unique(class)),
+            n_fam = length(unique(family))
+            ) %>% 
+  filter(n_fam > 1) %>% 
+  pull(scientific_name) -> sus_taxa
+
+
+inverts %>% 
+  filter(scientific_name %in% sus_taxa) %>% 
+  select(scientific_name:project)
+```

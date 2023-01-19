@@ -1,0 +1,293 @@
+---
+title: "Invert Multispecies Alpha Hulls"
+author: "Fonti Kar"
+date: "2023-01-19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+pacman::p_load(remotes, galah, tidyverse, alphahull, sp, sf, ozmaps, hull2spatial, patchwork, here, stringr, skimr)
+```
+
+
+### Configuring ALA account
+```{r}
+galah_config(email = "fonti.kar@gmail.com", 
+             atlas = "Australia",
+             download_reason_id = 10 # testing reason
+             )
+```
+
+### Read in data
+
+```{r}
+inverts <- read_csv(here("data", "inverts", "invertebrate.data.fixed.csv"))
+
+str(inverts)
+skim(inverts)
+
+```
+
+
+### Preclean for alpha hulls
+
+```{r}
+clean_inv <- inverts %>% 
+  filter(! duplicated(longitude) & ! duplicated(latitude)) %>%  # Exclude duplicated coords
+  drop_na(longitude, latitude) # Exclude records with missing coords
+
+inverts %>% 
+  filter(duplicated(longitude) & duplicated(latitude)) %>% nrow() # This is a massive amount of data
+```
+
+### Summaries of all taxonomic levels
+
+Plot by class might be better! Each family is only represented by 1 taxa
+
+```{r}
+clean_inv %>% 
+  group_by(class) %>% 
+  summarise(n_sp = length(unique(scientific_name))) %>% 
+  arrange(-n_sp)  %>% 
+  print(n = 50) 
+
+clean_inv %>% 
+  group_by(family) %>% 
+  summarise(n_sp = length(unique(scientific_name))) %>%
+  arrange(-n_sp) 
+
+## Other class
+other_class <- clean_inv %>% 
+  group_by(class) %>% 
+  summarise(n_sp = length(unique(scientific_name))) %>%
+  filter(n_sp <= 10 | is.na(class)) %>% 
+  pull(class)
+
+## 
+clean_inv %>% 
+  filter(class == "Arachnida", 
+         family == "Salticidae") %>% 
+  group_by(scientific_name) %>% 
+  summarise(n()) %>% 
+  arrange(-`n()`) %>% slice(1:5) %>% 
+  pull(scientific_name) -> top5jspiders #Top 5 species
+  
+``` 
+
+### Create new class variable
+
+```{r}
+clean_inv <- clean_inv %>% 
+  mutate(plot_class = ifelse(class %in% other_class, "Other", class)) 
+
+clean_inv %>% 
+  group_by(plot_class) %>% 
+  summarise(n_sp = length(unique(scientific_name))) %>% 
+  arrange(-n_sp)  %>% 
+  print(n = 50) 
+```
+
+### Exclude species with fewer than 4 records
+
+```{r}
+too_few_taxa <- clean_inv %>% 
+  group_by(scientific_name) %>% 
+  summarise(n = n()) %>% 
+  filter(n < 4) %>% 
+  pull(scientific_name)
+
+# Exclude too_few_taxa
+plotdat_inv <- clean_inv %>% 
+  filter(!scientific_name %in% too_few_taxa)
+```
+
+### Compile data into tibble to compute alpha hull for top 3 jumping spiders 
+
+```{r}
+nest_inv <- plotdat_inv %>% 
+  select(family, plot_class, scientific_name, longitude, latitude) %>%
+  group_by(family, plot_class, scientific_name) %>%
+  arrange(family, plot_class, scientific_name) %>% 
+  nest(occ = ends_with("tude")) 
+
+
+## Compute alpha hull from occ
+get_ahull_sf <- function(df, alpha = 2){
+  ahull <- df %>% 
+    alphahull::ahull(alpha = alpha)  |> 
+    hull2spatial::ahull2poly() |> 
+  st_as_sf() |>
+  st_set_crs(value = 4326)
+  
+  return(ahull)
+}
+
+nest_inv %>% 
+  filter(scientific_name %in% top5jspiders) %>% 
+  mutate(ahull = map(occ, 
+                     get_ahull_sf),
+         occ_sf = map(occ, 
+                      ~ st_as_sf(.x, coords = c("longitude", "latitude"),
+                                            crs = 4326))) -> top5jspiders_ahull
+
+top5jspiders_ahull %>% 
+  select(1:3, ahull) %>% 
+  unnest() %>% 
+  st_as_sf() -> top5jspiders_subset_ahull
+
+top5jspiders_ahull %>% 
+    select(1:3, occ_sf) %>% 
+  unnest() %>% 
+  st_as_sf() -> top5jspiders_subset_points
+```
+
+### PLot spider ahulls
+
+```{r}
+library(wesanderson)
+
+wes_palette("Moonrise3")
+
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_sf(data = top5jspiders_subset_ahull, aes(fill = scientific_name), alpha = 0.7) +
+  geom_sf(data = top5jspiders_subset_points, aes(colour = scientific_name), size = 0.5) +
+  scale_fill_manual(values = wes_palette("Moonrise3")) +
+  scale_color_manual(values = wes_palette("Moonrise3")) +
+  labs(x = "Longtitude (DD)", y = "Latitude (DD)") +
+  coord_sf(xlim=c(110, 155), 
+           ylim=c(-8,-45)) +
+  theme_bw()
+```
+
+### Try convex hulls
+
+```{r}
+join_chull <-function(chull_vec){
+  polygn <- c(chull_vec, chull_vec[1])
+  polygn
+}
+
+chull_overlap <- function(occ, chull_polygn){
+  occ[chull_polygn,]
+}
+
+sf_transform <- function(occ){
+  st_as_sf() %>% 
+  st_set_crs(value = 4326)
+}
+
+spatial_inv <- nest_inv %>% 
+  filter(scientific_name %in% top5jspiders) %>% 
+  mutate(chull = map(occ, 
+                     chull),
+         chull_polygon = map(chull, 
+                             join_chull),
+         chull_occ = map2(.x = occ,
+                          .y = chull_polygon,
+                          chull_overlap)) 
+
+
+```
+### Convert to sf
+
+```{r}
+polygon_sf <- function(polygon){
+polygon %>%
+  st_as_sf(coords=c("longitude","latitude"), crs = 4326) %>%
+  summarise(geometry = st_combine(geometry)) %>%
+  st_cast("POLYGON") -> x
+  
+  x
+}
+
+spatial_inv <- spatial_inv %>% 
+  ungroup %>% 
+  mutate(polygon_sf = map(chull_occ, 
+                          polygon_sf)) 
+
+spatial_inv$polygon_sf %>%
+  bind_rows() %>% 
+  mutate(scientific_name = spatial_inv$scientific_name, 
+         plot_class = spatial_inv$scientific_name)
+
+
+spatial_inv %>% 
+  select(1:3, polygon_sf) %>% 
+  unnest(cols = c(polygon_sf)) %>% 
+  sf::st_as_sf(crs = 4326)  -> plot_convex_hull 
+```
+
+### Lets try plot it
+
+```{r}
+aus <- st_transform(ozmaps::ozmap_country, 4326)
+
+spatial_inv %>%
+  mutate(occ_sf = map(occ,
+                      ~ st_as_sf(.x, coords = c("longitude", "latitude"),
+                                            crs = 4326))) %>% 
+  select(scientific_name, occ_sf) %>% 
+  unnest() %>% 
+  st_as_sf() -> spider_chull_points
+
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_sf(data = plot_convex_hull, aes(group = scientific_name, fill = scientific_name), alpha = 0.5) +
+  geom_sf(data = spider_chull_points, aes(colour = scientific_name), size = 1) + 
+  scale_fill_manual(values = wes_palette("Moonrise3")) +
+  scale_color_manual(values = wes_palette("Moonrise3")) +
+  labs(x = "Longtitude (DD)", y = "Latitude (DD)") +
+  coord_sf(xlim=c(110, 155), 
+           ylim=c(-8,-45)) +
+  theme_bw() + 
+  theme(legend.position = "none")
+  
+```
+
+
+### Join in other info
+
+```{r}
+plot_convex_hull <- plot_convex_hull %>% 
+  left_join(inverts %>% select(scientific_name, family, year), by = "scientific_name")
+```
+
+```{r}
+# Spiders only
+plot_convex_hull %>% 
+  filter(plot_class == "Arachnida") %>% 
+  group_by(family) %>% 
+  summarise(n = length(unique(scientific_name)))  %>% 
+  arrange(-n)
+
+# What about Salticidae?! 
+plot_convex_hull %>% 
+  filter(plot_class == "Arachnida", 
+         family == "Salticidae") -> jumping_spiders
+
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_sf(data = jumping_spiders, aes(fill = scientific_name), alpha = 0.1) +
+  labs(x = "Longtitude (DD)", y = "Latitude (DD)") +
+  coord_sf(xlim=c(110, 155), 
+           ylim=c(-8,-45)) +
+  theme_bw() + 
+  theme(legend.position = "none")
+
+# What about the top 5 most species rich taxa
+jumping_spiders %>% 
+  filter(scientific_name %in% top3jspiders) -> top3jspiders_subset
+  
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_sf(data = top3jspiders_subset, aes(fill = scientific_name), alpha = 0.1) +
+  labs(x = "Longtitude (DD)", y = "Latitude (DD)") +
+  coord_sf(xlim=c(110, 155), 
+           ylim=c(-8,-45)) +
+  theme_bw() + 
+  theme(legend.position = "none")
+```
+
