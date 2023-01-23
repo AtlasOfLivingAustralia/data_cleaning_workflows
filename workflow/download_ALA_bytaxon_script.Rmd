@@ -25,6 +25,11 @@ knitr::opts_chunk$set(echo = TRUE,
 ```{r}
 rm(list = ls())
 
+# For CoordinateCleaner to currently work!  Uncomment and install once
+# devtools::install_github("ropensci/rnaturalearth")
+# devtools::install_github("ropensci/rnaturalearthdata")
+# devtools::install_github("ropensci/rnaturalearthhires")
+
 # install.packages("pacmac")
 pacman::p_load(galah, dplyr, CoordinateCleaner, sf, ozmaps, job, arrow, purrr, data.table, ggplot2)
 ```
@@ -712,6 +717,9 @@ IA_1940onwards %>%
 Check out https://docs.ropensci.org/CoordinateCleaner/
 
 An really powerful too to remove occurrence records that are in the seas! Not a perfect solution but a great first pass
+
+There was an issue with removing sea coordinates: https://github.com/ropensci/CoordinateCleaner/issues/77
+
 #### Precleaning
 
 Removing NA in coordinates, similar to data cleaning steps that are in get_ala_taxondata.R
@@ -732,34 +740,18 @@ IA_1940onwards_preclean <- IA_1940onwards %>%
   filter(!duplicated(decimalLongitude), !duplicated(decimalLatitude)) 
 ```
 
-Update Jan 2023 CoordinateCleaner is currently broken! 
-
 ```{r}
 cc_flags <- IA_1940onwards_preclean %>% 
-  data.frame() %>% 
-  cc_sea(lon = "decimalLongitude", lat = "decimalLatitude") 
+  cc_sea(lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged") 
 
 summary(cc_flags)
 plot(cc_flags, lon = "decimalLongitude", lat = "decimalLatitude")
 
+# Subset sea records
+IA_1940onwards_preclean %>% filter(cc_flags) %>% nrow()
+
 # Exclude sea records
-cc_flags$.sea
-
-invert_2022_cc <- invert_2022[cc_flags$.sea,]
-
-# Get map of Australia
-aus <- st_transform(ozmaps::ozmap_country, 4326)
-
-ggplot() + 
-  geom_sf(data = aus, 
-          colour = "black", 
-          fill = "white")  + 
-  geom_point(data = invert_2022_cc, 
-             mapping = aes(decimalLongitude, decimalLatitude), 
-             colour = "black", size = 0.8, alpha = 0.005) +
-  coord_sf(xlim=c(110, 152), 
-           ylim=c(-5,-44)) 
-
+IA_1940onwards_searemoved <- IA_1940onwards_preclean %>% filter(!cc_flags)
 ```
 
 ### Checks of downloads 
