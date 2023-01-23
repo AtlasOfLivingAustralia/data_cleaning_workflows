@@ -3,12 +3,17 @@ title: "Invert Multispecies Alpha Hulls"
 author: "Fonti Kar"
 date: "2023-01-19"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-pacman::p_load(remotes, galah, tidyverse, alphahull, sp, sf, ozmaps, hull2spatial, patchwork, here, stringr, skimr)
+pacman::p_load(remotes, galah, dplyr, tidyverse,alphahull, sp, sf, ozmaps, hull2spatial, patchwork, here, stringr, skimr)
+
+aus <- st_transform(ozmaps::ozmap_country, 4326)
+source("ignore/ahull.R")
 ```
 
 
@@ -29,7 +34,6 @@ str(inverts)
 skim(inverts)
 
 ```
-
 
 ### Preclean for alpha hulls
 
@@ -65,14 +69,14 @@ other_class <- clean_inv %>%
   filter(n_sp <= 10 | is.na(class)) %>% 
   pull(class)
 
-## 
+## Case study
 clean_inv %>% 
   filter(class == "Arachnida", 
          family == "Salticidae") %>% 
   group_by(scientific_name) %>% 
   summarise(n()) %>% 
-  arrange(-`n()`) %>% slice(1:5) %>% 
-  pull(scientific_name) -> top5jspiders #Top 5 species
+  arrange(-`n()`) %>% slice(1:10) %>% 
+  pull(scientific_name) -> top10jspiders #Top 5 species
   
 ``` 
 
@@ -103,20 +107,22 @@ plotdat_inv <- clean_inv %>%
   filter(!scientific_name %in% too_few_taxa)
 ```
 
-### Compile data into tibble to compute alpha hull for top 3 jumping spiders 
+### Compile data into tibble 
 
 ```{r}
-nest_inv <- plotdat_inv %>% 
-  select(family, plot_class, scientific_name, longitude, latitude) %>%
+nest_inv <- plotdat_inv %>%
+  dplyr::select(family, plot_class, scientific_name, longitude, latitude) %>%
   group_by(family, plot_class, scientific_name) %>%
   arrange(family, plot_class, scientific_name) %>% 
   nest(occ = ends_with("tude")) 
+```
 
 
 ## Compute alpha hull from occ
+```{r}
 get_ahull_sf <- function(df, alpha = 2){
   ahull <- df %>% 
-    alphahull::ahull(alpha = alpha)  |> 
+    ahull(alpha = alpha)  |> 
     hull2spatial::ahull2poly() |> 
   st_as_sf() |>
   st_set_crs(value = 4326)
@@ -125,13 +131,99 @@ get_ahull_sf <- function(df, alpha = 2){
 }
 
 nest_inv %>% 
-  filter(scientific_name %in% top5jspiders) %>% 
   mutate(ahull = map(occ, 
                      get_ahull_sf),
          occ_sf = map(occ, 
                       ~ st_as_sf(.x, coords = c("longitude", "latitude"),
-                                            crs = 4326))) -> top5jspiders_ahull
+                                            crs = 4326)))  # ERROR ! no slot of name "polygons" for this object of class "SpatialPoints"
+```
 
+### Break down the get_ahull_sf function into each step to see where it is failing
+
+```{r}
+# Compute ahull is ok! 
+nest_inv <- nest_inv %>% 
+  mutate(ahull = map(occ,
+                     ~ahull(.x, alpha = 2)))
+
+# The error occurred in group 259: family = "Camaenidae", plot_class = "Gastropoda", scientific_name = "Amplirhagada decora".
+# Caused by error in `alphahull::ahull()`:
+# ! object 'case' not found
+
+# Investigate 259
+nest_inv[259,]$occ %>% data.frame() 
+
+# Plot 
+nest_inv[259,]$occ %>% data.frame() %>% st_as_sf(coords = c("longitude", "latitude"), crs = 4326) -> occ_sf
+
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_sf(data = y, colour = "red", size = 1) + 
+  coord_sf(xlim=c(124, 126), 
+           ylim=c(-14,-16)) 
+  
+nest_inv[259,]$occ %>% data.frame() %>% ahull(alpha = 2)
+
+
+# Convert to sp object
+nest_inv <- nest_inv %>% 
+  mutate(ahull_sp = map(ahull,
+                        hull2spatial::ahull2poly))
+
+# Convert to sf object
+nest_inv %>% 
+  mutate(ahull_sf = map(ahull_sp,
+                         ~st_as_sf(.x, coords=c("longitude","latitude"), crs = 4326)))
+
+# Caused by error in `slot()`:
+# ! no slot of name "polygons" for this object of class "SpatialPoints"
+
+nest_inv$occ[[1]]
+nest_inv$ahull[[1]] %>% plot()
+nest_inv$ahull_sp[[1]] -> x
+
+plot(x) 
+str(x)
+
+x@proj4string <- sp::CRS("EPSG:4326") 
+slotNames(x)
+x@polygons
+                  
+?st_sf
+?st_sfc
+
+ggplot(data = x, aes(x = longitude, y =  latitude, group = ID)) + 
+  #geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_polygon(colour = "red", size = 1) + 
+  coord
+
+```
+
+### Trying to spatially thin data
+
+```{r}
+test_Dat <- nest_inv[259,]$occ %>% data.frame()
+
+test_Dat <- clean_inv %>% 
+  filter(scientific_name == "Amplirhagada decora") %>% 
+  select(scientific_name, latitude, longitude) %>%  data.frame()
+
+
+x <- thin(test_Dat, 
+     lat.col = "latitude", 
+     long.col = "longitude", 
+     spec.col = "scientific_name",
+     thin.par = 10, reps = 10,
+     locs.thinned.list.return = TRUE,
+      write.files = FALSE
+      )
+
+plotThin(x)
+
+x
+```
+
+```{r}
 top5jspiders_ahull %>% 
   select(1:3, ahull) %>% 
   unnest() %>% 
@@ -289,5 +381,28 @@ ggplot() +
            ylim=c(-8,-45)) +
   theme_bw() + 
   theme(legend.position = "none")
+```
+
+### Try ConR
+
+```{r}
+test_Dat <- test_Dat %>% 
+  select(latitude, longitude, scientific_name)
+aus_sp <- aus %>% sf::as_Spatial()
+
+IUCN.eval(test_Dat, 
+          country_map = aus_sp,
+          method.range = "alpha.hull",
+          alpha = 2,
+          Cell_size_AOO = 2,
+          Cell_size_locations = 2,
+          exclude.area = TRUE,
+          export_shp = TRUE, ## to get SpatialPolygonsDataFrame in output
+          write_shp = FALSE, ## to write shapefile files to folder
+          SubPop = FALSE,
+          DrawMap = FALSE)
+
+# Same error:
+#{ : task 1 failed - "task 1 failed - "object 'case' not found""
 ```
 
