@@ -179,6 +179,7 @@ vasc %>%
   filter(species %in% inconsistent_class) %>% 
   distinct() %>% 
   arrange(species) %>% 
+  select(phylum:species, scientific_name) %>% 
   print(n = 100)
 ```
 ##### By `scientific_name`

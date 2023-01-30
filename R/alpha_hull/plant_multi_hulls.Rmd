@@ -3,6 +3,8 @@ title: "plant_multi_alphahull"
 author: "Fonti Kar"
 date: "2023-01-19"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
 
 
@@ -12,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE,
                       include = TRUE,
                       fig.align='center')
 
-pacman::p_load(remotes, galah, tidyverse, here, skimr, janitor)
+pacman::p_load(remotes, galah, tidyverse, here, skimr, janitor, sf)
 
 # Configure galah
 galah_config(email = "fonti.kar@gmail.com", 
@@ -21,26 +23,21 @@ galah_config(email = "fonti.kar@gmail.com",
              )
 ```
 
-## Read in data
+# Read in data
 
 ```{r}
 vasc <- read_csv(here("data", "plants", "vascularplant.data.csv"))
 
 skim(vasc)
 ```
-### Initial clean
+# Initial clean
 
 ```{r}
 ### Creating an improved duplicate flag
 vasc <- vasc %>% 
-  group_by(scientific_name) %>% 
+  group_by(species) %>% 
   mutate(duplicate = +duplicated(duplicate_specimen_flag == "potential_duplicate_specimen", "NA")) %>%
   ungroup()
-
-# vasc <- vasc %>%  
-#   mutate(duplicate = 
-#            case_when(duplicate_specimen_flag  == "potential_duplicate_specimen" ~ 1,
-#                      is.na(duplicate_specimen_flag)  ~ 0)) 
 
 clean_vasc <- vasc %>% 
   filter(!duplicate == TRUE) %>%  # Exclude duplicate records
@@ -48,89 +45,105 @@ clean_vasc <- vasc %>%
   drop_na(longitude_used, latitude_used) # Exclude records with missing coords
 ```
 
-### Exploring potential_duplicate_specimen
+### Missing taxonomic information
+
 ```{r}
-vasc %>% filter(duplicate_specimen_flag  == "potential_duplicate_specimen") %>% pull(scientific_name) %>% unique() -> potential_duplicate_specimen_sp
+clean_vasc %>% 
+  select(species, order, class) %>% 
+  filter(is.na(order)) %>% 
+  select(species) %>% 
+  search_taxa() # Can't recover any put these in "Missing Order" 
 
-by_sp <- vasc %>% filter(scientific_name %in% potential_duplicate_specimen_sp) %>% 
-  group_split(scientific_name)
-
-# Different dates
-by_sp[[1]] %>% select(scientific_name, event_date_parsed, ends_with("used"), duplicate_specimen_flag) %>% data.frame()
-
-# Try compute alphahull this dataset
-by_sp[[1]] %>% 
-  filter(is.na(duplicate_specimen_flag)) %>% 
-  select(longitude_used, latitude_used) %>% 
-  ahull(alpha = 2) -> by_sp_1_hull
-
-by_sp_1_hull %>% plot() #seems ok
-
-### Creating an improved duplicate flag
-# This works!
-+duplicated(by_sp[[1]]$duplicate_specimen_flag == "potential_duplicate_specimen", "NA")
+clean_vasc <- clean_vasc %>% 
+  mutate(order = ifelse(is.na(order), "Missing Order", order))
 ```
 
 
+### Inconsistent higher taxonomic information
+
+```{r}
+clean_vasc %>% 
+  select(species, order, class) %>% 
+  distinct() %>% 
+  group_by(species) %>% 
+  summarise(n_class = length(unique(class)),
+            n_order = length(unique(order))
+            ) %>% 
+  filter(n_order > 1) 
+
+clean_vasc %>% 
+  filter(species == "Thelychiton speciosus") %>% 
+  select(species, order, class)
+
+# Add  Asparagales in NA for Thelychiton speciosus
+clean_vasc <- clean_vasc %>% 
+  mutate(order = ifelse(species == "Thelychiton speciosus", "Asparagales", order))
+```
 
 ### Flag in cleaned dataset which ones are the Other species
 
 ```{r}
-clean_vasc <- clean_vasc %>% 
-  mutate(order_v2 = order,
-         order_v2 = ifelse(order_v2 %in% other_orders, "Other Orders", order_v2)) 
-```
+clean_vasc %>% 
+  group_by(order) %>% 
+  summarise(n_orders = sum(length(species))) %>% 
+  arrange(-n_orders) %>% print(n = 50)
 
-### Compile data into tibble to compute alpha hull
+clean_vasc %>% 
+  group_by(order) %>% 
+  summarise(n_orders = sum(length(species))) %>% 
+  arrange(-n_orders) %>% 
+  filter(n_orders < 10) %>% 
+  pull(order) -> other_orders
+
+# Assign Other Orders
+clean_vasc <- clean_vasc %>% 
+  mutate(order_v2 = ifelse(order %in% other_orders, "Other Orders", order)) 
+```
+### Exclude taxa that have fewer than 4 obs after dropping NA
 
 ```{r}
-nested_vasc <- clean_vasc %>% 
-  select(order, class, scientific_name, longitude_used, latitude_used) %>% 
-  drop_na(order, class) %>% 
-  group_by(order, class, scientific_name) %>%
-  arrange(order, class, scientific_name) %>% 
-  nest(occ = ends_with("used")) 
+data_insuffient_taxa <- clean_vasc %>% 
+  group_by(species) %>% 
+  summarise(n_obs = n()) %>% 
+  filter(n_obs < 4) %>% 
+  pull(species)
 
-# Taxa that have more than 2 orders
-problem_taxa <- nested_vasc %>% pull(scientific_name) %>% janitor::tabyl() %>% filter(n > 1)
-nested_vasc %>% filter(scientific_name %in% problem_taxa$.)
+clean_vasc <- clean_vasc %>% 
+  filter(! species %in% data_insuffient_taxa)
+```
+
+### Taxa that have more than 2 class
+```{r}
+problem_taxa <- nested_vasc %>% pull(species) %>% janitor::tabyl() %>% filter(n > 1)
+
+nested_vasc %>% filter(species %in% problem_taxa$.) %>% 
+  arrange(species)
+
+# ala_vasc %>% filter(species %in% problem_taxa$.) %>%
+#   arrange(species)
 ```
 
 ### Use galah to name match all scientific names
 
 ```{r}
-ala_taxonomy <- search_taxa(unique(clean_vasc$scientific_name)) %>% 
+ala_taxonomy <- search_taxa(unique(clean_vasc$species)) %>% 
   select(order, class, search_term) %>% 
-  rename(scientific_name = search_term)
+  rename(ala_order = order,
+         ala_class = class)
   
 # Left join these back
-ala_vasc <- clean_vasc %>% 
-  select(scientific_name, longitude_used, latitude_used) %>% 
-  left_join(ala_taxonomy, by = "scientific_name") %>% 
-  select(order, class, scientific_name, longitude_used, latitude_used) 
+ala_vasc <-  nested_vasc %>% 
+  left_join(ala_taxonomy, by = c("species" =  "search_term")) %>% 
+  select(order_v2, ala_order, class, ala_class, species, occ)
 
 # Put those smaller orders into a group
 ala_vasc <- ala_vasc %>% 
-  mutate(order_v2 = order,
-         order_v2 = ifelse(order_v2 %in% other_orders, "Other Orders", order_v2)) 
-```
-
-### Exclude taxa that have fewer than 4 obs after dropping NA
-
-```{r}
-data_insuffient_taxa <- ala_vasc %>% 
-  group_by(scientific_name) %>% 
-  summarise(n_obs = n()) %>% 
-  filter(n_obs < 4) 
-
-ala_vasc <- ala_vasc %>% 
-  filter(! scientific_name %in% data_insuffient_taxa$scientific_name)
-```
+  mutate(ala_order_v2 = ala_order,
+         ala_order_v2 = ifelse(ala_order %in% other_orders, "Other Orders", ala_order)) 
 
 
-https://community.rstudio.com/t/how-to-keep-running-map-after-an-error/113097/5
+# https://community.rstudio.com/t/how-to-keep-running-map-after-an-error/113097/5
 
-```{r}
 # Nest the data
 ala_vasc_nest <- ala_vasc %>% 
   drop_na(order, order_v2, class) %>% 
@@ -140,7 +153,85 @@ ala_vasc_nest <- ala_vasc %>%
   nest(coords = c(longitude_used, latitude_used))
 ```
 
-### Compute spatial data 
+
+## Compile data into tibble 
+
+```{r}
+nested_vasc <- clean_vasc %>% 
+  select(order_v2, species, longitude_used, latitude_used) %>% 
+  drop_na(order_v2) %>% 
+  group_by(order_v2, species) %>%
+  arrange(order_v2, species) %>% 
+  nest(occ = ends_with("used")) %>% 
+  ungroup()
+```
+
+# Compute convex hulls
+
+```{r}
+join_chull <-function(chull_vec){
+  polygn <- c(chull_vec, chull_vec[1])
+  polygn
+}
+
+chull_overlap <- function(occ, chull_polygn){
+  occ[chull_polygn,]
+}
+
+sf_transform <- function(occ){
+  st_as_sf() %>% 
+  st_set_crs(value = 4326)
+}
+
+
+polygon_sf <- function(polygon){
+polygon %>%
+  st_as_sf(coords=c("longitude_used","latitude_used"), crs = 4326) %>%
+  summarise(geometry = st_combine(geometry)) %>%
+  st_cast("POLYGON") -> x
+  
+  x
+}
+
+spatial_vasc <- nested_vasc %>% 
+  mutate(chull = map(occ, 
+                     chull),
+         chull_join = map(chull, 
+                             join_chull),
+         chull_occ = map2(.x = occ,
+                          .y = chull_join,
+                          chull_overlap),
+         chull_sf = map(chull_occ,
+                        polygon_sf))
+ 
+
+vasc_sf <- spatial_vasc$chull_sf %>%
+  bind_rows() %>% 
+  mutate(species = spatial_vasc$species, 
+         order_v2 = spatial_vasc$order_v2)
+```
+
+## Plot covnex hulls
+
+```{r}
+aus <- st_transform(ozmaps::ozmap_country, 4326)
+
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white")  +
+  geom_sf(data = vasc_sf %>% filter(order_v2 == "Fabales"), aes(group = order_v2, fill = order_v2), alpha = 0.1) +
+  facet_wrap(~order_v2) +
+  theme(legend.position = "none") +
+  coord_sf(xlim=c(135, 155), 
+           ylim=c(-25,-45)) 
+
+
+
+
+
+```
+
+
+## Compute ahull data 
 
 ```{r}
 # Compute ahull
@@ -459,6 +550,8 @@ ggplot() +
   theme_bw() 
 
 ```
+
+
 
 
 

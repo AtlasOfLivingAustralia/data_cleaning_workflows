@@ -162,9 +162,11 @@ ggplot() +
   coord_sf(xlim=c(124, 126), 
            ylim=c(-14,-16)) 
   
-nest_inv[259,]$occ %>% data.frame() %>% ahull(alpha = 2)
-
-
+nest_inv[259,]$occ %>% 
+  data.frame() %>% 
+  ahull(alpha = 0.01) %>% 
+  plot()
+  
 # Convert to sp object
 nest_inv <- nest_inv %>% 
   mutate(ahull_sp = map(ahull,
