@@ -77,7 +77,6 @@ clean_inv %>%
   summarise(n()) %>% 
   arrange(-`n()`) %>% slice(1:10) %>% 
   pull(scientific_name) -> top10jspiders #Top 5 species
-  
 ``` 
 
 ### Create new class variable
