@@ -10,7 +10,7 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-pacman::p_load(galah, sf, ozmaps, ggforce, ggmap, tidyverse, here, skimr)
+pacman::p_load(galah, sf, ozmaps, ggforce, ggmap, tidyverse, here, skimr, readr, dyplyr)
 ```
 
 
@@ -25,10 +25,13 @@ galah_config(email = Sys.getenv("ALA_email"),
 ### Read in data
 
 ```{r}
-inverts <- read_csv(here("data", "inverts", "invertebrate.data.fixed.csv"))
+#inverts <- read_csv(here("data", "inverts", "invertebrate.data.fixed.csv"))
+inverts <- read_csv(here("R", "alalabs", "data", "inverts", "invertebrate.data.fixed.csv"))
+fire_overlap_inverts<-read_csv(here("R", "alalabs", "data", "inverts", "Fire_overlap_results_2021-06-24.csv"))
 
 str(inverts)
 skim(inverts)
+skim(fire_overlap_inverts)
 ```
 
 ### Precleaning
@@ -38,6 +41,89 @@ clean_inv <- inverts %>%
   filter(! duplicated(longitude) & ! duplicated(latitude)) %>%  # Exclude duplicated coords
   drop_na(longitude, latitude) # Exclude records with missing coords
 ```
+
+### filtering fire overlap data 
+
+```{r}
+# keep only useful columns and sort 
+fire_overlap_inverts_short<- fire_overlap_inverts %>%
+  select(scientificName, 
+         class,
+         order,
+         family,
+         Overlap_Points_Fire345_GEEBAM2_as_unburnt,
+         Overlap_Points_Fire2345_GEEBAM2_as_burnt,
+         Overlap_Points_Severe_Fire45,
+         Total_fire_points,
+         Occurrence_Points, 
+         Total_fire_polygon, 
+         Species_Polygon,
+         Overlap_Polygons_Fire2345_GEEBAM2_as_burnt,
+         EOO, 
+         AOO)  %>% 
+  rename(scientific_name = scientificName)
+# get most fire impacted species per family
+
+  max_burnt_fam<-fire_overlap_inverts_short%>%
+    group_by(family)%>%
+    slice_max(order_by = Overlap_Polygons_Fire2345_GEEBAM2_as_burnt,
+              n = 1) %>%
+    select(scientific_name, family, Overlap_Polygons_Fire2345_GEEBAM2_as_burnt) %>%
+    filter(Overlap_Polygons_Fire2345_GEEBAM2_as_burnt>50)
+
+  # check it has worked  
+fire_overlap_inverts_short %>%
+  filter(family == "acrididae") %>%
+  slice_max(Overlap_Polygons_Fire2345_GEEBAM2_as_burnt,
+            n = 10) %>%
+  select(scientific_name, family, Overlap_Polygons_Fire2345_GEEBAM2_as_burnt)
+# print(n = 100)
+
+##max per class
+
+  max_burnt_class<-fire_overlap_inverts_short%>%
+    group_by(class)%>%
+    slice_max(order_by = Overlap_Polygons_Fire2345_GEEBAM2_as_burnt,
+              n = 1) %>%
+    select(scientific_name, class, Overlap_Polygons_Fire2345_GEEBAM2_as_burnt) %>%
+    filter(Overlap_Polygons_Fire2345_GEEBAM2_as_burnt>25)
+
+  # check it has worked  
+fire_overlap_inverts_short %>%
+  filter(family == "acrididae") %>%
+  slice_max(Overlap_Polygons_Fire2345_GEEBAM2_as_burnt,
+            n = 10) %>%
+  select(scientific_name, family, Overlap_Polygons_Fire2345_GEEBAM2_as_burnt)
+
+  
+# merge data-frames together to keep only most impacted species per family in inverts data 
+
+inverts_fire<-merge(max_burnt_fam, inverts, by = 'scientific_name') %>%
+  select(scientific_name, 
+         family.x, 
+         Overlap_Polygons_Fire2345_GEEBAM2_as_burnt, 
+         record_id, 
+         class, 
+         year, 
+         latitude, 
+         longitude)%>%
+  rename(family = family.x)
+ 
+
+inverts_fire_class<-merge(max_burnt_class, inverts, by = 'scientific_name') 
+  
+inverts_fire_class<-inverts_fire_class%>%
+  select(scientific_name, 
+         Overlap_Polygons_Fire2345_GEEBAM2_as_burnt, 
+         record_id, 
+         class.x, 
+         year, 
+         latitude,
+         longitude) %>%
+    rename(class = class.x)
+
+```
+
 
 ### Summaries of all taxonomic levels
 
@@ -95,6 +181,10 @@ spiderdat <- clean_inv %>%
 spider_sf<- spiderdat %>% 
   st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 
+##try plotting most impacted species 
+fire_sf<- inverts_fire_class %>% 
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
+
 
 ```
 
@@ -114,7 +204,20 @@ ggplot() +
                                 fill = scientific_name, label = scientific_name), alpha = 0.2, con.cap = 0)  + 
   theme_minimal() +
   theme(legend.position = "none")
-  
+
+#most burnt plot
+
+  ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white") +
+  geom_sf(data = fire_sf %>% filter(!scientific_name %in% c("Agathodesmus carorum", 
+                                                              "Argulus japonicus",
+                                                              "Euastacus guwinus"))) +
+  geom_mark_hull(inverts_fire_class %>% filter(!scientific_name %in% c("Agathodesmus carorum", 
+                                                              "Argulus japonicus",
+                                                            "Euastacus guwinus")), mapping = aes(x = longitude, y = latitude,
+                                fill = scientific_name, label = scientific_name), alpha = 0.2, con.cap = 0)  + 
+  theme_minimal() +
+  theme(legend.position = "none")
 ```
 
 ### Trying beautiful stamen maps
@@ -136,8 +239,11 @@ ggmap(map) +
   theme_void() + 
   theme(
     plot.title = element_text(colour = "orange"), 
-    panel.border = element_rect(colour = "grey", fill=NA, size=2)
-  )
+    panel.border = element_rect(colour = "grey", fill=NA, size=2))
+
+
+
+
 ```
 
 
