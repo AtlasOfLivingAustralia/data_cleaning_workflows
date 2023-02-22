@@ -20,15 +20,15 @@ pacman::p_load(galah, sf, ozmaps, ggforce, ggmap, tidyverse, here, skimr, readr)
 # then create a few for the plant dataset
 ```
 
-The full force of the 2019/2020 Australian bush fires had a devastating impact on the natural landscape, threatening our native biodiversity. More than ever, decision makers need curated, open access biodiversity data to help respond effectively to future bush fires. Our team at the Atlas of Living Australia (ALA) have been working with experts in the field to collate biodiversity datasets that can be used for off-the-shelf bush fire assessments. The two datasets are of taxonomic groups that are often overlooked during bushfires, Australian [invertebrates (insects, snails, spiders)](link to ALA page?) and  Australian [vascular plants](link to ALA page?). We are thrilled to announce that both datasets are now publicly available from [CSIRO's data access portal](https://data.csiro.au/collection/csiro:56679).
+The full force of the 2019/2020 Australian bush fires had a devastating impact on the natural landscape, threatening our native biodiversity. More than ever, decision makers need curated, open access biodiversity data to help respond effectively to future bush fires. Our team at the Atlas of Living Australia (ALA) have been working with experts in the field to collate biodiversity datasets that can be used for off-the-shelf bush fire assessments. The two datasets are of taxonomic groups that are often overlooked during bushfires, Australian [invertebrates](link to ALA page?) (insects, snails, spiders) and  Australian [vascular plants](link to ALA page?). We are thrilled to announce that both datasets are now publicly available from [CSIRO's data access portal](https://data.csiro.au/collection/csiro:56679).
 
 In this ALA labs post, we will showcase both datasets and highlight the susceptibility of short range endemics during the 2019/2020 bush fire season. Short range endemics are organisms that are characterised by their restricted distributions (give range in numbers) and are arguably the most vulnerable to natural disasters. 
 
-This post expands our previous post on [spatial polgyons for conservation mapping](XXX), where we discussed the benefits of  convex and alpha hulls to visualise the distribution of data deficient species. Here, we will learn how to plot a new form of spatial polygon - a [*concave hull*](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.676.6258&rep=rep1&type=pdf) unlike convex hulls, concave hulls which has the added flexibility to adjust its concavity. 
+This post expands our previous post on [spatial polgyons for conservation mapping](XXX), where we discussed the benefits of convex and alpha hulls to visualise the spatial distribution of data deficient species. Here, we will learn how to plot a new form of spatial polygon - a [*concave hull*](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.676.6258&rep=rep1&type=pdf), unlike its counterparts, concave hulls has the added flexibility to adjust its concavity. 
 
-# Get biodiversity data
+## Get biodiversity data
 
-Let's start by loading the packages we need
+Let's start by loading the packages we need.
 
 ```{r, loadpkg, eval = FALSE}
 # install.packages("pacman")
@@ -41,32 +41,133 @@ Click on the "Download" button on the top right corner and select "Download all 
 
 ![]( `r here("R/","alalabs", "images", "DAP.png")` ) 
 
-Once you have unzipped the download, we can read both curated datasets into R:
+Once you have unzipped the download, we can read the curated datasets into R:
 ```{r loaddata, eval = FALSE}
 inverts <- read_csv(here("data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
 vplants <- read_csv(here("data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
 ```
 ```{r loaddatalocal, eval = TRUE, echo = FALSE, include = FALSE}
-inverts <- read_csv(here("R", "alalabs","data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
-vplants <- read_csv(here("R","alalabs", "data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
+inverts <- read_csv(here("ignore", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
+vplants <- read_csv(here("ignore","Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
 ```
 
-We also need to read in [these dataset]() which tells us which species are short range endemics
+Read in fire layer
+
+https://www.environment.gov.au/fed/catalog/search/resource/details.page?uuid=%7B9ACDCB09-0364-4FE8-9459-2A56C792C743%7D
+
+```{r}
+fname <- here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")
+fire <- st_read(fname) %>% 
+  st_transform(crs = 4326)
+```
+
+
+We also need to read in [these datasets](download-link) which tells us which species are short range endemics as we will be extracting these later.
 
 ```{r loadSRE, eval = FALSE}
-
+inverts_sre <- read_csv(here("data", "inverts", "fire_SRE.csv"))
+vplants_sre <- read_csv(here("data", "plants", "fire_SRE.csv"))
 ```
 
 ```{r loadSRElocal, eval = TRUE,  echo = FALSE, include = FALSE}
-
+inverts_sre <- read_csv(here("ignore", "data", "inverts", "fire_SRE.csv"))
 ```
 
-# Joining different data Precleaning
+## Joining datasets and precleaning
 
 We will first focus on the invertebrate dataset
 
 ```{r}
-
+joined_inverts_sre <- inverts %>% 
+  left_join(inverts_sre, by = c("scientific_name" = "species_name"))
 ```
 
+One benefit of this curated dataset is that there are no missing data or duplicates! Note that completion rate is 1 and number of unique values for record_id matches the number of rows in the dataset 
+
+```{r}
+joined_inverts_sre %>% 
+  select(latitude, longitude, record_id) %>% 
+  skimr::skim()
+```
+
+## Extract short range endemics
+
+What does sensitive mean
+
+```{r}
+joined_inverts_sre %>% select(sensitive, sre) %>%  filter(sensitive == 1)
+```
+
+Typically, polygons are better represented when there at least data points. We are going to subset SREs which number of records of greater than 4
+
+Number of records and sometimes names don't completely match from their NESP project - private data? 
+
+```{r}
+joined_inverts_sre %>% 
+  filter(sre == "yes") %>% 
+  group_by(scientific_name) %>% 
+  summarise(n_records = n()) %>% 
+  filter(n_records > 4) %>% 
+  arrange(-n_records)
+
+inverts_sre %>% 
+  filter(no_records > 4, sre == "yes") %>% 
+  arrange(-no_records)
+
+joined_inverts_sre %>% 
+  filter(sre == "likely") %>% 
+  group_by(scientific_name) %>% 
+  summarise(n_records = n()) %>% 
+  filter(n_records > 4) %>% 
+  arrange(-n_records)
+
+inverts_sre %>% 
+  filter(no_records > 4, sre == "likely") %>% 
+  arrange(-no_records)
+```
+
+Extract known SRE based on records in DAP and choose relevant columns
+
+```{r}
+known_invert_sre_nm  <- joined_inverts_sre %>% 
+  filter(sre == "yes") %>% 
+  group_by(scientific_name) %>% 
+  summarise(n_records = n()) %>% 
+  filter(n_records > 4) %>% 
+  pull(scientific_name) 
+
+known_invert_sre <- joined_inverts_sre %>% 
+  filter(scientific_name %in% known_invert_sre_nm) %>% 
+  select(scientific_name, longitude, latitude)
+```
+
+Convert to sf data
+
+```{r}
+known_invert_sre_sf <- known_invert_sre %>% 
+  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
+```
+
+Plot prep
+
+```{r}
+aus <- st_transform(ozmap_country, 4326)
+```
+
+Plot
+
+```{r}
+base_map <- ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white") +
+  geom_sf(data = fire, color = "mediumorchid4") 
+
+base_map + 
+  geom_sf(data = known_invert_sre_sf, mapping = aes(colour = scientific_name)) + 
+  geom_mark_hull(data = known_invert_sre, 
+                 mapping = aes(x = longitude, y = latitude, fill = scientific_name), 
+                 alpha = 0.2, concavity = 2, 
+                 expand = unit(2.5, "mm"), radius = unit(2.5, "mm")) +
+  theme_minimal() + 
+  theme(legend.position = "none")
+```
 

@@ -179,7 +179,7 @@ spiderdat <- clean_inv %>%
   filter(scientific_name %in% top10jspiders)
 
 spider_sf<- spiderdat %>% 
-  st_as_sf(coords = c("longitude", "latitude"), crs = 4326)
+  t_as_sf(coords = c("longitude", "latitude"), crs = 4326)
 
 ##try plotting most impacted species 
 fire_sf<- inverts_fire %>% 
@@ -254,7 +254,6 @@ ggmap(map) +
 
 ```{r}
 fname <- here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")
-
 fire <- st_read(fname)
 fire_2 <- st_transform(fire, crs = 4326)
 
