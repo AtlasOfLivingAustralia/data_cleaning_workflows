@@ -26,8 +26,8 @@ galah_config(email = "fonti.kar@gmail.com",
 ## Read in data
 
 ```{r}
-vasc <- read_csv(here("data", "plants", "vascularplant.data.csv"))
-
+# vasc <- read_csv(here("data", "plants", "vascularplant.data.csv"))
+vasc <- read_csv(here("data", "plants", "vascularplant.data.nunz.fixed.csv"))
 skim(vasc)
 ```
 
@@ -410,6 +410,54 @@ vasc %>%
   print(n = 100)
 ```
 
+### Check if species and scientific name are different
 
+```{r}
+vasc %>% 
+  select(scientific_name_original, scientific_name, species) %>% 
+  distinct()
+
+vasc %>% 
+  select( scientific_name, species) %>% 
+  mutate(match = scientific_name == species) %>% 
+  filter(match == FALSE) %>% 
+  distinct() %>% 
+  print(n = 100)
+
+
+species_not_match_scinm <- vasc %>% 
+  select( scientific_name, species) %>% 
+  mutate(match = scientific_name == species) %>% 
+  filter(match == FALSE) %>% 
+  pull(species) 
+
+
+vasc %>% 
+  select(scientific_name, species, subspecies) %>% 
+  filter(species %in% species_not_match_scinm) %>% 
+  distinct() %>% 
+  print(n = 130)
+```
+
+## Fix column Preparations and rearrange an order
+
+```{r}
+vasc %>% 
+  rename(preparations = Preparations) %>% 
+  names() 
+
+vasc %>% 
+  rename(preparations = Preparations) %>% 
+  select(record_id, taxon_concept_guid:subspecies, basis_of_record, duplicate_specimen_flag,
+         latitude_original, longitude_original, ends_with("used"), starts_with("coordinate"), locality, state_parsed:ibra_7_regions, 
+         catalogue_number, collector, starts_with("data_resource"), preparations, record_number, 
+         contains("event_date"), year:day, 
+         institution_code, licence) -> fixed
+  
+fixed
+
+write_csv(fixed, here("data","plants","vascularplant.data.fixed.csv"))
+
+```
 
 

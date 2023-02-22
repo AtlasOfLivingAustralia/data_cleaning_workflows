@@ -1,0 +1,72 @@
+---
+title: "Concave hulls for short range endemic species"
+author: "Fonti Kar, Margot Scheider"
+date: "2023-02-20"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+pacman::p_load(galah, sf, ozmaps, ggforce, ggmap, tidyverse, here, skimr, readr)
+
+# the goal is to promote the DAP datasets which is bushfire related
+# highlight SREs as an important group of taxa
+# plot these new concave hulls which seems to be good for highly overlappy species
+# Walk through for a few SRE species in bug data
+# then create a few for the plant dataset
+```
+
+The full force of the 2019/2020 Australian bush fires had a devastating impact on the natural landscape, threatening our native biodiversity. More than ever, decision makers need curated, open access biodiversity data to help respond effectively to future bush fires. Our team at the Atlas of Living Australia (ALA) have been working with experts in the field to collate biodiversity datasets that can be used for off-the-shelf bush fire assessments. The two datasets are of taxonomic groups that are often overlooked during bushfires, Australian [invertebrates (insects, snails, spiders)](link to ALA page?) and  Australian [vascular plants](link to ALA page?). We are thrilled to announce that both datasets are now publicly available from [CSIRO's data access portal](https://data.csiro.au/collection/csiro:56679).
+
+In this ALA labs post, we will showcase both datasets and highlight the susceptibility of short range endemics during the 2019/2020 bush fire season. Short range endemics are organisms that are characterised by their restricted distributions (give range in numbers) and are arguably the most vulnerable to natural disasters. 
+
+This post expands our previous post on [spatial polgyons for conservation mapping](XXX), where we discussed the benefits of  convex and alpha hulls to visualise the distribution of data deficient species. Here, we will learn how to plot a new form of spatial polygon - a [*concave hull*](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.676.6258&rep=rep1&type=pdf) unlike convex hulls, concave hulls which has the added flexibility to adjust its concavity. 
+
+# Get biodiversity data
+
+Let's start by loading the packages we need
+
+```{r, loadpkg, eval = FALSE}
+# install.packages("pacman")
+pacman::p_load(tidyverse, here, sf, ozmaps, ggforce)
+```
+
+Next, we will go to the Data Access Portal to [download the invertebrate and vascular plant data](https://data.csiro.au/collection/csiro:56679) 
+
+Click on the "Download" button on the top right corner and select "Download all files as Zip archive". Locate the zip file and move it to an appropriate folder and then double click on it to unzip the download. 
+
+![]( `r here("R/","alalabs", "images", "DAP.png")` ) 
+
+Once you have unzipped the download, we can read both curated datasets into R:
+```{r loaddata, eval = FALSE}
+inverts <- read_csv(here("data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
+vplants <- read_csv(here("data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
+```
+```{r loaddatalocal, eval = TRUE, echo = FALSE, include = FALSE}
+inverts <- read_csv(here("R", "alalabs","data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
+vplants <- read_csv(here("R","alalabs", "data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
+```
+
+We also need to read in [these dataset]() which tells us which species are short range endemics
+
+```{r loadSRE, eval = FALSE}
+
+```
+
+```{r loadSRElocal, eval = TRUE,  echo = FALSE, include = FALSE}
+
+```
+
+# Joining different data Precleaning
+
+We will first focus on the invertebrate dataset
+
+```{r}
+
+```
+
+
