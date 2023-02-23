@@ -11,7 +11,7 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 
 
-pacman::p_load(galah, sf, ozmaps, ggforce, ggmap, tidyverse, here, skimr, readr, concaveman, wesanderson)
+pacman::p_load(galah, sf, ozmaps, ggforce, ggmap, tidyverse, here, skimr, readr, concaveman, wesanderson, cowplot)
 
 # the goal is to promote the DAP datasets which is bushfire related
 # highlight SREs as an important group of taxa
@@ -193,9 +193,7 @@ polygons2 <- map(unique(known_invert_sre_sf$scientific_name),
   reduce(rbind)
 
 
-
-
-ggplot() + 
+main <- ggplot() + 
   geom_sf(data = aus, colour = "black", fill = "white", size = 2) +
   geom_sf(data = fire, fill = "cadetblue", colour = "cadetblue", alpha = 0.6) +
   geom_sf(data = known_invert_sre_sf, mapping = aes(colour = scientific_name)) + 
@@ -203,10 +201,28 @@ ggplot() +
   scale_fill_manual(values = wes_palette("Moonrise2", 6, type = "continuous")) + 
   scale_colour_manual(values = wes_palette("Moonrise2", 6, type = "continuous")) + 
   coord_sf(xlim=c(140, 155), 
-           ylim=c(-25,-44))  + 
-  theme_void()
-  
+           ylim=c(-25,-44))  +
+  theme(legend.position = "bottom")
 
+ inset <- main + 
+   coord_sf(
+    xlim = c(151.1 , 153.5),
+    ylim = c(-31.5, -28.5),
+    expand = FALSE
+    ) + 
+   theme_void() +
+   theme(legend.position = "none",
+         panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6))
+   
+main_bbox <- main + 
+   geom_rect(aes(xmin = 151.1, xmax = 153.5,
+             ymin = -31.5, ymax = -28.5),
+             colour = "black",
+             linewidth = 0.2, 
+             fill = NA)
+ 
 
+ggdraw(main_bbox) +
+  draw_plot(inset, x = .61, y = 0.23, width =0.45, height = 0.4) 
 ```
 
