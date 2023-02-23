@@ -11,7 +11,7 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 
 
-pacman::p_load(galah, sf, ozmaps, ggforce, ggmap, tidyverse, here, skimr, readr)
+pacman::p_load(galah, sf, ozmaps, ggforce, ggmap, tidyverse, here, skimr, readr, concaveman, wesanderson)
 
 # the goal is to promote the DAP datasets which is bushfire related
 # highlight SREs as an important group of taxa
@@ -66,7 +66,7 @@ We also need to read in [these datasets](download-link) which tells us which spe
 
 ```{r loadSRE, eval = FALSE}
 inverts_sre <- read_csv(here("data", "inverts", "fire_SRE.csv"))
-vplants_sre <- read_csv(here("data", "plants", "fire_SRE.csv"))
+vplants_sre <- read_csv(here("data", "plants", "XXX.csv"))
 ```
 
 ```{r loadSRElocal, eval = TRUE,  echo = FALSE, include = FALSE}
@@ -169,5 +169,44 @@ base_map +
                  expand = unit(2.5, "mm"), radius = unit(2.5, "mm")) +
   theme_minimal() + 
   theme(legend.position = "none")
+```
+
+# Try concaveman on points
+```{r}
+known_invert_sre_sf %>% 
+  group_by(scientific_name) %>% 
+  concaveman() -> concaveman_sf
+
+points$k
+known_invert_sre_sf$scientific_name
+
+polygons2 <- map(unique(points$k),
+                 ~ concaveman(points[points$k %in% .,])
+                 ) %>% 
+  map2(unique(points$k), ~ mutate(.x, k = .y)) %>% 
+  reduce(rbind)
+
+polygons2 <- map(unique(known_invert_sre_sf$scientific_name),
+                 ~ concaveman(known_invert_sre_sf[known_invert_sre_sf$scientific_name %in% .,])
+                 ) %>% 
+  map2(unique(known_invert_sre_sf$scientific_name), ~ mutate(.x, scientific_name = .y)) %>% 
+  reduce(rbind)
+
+
+
+
+ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white", size = 2) +
+  geom_sf(data = fire, fill = "cadetblue", colour = "cadetblue", alpha = 0.6) +
+  geom_sf(data = known_invert_sre_sf, mapping = aes(colour = scientific_name)) + 
+  geom_sf(data = polygons2, aes(fill = scientific_name), size = 2) + 
+  scale_fill_manual(values = wes_palette("Moonrise2", 6, type = "continuous")) + 
+  scale_colour_manual(values = wes_palette("Moonrise2", 6, type = "continuous")) + 
+  coord_sf(xlim=c(140, 155), 
+           ylim=c(-25,-44))  + 
+  theme_void()
+  
+
+
 ```
 

@@ -10,36 +10,21 @@ editor_options:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-pacman::p_load(galah, sf, ozmaps, ggforce, ggmap, tidyverse, here, skimr, readr)
-```
+pacman::p_load(galah, sf, ozmaps, ggforce, ggmap, tidyverse, here, skimr, readr, concaveman)
 
-
-### Configuring ALA account
-```{r}
-galah_config(email = Sys.getenv("ALA_email"), 
-             atlas = "Australia",
-             download_reason_id = 10 # testing reason
-             )
 ```
 
 ### Read in data
 
 ```{r}
 #inverts <- read_csv(here("data", "inverts", "invertebrate.data.fixed.csv"))
-inverts <- read_csv(here("R", "alalabs", "data", "inverts", "invertebrate.data.fixed.csv"))
-fire_overlap_inverts<-read_csv(here("R", "alalabs", "data", "inverts", "Fire_overlap_results_2021-06-24.csv"))
+inverts <- read_csv(here("ignore", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
+vplants <- read_csv(here("ignore","Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
+fire_overlap_inverts <- read_csv(here("ignore", "data", "inverts", "Fire_overlap_results_2021-06-24.csv"))
 
 str(inverts)
 skim(inverts)
 skim(fire_overlap_inverts)
-```
-
-### Precleaning
-
-```{r}
-clean_inv <- inverts %>% 
-  filter(! duplicated(longitude) & ! duplicated(latitude)) %>%  # Exclude duplicated coords
-  drop_na(longitude, latitude) # Exclude records with missing coords
 ```
 
 ### filtering fire overlap data 
@@ -62,8 +47,8 @@ fire_overlap_inverts_short<- fire_overlap_inverts %>%
          EOO, 
          AOO)  %>% 
   rename(scientific_name = scientificName)
-# get most fire impacted species per family
 
+# get most fire impacted species per family
   max_burnt_fam<-fire_overlap_inverts_short%>%
     group_by(family)%>%
     slice_max(order_by = Overlap_Polygons_Fire2345_GEEBAM2_as_burnt,
@@ -188,7 +173,7 @@ fire_sf<- inverts_fire %>%
 
 ```
 
-#### Make base map components
+#### Make base map components geom_mark_hulls
 
 ```{r}
 aus <- st_transform(ozmap_country, 4326)
@@ -226,26 +211,32 @@ ggplot() +
 ### Trying beautiful stamen maps
 
 ```{r}
-map <- get_stamenmap( bbox = c(left = 100, bottom = -45, right = 160, top = -8), zoom = 5, maptype = "watercolor")
+map <- get_stamenmap( bbox = c(left = 110, bottom = -45, right = 157, top = -9.5), zoom = 5, maptype = "watercolor")
 
 ggmap(map) + 
-  geom_point(spiderdat %>% filter(scientific_name %in% c("Maratus mungaich", 
-                                                             "Maratus vespertilio",
-                                                             "Hypoblemum scutulatum",
-                                                             "Afraflacilla stridulator")), mapping = aes(x = longitude, y = latitude)) + 
-  geom_mark_hull(spiderdat %>% filter(scientific_name %in% c("Maratus mungaich", 
-                                                             "Maratus vespertilio",
-                                                             "Hypoblemum scutulatum",
-                                                             "Afraflacilla stridulator")), 
-                 mapping = aes(x = longitude, y = latitude, group = scientific_name, label = scientific_name),
-                 alpha = 0.2, con.cap = 0, concavity = 2) +
-  theme_void() + 
+geom_point(data = inverts_fire_class, aes(x = longitude, y = latitude,
+                                         # size = Overlap_Polygons_Fire2345_GEEBAM2_as_burnt,
+                                          colour = Overlap_Polygons_Fire2345_GEEBAM2_as_burnt),
+           alpha = 1) + 
+geom_mark_hull(inverts_fire_class,
+                 mapping = aes(x = longitude, y = latitude, group = scientific_name, fill = scientific_name),
+                 alpha = 0.2, con.cap = 0, concavity = 2, 
+                 expand = unit(2.5, "mm"), radius = unit(2.5, "mm")) +
+  scale_color_gradientn(colours = c("#EFD175", "#C56614", "#B33317")) + 
+  guides() + 
   theme(
     plot.title = element_text(colour = "orange"), 
-    panel.border = element_rect(colour = "grey", fill=NA, size=2))
+    panel.border = element_rect(colour = "grey", fill=NA, size=2),
+    legend.position = "bottom") + 
+  facet_wrap(~class)
 
 
-
+# geom_mark_hull(spiderdat %>% filter(scientific_name %in% c("Maratus mungaich", 
+#                                                              "Maratus vespertilio",
+#                                                              "Hypoblemum scutulatum",
+#                                                              "Afraflacilla stridulator")), 
+#                  mapping = aes(x = longitude, y = latitude, group = scientific_name, label = scientific_name),
+#                  alpha = 0.2, con.cap = 0, concavity = 2) +
 
 ```
 
