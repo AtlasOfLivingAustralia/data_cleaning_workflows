@@ -56,6 +56,8 @@ fire_overlap_inverts_short<- fire_overlap_inverts %>%
     select(scientific_name, family, Overlap_Polygons_Fire2345_GEEBAM2_as_burnt) %>%
     filter(Overlap_Polygons_Fire2345_GEEBAM2_as_burnt>25)
 
+  max_burnt_fam %>% ungroup() %>% slice(1:5) %>% pull(scientific_name) -> topburnt_family
+  
   # check it has worked  
 fire_overlap_inverts_short %>%
   filter(family == "acrididae") %>%

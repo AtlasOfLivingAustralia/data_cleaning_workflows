@@ -1,0 +1,283 @@
+---
+title: "Range overlap"
+author: "Fonti Kar, Margot Scheider"
+date: "2023-02-28"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+pacman::p_load(galah, sf, ozmaps, tidyverse, here, skimr, readr, concaveman,
+               arrow)
+
+```
+
+
+The full force of the 2019/2020 Australian bush fires had a devastating impact on the natural landscape, threatening our native biodiversity. More than ever, decision makers need curated, open access biodiversity data to help respond effectively to future bush fires. Our team at the Atlas of Living Australia (ALA) have been working with experts in the field to collate biodiversity datasets that can be used for off-the-shelf bush fire assessments. The two datasets are of taxonomic groups that are often overlooked during bushfires, Australian [invertebrates](link to ALA page?) (insects, snails, spiders) and  Australian [vascular plants](link to ALA page?). We are thrilled to announce that both datasets are now publicly available from [CSIRO's data access portal](https://data.csiro.au/collection/csiro:56679).
+
+In this ALA labs post, we will showcase both datasets and show you how to calculate area of range overlap with fire extent during the 2019/2020 bush fire season. This post expands our previous post on [spatial polgyons for conservation mapping](XXX), where we discussed the benefits of convex and alpha hulls to visualise the spatial distribution of data deficient species. Here, we will learn how to plot a new form of spatial polygon - a [*concave hull*](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.676.6258&rep=rep1&type=pdf), unlike its counterparts, concave hulls has the added flexibility to adjust its concavity. 
+
+
+## Get biodiversity data
+
+Let's start by loading the packages we need.
+
+```{r, loadpkg, eval = FALSE}
+# install.packages("pacman")
+pacman::p_load(tidyverse, here, sf, ozmaps, ggforce)
+```
+
+Next, we will go to the Data Access Portal to [download the invertebrate and vascular plant data](https://data.csiro.au/collection/csiro:56679) 
+
+Click on the "Download" button on the top right corner and select "Download all files as Zip archive". Locate the zip file and move it to an appropriate folder and then double click on it to unzip the download. 
+
+![]( `r here("R/","alalabs", "images", "DAP.png")` ) 
+
+Once you have unzipped the download, we can read the curated datasets into R:
+```{r loaddata, eval = FALSE}
+inverts <- read_csv(here("data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
+vplants <- read_csv(here("data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
+```
+```{r loaddatalocal, eval = TRUE, echo = FALSE, include = FALSE}
+inverts <- read_csv(here("ignore", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
+vplants <- read_csv(here("ignore","Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
+```
+
+Now we will go to [this website](https://www.environment.gov.au/fed/catalog/search/resource/details.page?uuid=%7B9ACDCB09-0364-4FE8-9459-2A56C792C743%7D) to download the fire extent layer
+
+(Walk through instructions of download and unzip)
+
+Once the fire layer has been downloaded, we can read it into R and set the projection to EPSG:4326
+
+```{r firelayer, eval = FALSE}
+fire <- st_read(here("shapefile", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
+  st_transform(crs = 4326) %>% 
+  st_zm()   #Remove Z or M values
+```
+
+```{r firelayerlocal, eval = TRUE, echo = FALSE, include = FALSE}
+fire <- st_read(here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
+  st_transform(crs = 4326) %>% 
+  st_zm()   #Remove Z or M values
+```
+
+## Precleaning
+
+First we will focus on the inverts data..
+
+No need to remove duplicates or NA as there are none in curated dataset
+Extract species that have more than 4 observations
+First, we need to compute the number of observations for each species, then we will pull out the names for species that have more than 4 observation
+
+```{r}
+more_than_4_obs <- inverts %>% 
+  group_by(scientific_name) %>% 
+  summarise(n_obs = n()) %>% 
+  filter(n_obs > 4) %>% 
+  pull(scientific_name)
+
+more_than_4_obs
+```
+
+Once we have the names for the species we want we can extract data for species that have more than 4 observations
+
+```{r}
+inverts_subset <- inverts %>% filter(scientific_name %in% more_than_4_obs) %>% 
+  select(scientific_name:family, longitude, latitude)
+```
+
+## Nest occurrence data 
+
+```{r}
+inverts_nest <- inverts_subset %>% 
+  nest(coords = c(longitude, latitude))
+```
+
+### Transform coordinates into a `sf` object 
+
+```{r}
+inverts_nest_1 <- inverts_nest %>% 
+  mutate(points_sf = map(.x = coords,
+                      ~ st_as_sf(.x, coords = c("longitude", "latitude"),
+                                            crs = 4326))
+         )
+```
+
+### Compute concave hull
+
+This may take a few minutes, if your computer crashes, try subsetting a family using `r filter(family = "Buprestidae")` and continue with the walk through. 
+
+```{r}
+inverts_nest_2 <- inverts_nest_1 %>% 
+  mutate(concave_sf = map(points_sf,
+                          ~ concaveman(.x))
+  )
+```
+
+```{r, echo = FALSE}
+
+```
+
+
+### Compute fire overlap and calculate the area of overlap
+
+```{r}
+sf_use_s2(FALSE)
+
+inverts_nest_3 <- inverts_nest_2 %>% 
+  mutate(overlap = map(concave_sf, 
+                       possibly(~ st_intersection(fire, .x))
+                       ),
+         intersect_area = map(overlap,
+                              possibly(~ st_area(.x))
+                              )
+  )
+
+```
+
+## Rank species by their area overlap with fire
+
+May need to exclude species where computing overlap or area is NULL/NA
+
+```{r}
+ slice_max(order_by = intersect_area,
+              n = 1) 
+```
+
+### Subset data for species of each family/class which highest range overlap
+
+```{r}
+inverts_nest_1 %>% 
+  filter(scientific_name %in% topburnt_family) %>% 
+  mutate(concave_sf = map(points_sf,
+                          ~ concaveman(.x)),
+         overlap = map(concave_sf, 
+                      ~ st_intersection(fire_simplify, .x) %>% 
+                         mutate(intersect_area = st_area(.)))) -> topburnt
+
+```
+
+### Unnest and rename relevant columns for plotting 
+
+```{r}
+### Unnest
+topburnt %>% 
+  select(scientific_name, points_sf, concave_sf, overlap) %>% 
+  unnest() %>% 
+  rename(points = geometry, 
+         concave = polygons, 
+         overlap = geometry1) -> topburnt_unnest
+
+```
+
+
+### Create a base map
+
+```{r}
+aus <- st_transform(ozmap_country, 4326)
+
+base_map_simplify <- ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "#F1EEE9") +
+  geom_sf(data = fire_simplify, fill = "#15133C", colour = "#15133C")
+```
+
+### Add overlap of seelected species
+
+```{r}
+
+base_map_simplify + 
+  geom_sf(data = topburnt_unnest, aes(geometry = overlap), colour = "#EC994B", fill = "#EC994B") + 
+  geom_sf(data = topburnt_unnest, aes(geometry = concave, colour = scientific_name), size = 1.5, alpha = 0.2, fill = NA) + 
+  #geom_sf(data = topburnt_unnest, aes(geometry = points, colour = scientific_name), size = 1) + 
+  scale_colour_manual(values = c("#334443", "#34656D", "#C6FFC1")) + 
+  theme(legend.position = "bottom") + 
+   coord_sf(xlim=c(140, 155), 
+           ylim=c(-25,-44)) + 
+  theme_minimal()
+```
+
+
+As an example do a family
+
+```{r}
+points <- inverts_nest_1 %>% 
+  filter(family == "buprestidae") %>% 
+  slice(1:5) %>% 
+  select(scientific_name:family, points_sf) %>% 
+  unnest(cols = c(points_sf)) %>% 
+  sf::st_as_sf(crs = 4326)
+
+chull <- inverts_nest_1 %>% 
+  filter(family == "buprestidae") %>% 
+  slice(1:5) %>% 
+  select(scientific_name:family, convexhull_sf) %>% 
+  unnest(cols = c(convexhull_sf)) %>% 
+  sf::st_as_sf(crs = 4326)
+
+base_map + 
+  geom_sf(data = points, colour = "black", alpha = 0.1) + 
+  geom_sf(data = chull, colour = "black", fill = NA)
+```
+
+
+```{r}
+#Remove Z and M values
+fire_simplify <- fire %>% st_zm()
+
+base_map_simplify <- ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white") +
+  geom_sf(data = fire_simplify, fill = "cadetblue", colour = "cadetblue")
+
+
+overlap <- st_intersection(fire_simplify, chull)
+
+base_map_simplify + 
+  geom_sf(data = overlap, colour = 'goldenrod') +
+  geom_sf(data = chull, aes(colour = scientific_name), fill = NA, size = 1.5) + 
+  geom_sf(data = points, aes(colour = scientific_name), size = 1) + 
+    scale_fill_manual(values = wes_palette("Moonrise2", 5, type = "continuous")) + 
+  scale_colour_manual(values = wes_palette("Moonrise2", 5, type = "continuous")) + 
+  theme(legend.position = "bottom") 
+
+
+# Calculate area and tidy up
+overlap %>% 
+  mutate(intersect_area = st_area(.)) 
+```
+
+### Try concave hulls and overlap
+
+```{r}
+inverts_nest_1 %>% 
+  filter(family == "buprestidae") %>% 
+  slice(1:5) %>%  # Takes a long time for all 
+  mutate(concave_sf = map(points_sf,
+                          ~ concaveman(.x))
+  ) -> inverts_nest_2_5
+
+
+concave <- inverts_nest_2_5 %>% 
+  select(scientific_name:family, concave_sf) %>% 
+  unnest(cols = c(concave_sf)) %>% 
+  sf::st_as_sf(crs = 4326)
+
+
+# Compute overlap
+overlap <- st_intersection(fire_simplify, concave)  %>% 
+  mutate(intersect_area = st_area(.)) 
+overlap
+
+base_map_simplify + 
+  geom_sf(data = overlap, colour = 'goldenrod') +
+  geom_sf(data = concave, aes(colour = scientific_name), size = 1.5, alpha = 0.2) + 
+  geom_sf(data = points, aes(colour = scientific_name), size = 1) + 
+  scale_fill_manual(values = wes_palette("Moonrise2", 5, type = "continuous")) + 
+  scale_colour_manual(values = wes_palette("Moonrise2", 5, type = "continuous")) + 
+  theme(legend.position = "bottom") 
+
+```
+
