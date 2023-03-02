@@ -9,19 +9,15 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
-
-pacman::p_load(galah, sf, ozmaps, tidyverse, here, skimr, readr, concaveman,
-               arrow)
-
 ```
 
+The full force of the 2019/2020 Australian bush fires had a devastating impact on the natural landscape, threatening our native biodiversity. More than ever, decision makers need curated, open access biodiversity data to help respond effectively to future bush fires. Our team at the Atlas of Living Australia (ALA) have been working with experts in the field to collate biodiversity datasets that can be used for off-the-shelf bush fire assessments. The two datasets are of taxonomic groups that are often overlooked during bush fires, Australian [invertebrates](link to ALA page?) (insects, snails, spiders) and  Australian [vascular plants](link to ALA page?). We are thrilled to announce that both datasets are now publicly available from [CSIRO's data access portal](https://data.csiro.au/collection/csiro:56679).
 
-The full force of the 2019/2020 Australian bush fires had a devastating impact on the natural landscape, threatening our native biodiversity. More than ever, decision makers need curated, open access biodiversity data to help respond effectively to future bush fires. Our team at the Atlas of Living Australia (ALA) have been working with experts in the field to collate biodiversity datasets that can be used for off-the-shelf bush fire assessments. The two datasets are of taxonomic groups that are often overlooked during bushfires, Australian [invertebrates](link to ALA page?) (insects, snails, spiders) and  Australian [vascular plants](link to ALA page?). We are thrilled to announce that both datasets are now publicly available from [CSIRO's data access portal](https://data.csiro.au/collection/csiro:56679).
+Quick sumamry of datasets? how many species etc
 
 In this ALA labs post, we will showcase both datasets and show you how to calculate area of range overlap with fire extent during the 2019/2020 bush fire season. 
 
-This post expands our previous post on [spatial polgyons for conservation mapping](XXX), where we discussed the applications of convex and alpha hulls to visualise spatial distributions of data deficient species. Here, we will learn how to plot a new form of spatial polygon - a [*concave hull*](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.676.6258&rep=rep1&type=pdf). Unlike its counterparts, concave hulls has the added flexibility to adjust its concavity which enables a more accurate estimation of species range.
+This post expands our previous post on [spatial polgyons for conservation mapping](XXX), where we discussed the applications of convex and alpha hulls to visualise spatial distributions of data deficient species. Here, we will learn how to plot a new form of spatial polygon - a [*concave hull*](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.676.6258&rep=rep1&type=pdf). Unlike its counterparts, concave hulls have the added flexibility to adjust its concavity which enables a more accurate estimation of species range.
 
 
 ## Get biodiversity data
@@ -30,7 +26,7 @@ Let's start by loading the packages we need.
 
 ```{r, loadpkg, eval = FALSE}
 # install.packages("pacman")
-pacman::p_load(tidyverse, here, sf, ozmaps, ggforce)
+pacman::p_load(tidyverse, here, sf, ozmaps, concaveman, job)
 ```
 
 Next, we will go to the Data Access Portal to [download the invertebrate and vascular plant data](https://data.csiro.au/collection/csiro:56679) 
@@ -49,11 +45,13 @@ inverts <- read_csv(here("ignore", "Curated_Plant_and_Invertebrate_Data_for_Bush
 vplants <- read_csv(here("ignore","Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
 ```
 
+## Get fire layer
+
 Now we will go to [this website](https://www.environment.gov.au/fed/catalog/search/resource/details.page?uuid=%7B9ACDCB09-0364-4FE8-9459-2A56C792C743%7D) to download the fire extent layer
 
 (Walk through instructions of download and unzip)
 
-Once the fire layer has been downloaded, we can read it into R and set the projection to EPSG:4326
+Once the fire layer has been downloaded, we can read it into R and set the projection to EPSG:4326 and remove elevation values as we are interested in the extent of fire
 
 ```{r firelayer, eval = FALSE}
 fire <- st_read(here("shapefile", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
@@ -71,8 +69,9 @@ fire <- st_read(here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20
 
 First we will focus on the inverts data..
 
-No need to remove duplicates or NA as there are none in curated dataset
-Extract species that have more than 4 observations
+There is no need to remove duplicates or NA as there are none in curated dataset. 
+
+We will only extract species that have more than 4 observations
 First, we need to compute the number of observations for each species, then we will pull out the names for species that have more than 4 observation
 
 ```{r}
@@ -85,10 +84,36 @@ more_than_4_obs <- inverts %>%
 more_than_4_obs
 ```
 
+Summary of higher taxa
+
+```{r}
+# All classes
+inverts$class %>% janitor::tabyl()
+
+# Aracnid obs
+inverts %>% 
+  filter(class == "arachnida") %>% 
+  group_by(family) %>% 
+  summarise(n_obs = n(), 
+            n_sp = length(unique(scientific_name))) %>% 
+  filter(n_obs > 4) %>% 
+  print(n = 200)
+
+# Phasmids obs
+inverts %>% 
+  filter(family == "phasmatidae") %>% 
+  group_by(scientific_name) %>% 
+  summarise(n_obs = n()) %>% 
+  filter(n_obs > 4)
+  
+```
+
+
 Once we have the names for the species we want we can extract data for species that have more than 4 observations
 
 ```{r}
-inverts_subset <- inverts %>% filter(scientific_name %in% more_than_4_obs) %>% 
+inverts_subset <- inverts %>%
+  filter(scientific_name %in% more_than_4_obs) %>% 
   select(scientific_name:family, longitude, latitude)
 ```
 
@@ -111,39 +136,77 @@ inverts_nest_1 <- inverts_nest %>%
 
 ### Compute concave hull
 
-This may take a few minutes, if your computer crashes, try subsetting a family using `r filter(family = "Buprestidae")` and continue with the walk through. 
+This part may takes around 10 minutes if you apply it to the whole dataset. We recommend submitting it as a RStudio background job using the `job` function  Note that the code we want to run going within the `{}`.  We also suggest  saving the output locally so you don't want to run this step every time! 
 
 ```{r}
-inverts_nest_2 <- inverts_nest_1 %>% 
+job::job(
+  {inverts_nest_2 <- inverts_nest_1 %>% 
   mutate(concave_sf = map(points_sf,
                           ~ concaveman(.x))
+  )}
   )
+
+
+saveRDS(inverts_nest_2, here("output", "processed_data", "inverts_nest_2"))
 ```
 
-```{r, echo = FALSE}
+## A plot of all specie's ranges
 
+```{r}
+# Unnest the data
+all_species_concave <- inverts_nest_2 %>% 
+  select(scientific_name:family, points_sf, concave_sf) %>% 
+  unnest(cols = c(points_sf, concave_sf)) %>% 
+  st_as_sf(crs = 4326) %>% 
+  rename(points = geometry)
+
+aus <- st_transform(ozmap_country, 4326)
+
+base_map <- ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "#F1EEE9") +
+  geom_sf(data = fire, fill = "#15133C", colour = "#15133C")
+
+
+base_map + 
+  geom_sf(data = all_species_concave, aes(geometry = polygons, colour = scientific_name), size = 1.5, alpha = 0.2, fill = NA) + 
+  #geom_sf(data = all_species_concave, aes(geometry = points, colour = scientific_name), size = 1, alpha = 0.1) + 
+  theme_minimal() + 
+  theme(legend.position = "none")
 ```
 
+## Subset phasmids
+
+The next step 
+
+```{r}
+phasmids_nest <- inverts_nest_2 %>% 
+  filter(family == "phasmatidae") 
+```
 
 ### Compute fire overlap and calculate the area of overlap
 
-```{r}
+This step takes a long time if you want to apply it across all species in the dataset. Recommend subsetting a family for this walk through or running as a background job 
+
+```{r, warning=FALSE}
 sf_use_s2(FALSE)
 
-inverts_nest_3 <- inverts_nest_2 %>% 
-  mutate(overlap = map(concave_sf, 
-                       possibly(~ st_intersection(fire, .x))
+phasmin_nest_rng_overlap <- phasmids_nest %>% 
+  mutate(overlap_sf = map(concave_sf, 
+                       ~ st_intersection(fire, .x)
                        ),
-         intersect_area = map(overlap,
-                              possibly(~ st_area(.x))
+         overlap_area = map(overlap,
+                              ~ st_area(.x)
                               )
-  )
+  ) %>% 
+  unnest(cols = overlap_area)
 
+phasmin_nest_rng_overlap %>% pluck("overlap",1)
 ```
 
 ## Rank species by their area overlap with fire
-
+(Don't think we need this section now that we have subsetted the data down)
 May need to exclude species where computing overlap or area is NULL/NA
+
 
 ```{r}
  slice_max(order_by = intersect_area,
@@ -151,6 +214,8 @@ May need to exclude species where computing overlap or area is NULL/NA
 ```
 
 ### Subset data for species of each family/class which highest range overlap
+
+(Don't think we need this section now that we have subsetted the data down)
 
 ```{r}
 inverts_nest_1 %>% 
@@ -165,15 +230,20 @@ inverts_nest_1 %>%
 
 ### Unnest and rename relevant columns for plotting 
 
-```{r}
+```{r, warnings = FALSE}
 ### Unnest
-topburnt %>% 
-  select(scientific_name, points_sf, concave_sf, overlap) %>% 
+phasmid_plotready <- phasmin_nest_rng_overlap %>% 
+  select(scientific_name, overlap_area, points_sf, concave_sf, overlap) %>% 
   unnest() %>% 
   rename(points = geometry, 
          concave = polygons, 
-         overlap = geometry1) -> topburnt_unnest
+         overlap = geometry1) %>% 
+  select(-Id)
 
+phasmid_plotready %>% 
+  filter(scientific_name %in% c("Megacrania batesii",
+                                "Anchiale spinicollis",
+                                "Ctenomorpha marginipennis")) -> test
 ```
 
 ## Visualise fire extent and range overlap
@@ -184,8 +254,8 @@ topburnt %>%
 aus <- st_transform(ozmap_country, 4326)
 
 base_map_simplify <- ggplot() + 
-  geom_sf(data = aus, colour = "black", fill = "#F1EEE9") +
-  geom_sf(data = fire_simplify, fill = "#15133C", colour = "#15133C")
+  geom_sf(data = aus, colour = "black", fill = "white") +
+  geom_sf(data = fire, fill = "#FEC3A6", colour = "#FEC3A6")
 ```
 
 ### Add overlap of seelected species
@@ -193,14 +263,29 @@ base_map_simplify <- ggplot() +
 ```{r}
 
 base_map_simplify + 
-  geom_sf(data = topburnt_unnest, aes(geometry = overlap), colour = "#EC994B", fill = "#EC994B") + 
-  geom_sf(data = topburnt_unnest, aes(geometry = concave, colour = scientific_name), size = 1.5, alpha = 0.2, fill = NA) + 
-  #geom_sf(data = topburnt_unnest, aes(geometry = points, colour = scientific_name), size = 1) + 
-  scale_colour_manual(values = c("#334443", "#34656D", "#C6FFC1")) + 
-  theme(legend.position = "bottom") + 
-   coord_sf(xlim=c(140, 155), 
-           ylim=c(-25,-44)) + 
-  theme_minimal()
+  geom_sf(data = test, aes(geometry = overlap), colour = "#FF925C", fill = "#FF925C") + 
+  geom_sf(data = test, aes(geometry = concave, colour = scientific_name, fill = scientific_name), size = 1.5, alpha = 0.001) + 
+  geom_sf(data = test, aes(geometry = points, colour = scientific_name), size = 1) + 
+  scale_colour_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
+  scale_fill_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
+  coord_sf(xlim=c(130, 155),
+          ylim=c(-10,-45)) +
+  guides(colour = guide_legend(override.aes = list(alpha = 0.02))) + 
+  theme_minimal() + 
+  theme(legend.position = "bottom") 
+
+
+base_map_simplify + 
+  geom_sf(data = phasmid_plotready, aes(geometry = overlap), colour = "#FF925C", fill = "#FF925C") + 
+  geom_sf(data = phasmid_plotready, aes(geometry = concave, colour = scientific_name, fill = scientific_name), size = 1.5, alpha = 0.001) + 
+  geom_sf(data = phasmid_plotready, aes(geometry = points, colour = scientific_name), size = 1) + 
+  # scale_colour_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
+  # scale_fill_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
+  # coord_sf(xlim=c(130, 155),
+  #         ylim=c(-10,-45)) +
+  # guides(colour = guide_legend(override.aes = list(alpha = 0.02))) + 
+  theme_minimal() + 
+  theme(legend.position = "bottom") 
 ```
 
 
