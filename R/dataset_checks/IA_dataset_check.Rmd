@@ -25,7 +25,9 @@ galah_config(email = "fonti.kar@gmail.com",
 ### Read in data
 
 ```{r}
-inverts <- read_csv(here("data", "inverts", "invertebrate.data.csv"))
+inverts <- read_csv(here("ignore", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
+
+inverts <- read_csv(here("ignore", "data", "inverts", "invertebrate.data.fixed.csv"))
 
 str(inverts)
 skim(inverts)

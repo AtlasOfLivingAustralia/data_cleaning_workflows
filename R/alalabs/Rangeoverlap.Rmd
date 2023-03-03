@@ -22,11 +22,11 @@ This post expands our previous post on [spatial polgyons for conservation mappin
 
 ## Get biodiversity data
 
-Let's start by loading the packages we need.
+Let's start by installing and loading the packages we need.
 
 ```{r, loadpkg, eval = FALSE}
 # install.packages("pacman")
-pacman::p_load(tidyverse, here, sf, ozmaps, concaveman, job)
+pacman::p_load(tidyverse, here, sf, ozmaps, concaveman, job, cowplot)
 ```
 
 Next, we will go to the Data Access Portal to [download the invertebrate and vascular plant data](https://data.csiro.au/collection/csiro:56679) 
@@ -38,11 +38,9 @@ Click on the "Download" button on the top right corner and select "Download all 
 Once you have unzipped the download, we can read the curated datasets into R:
 ```{r loaddata, eval = FALSE}
 inverts <- read_csv(here("data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
-vplants <- read_csv(here("data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
 ```
 ```{r loaddatalocal, eval = TRUE, echo = FALSE, include = FALSE}
 inverts <- read_csv(here("ignore", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
-vplants <- read_csv(here("ignore","Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
 ```
 
 ## Get fire layer
@@ -63,6 +61,8 @@ fire <- st_read(here("shapefile", "NIAFED_v20200623", "NIAFED_20190701_20200622_
 fire <- st_read(here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
   st_transform(crs = 4326) %>% 
   st_zm()   #Remove Z or M values
+
+total_fire_area <- fire %>% st_area()
 ```
 
 ## Precleaning
@@ -72,6 +72,7 @@ First we will focus on the inverts data..
 There is no need to remove duplicates or NA as there are none in curated dataset. 
 
 We will only extract species that have more than 4 observations
+
 First, we need to compute the number of observations for each species, then we will pull out the names for species that have more than 4 observation
 
 ```{r}
@@ -83,6 +84,233 @@ more_than_4_obs <- inverts %>%
 
 more_than_4_obs
 ```
+
+Once we have the names for the species we want we can extract data for species that have more than 4 observations and exclude the surrounding islands of Australia as they drastically alter the shape and form of concave hulls
+
+```{r}
+inverts_subset <- inverts %>%
+  filter(scientific_name %in% more_than_4_obs) %>% 
+   filter(latitude < -10, latitude >= -45,
+         longitude >= 113, longitude <= 155) %>% 
+  select(scientific_name:family, longitude, latitude)
+```
+
+## Nest occurrence data 
+
+```{r}
+inverts_nest <- inverts_subset %>% 
+  nest(coords = c(longitude, latitude))
+
+inverts_nest
+```
+
+###  Transform coordinates into a `sf` object and Compute concave hull
+
+This part may takes around 10 minutes if you apply it to the whole dataset. We recommend submitting it as a RStudio background job using the `job` function  Note that the code we want to run going within the `{}`.  We also suggest  saving the output locally so you don't want to run this step every time! 
+
+```{r}
+job::job(
+  {inverts_nest_concave <- inverts_nest %>%
+    mutate(points_sf = map(.x = coords,
+                           ~ st_as_sf(.x, coords = c("longitude", "latitude"),
+                                      crs = 4326)
+                           ), 
+           concave_sf = map(points_sf,
+                            ~ concaveman(.x)
+           )
+           )
+  }
+  )
+  
+
+saveRDS(inverts_nest_concave, here("output", "processed_data", "inverts_nest_concave"))
+
+ inverts_nest_concave <- readRDS(here("output", "processed_data", "inverts_nest_concave"))
+```
+
+## A plot of all specie's ranges
+
+```{r}
+# Unnest the data
+all_species_concave <- inverts_nest_concave %>% 
+  select(scientific_name:family, points_sf, concave_sf) %>% 
+  unnest(cols = c(points_sf, concave_sf)) %>% 
+  st_as_sf(crs = 4326) %>% 
+  rename(points = geometry)
+
+aus <- st_transform(ozmap_country, 4326)
+
+base_map <- ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white") +
+  geom_sf(data = fire, fill = "#FEC3A6", colour = "#FEC3A6")
+
+
+base_map + 
+  geom_sf(data = all_species_concave, 
+          aes(geometry = polygons, fill = scientific_name), alpha = 0.001) + 
+  #geom_sf(data = all_species_concave, aes(geometry = points, colour = scientific_name), size = 1, alpha = 0.1) + 
+  theme_minimal() + 
+  theme(legend.position = "none")
+  #facet_wrap(~class)
+```
+
+## Subset a family
+
+```{r}
+bees_nest <- inverts_nest_concave %>% 
+  filter(family == "apidae") 
+```
+
+### Compute fire overlap and calculate the area of overlap
+
+This step takes a long time if you want to apply it across all species in the dataset. So we will just do the computation for the Phasmids only in this walk through.
+
+```{r, warning=FALSE}
+sf_use_s2(FALSE)
+
+bess_nest_rng_overlap <- bees_nest %>% 
+  mutate(overlap_sf = map(concave_sf, 
+                       ~ st_intersection(fire, .x)
+                       ),
+         overlap_area = map(overlap_sf,
+                              ~ st_area(.x)),
+         percent_overlap = map2(.x = overlap_area,
+                                .y = concave_sf,
+                               ~ (.x / st_area(.y))*100)
+  ) %>% 
+  unnest(cols = c(overlap_area, percent_overlap))
+
+bess_nest_rng_overlap %>% pluck("overlap_sf",1)
+
+```
+
+## Rank species by their area overlap with fire and take the top 5
+
+```{r}
+bess_nest_rng_overlap %>% 
+  arrange(percent_overlap) %>% 
+  slice_max(order_by = percent_overlap,
+              n = 3) -> top3
+
+top3
+```
+
+### Unnest and rename relevant columns for plotting 
+
+```{r, warnings = FALSE}
+bee_plotready <- top3 %>% 
+  select(scientific_name, overlap_area, percent_overlap, points_sf, concave_sf, overlap_sf) %>% 
+  unnest() %>% 
+  rename(points = geometry, 
+         concave = polygons, 
+         overlap = geometry1) %>% 
+  select(-Id)
+```
+
+## Visualise fire extent and range overlap
+
+### Create a base map
+
+```{r}
+aus <- st_transform(ozmap_country, 4326)
+
+base_map_simplify <- ggplot() + 
+  geom_sf(data = aus, colour = "black", fill = "white") +
+  geom_sf(data = fire, fill = "#FEC3A6", colour = "#FEC3A6")
+```
+
+### Add overlap of seelected species
+
+```{r}
+main_map <- base_map_simplify + 
+  geom_sf(data = bee_plotready, aes(geometry = overlap), colour = "#FF925C", fill = "#FF925C") + 
+  geom_sf(data = bee_plotready, aes(geometry = concave, colour = scientific_name, fill = scientific_name), size = 1.5, alpha = 0.0045) + 
+  geom_sf(data = bee_plotready, aes(geometry = points, colour = scientific_name), size = 1) + 
+  scale_colour_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
+  scale_fill_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
+  guides(colour = guide_legend(override.aes = list(alpha = 1))) + 
+  coord_sf(xlim = c(128, 158)) +
+  theme_minimal() + 
+  theme(legend.title= element_blank(),
+        legend.position = "bottom") 
+
+main_map
+```
+
+### Add inset map
+
+```{r}
+inset <- main_map + 
+   coord_sf(
+    xlim = c(142.8 , 145.3),
+    ylim = c(-15.9, -13.25),
+    expand = FALSE
+    ) + 
+   theme_void() +
+   theme(legend.position = "none",
+         panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6))
+
+inset
+
+# Draw a box around the inset area 
+main_bbox <- main_map + 
+   geom_rect(aes(xmin = 142.8, xmax = 145.3,
+             ymin = -15.9, ymax = -13.25),
+             colour = "black",
+             linewidth = 0.2, 
+             fill = NA) 
+ 
+# Put it all together
+ggdraw(main_bbox) +
+  draw_plot(inset, x = 0.48, y = 0.62, 
+            width =0.45, height = 0.3)
+
+# Fix the legend and add overlap colour
+```
+
+
+## Plant map
+
+```{r}
+# Read in data
+vplants <- read_csv(here("ignore","Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
+```
+
+
+## Other stuff
+
+CoordinateCleaner
+```{r}
+library(CoordinateCleaner)
+
+sea_flags <- cc_sea(inverts_subset, 
+                    lon = "longitude", 
+                    lat = "latitude", 
+                    value = "flagged")
+
+sea_flags_buffered <- cc_sea(inverts_subset, 
+                             ref = buffland,
+                             lon = "longitude", 
+                             lat = "latitude",
+                             value = "flagged")
+
+inverts_subset %>% 
+  mutate(buffered_outlier = !sea_flags_buffered, 
+         sea_outlier = !sea_flags) -> inverts_subset
+
+#plot results
+ggplot()+
+  borders(fill = "grey60")+
+  geom_point(data = inverts_subset,
+             mapping = aes(x = longitude, y = latitude, col = buffered_outlier))+
+  scale_color_viridis(discrete = T, name = "Flagged outlier")+
+  coord_fixed(ylim = c(-45, -5),
+              xlim = c(100, 160))+
+  theme_bw()+
+  theme(legend.position = "bottom")
+
+```
+
 
 Summary of higher taxa
 
@@ -109,262 +337,20 @@ inverts %>%
 ```
 
 
-Once we have the names for the species we want we can extract data for species that have more than 4 observations
+plain old filtering
 
 ```{r}
-inverts_subset <- inverts %>%
-  filter(scientific_name %in% more_than_4_obs) %>% 
-  select(scientific_name:family, longitude, latitude)
-```
+inverts_subset %>% 
+  -> inverts_close
 
-## Nest occurrence data 
-
-```{r}
-inverts_nest <- inverts_subset %>% 
-  nest(coords = c(longitude, latitude))
-```
-
-### Transform coordinates into a `sf` object 
-
-```{r}
-inverts_nest_1 <- inverts_nest %>% 
-  mutate(points_sf = map(.x = coords,
-                      ~ st_as_sf(.x, coords = c("longitude", "latitude"),
-                                            crs = 4326))
-         )
-```
-
-### Compute concave hull
-
-This part may takes around 10 minutes if you apply it to the whole dataset. We recommend submitting it as a RStudio background job using the `job` function  Note that the code we want to run going within the `{}`.  We also suggest  saving the output locally so you don't want to run this step every time! 
-
-```{r}
-job::job(
-  {inverts_nest_2 <- inverts_nest_1 %>% 
-  mutate(concave_sf = map(points_sf,
-                          ~ concaveman(.x))
-  )}
-  )
-
-
-saveRDS(inverts_nest_2, here("output", "processed_data", "inverts_nest_2"))
-```
-
-## A plot of all specie's ranges
-
-```{r}
-# Unnest the data
-all_species_concave <- inverts_nest_2 %>% 
-  select(scientific_name:family, points_sf, concave_sf) %>% 
-  unnest(cols = c(points_sf, concave_sf)) %>% 
-  st_as_sf(crs = 4326) %>% 
-  rename(points = geometry)
-
-aus <- st_transform(ozmap_country, 4326)
-
-base_map <- ggplot() + 
-  geom_sf(data = aus, colour = "black", fill = "#F1EEE9") +
-  geom_sf(data = fire, fill = "#15133C", colour = "#15133C")
-
-
-base_map + 
-  geom_sf(data = all_species_concave, aes(geometry = polygons, colour = scientific_name), size = 1.5, alpha = 0.2, fill = NA) + 
-  #geom_sf(data = all_species_concave, aes(geometry = points, colour = scientific_name), size = 1, alpha = 0.1) + 
-  theme_minimal() + 
-  theme(legend.position = "none")
-```
-
-## Subset phasmids
-
-The next step 
-
-```{r}
-phasmids_nest <- inverts_nest_2 %>% 
-  filter(family == "phasmatidae") 
-```
-
-### Compute fire overlap and calculate the area of overlap
-
-This step takes a long time if you want to apply it across all species in the dataset. Recommend subsetting a family for this walk through or running as a background job 
-
-```{r, warning=FALSE}
-sf_use_s2(FALSE)
-
-phasmin_nest_rng_overlap <- phasmids_nest %>% 
-  mutate(overlap_sf = map(concave_sf, 
-                       ~ st_intersection(fire, .x)
-                       ),
-         overlap_area = map(overlap,
-                              ~ st_area(.x)
-                              )
-  ) %>% 
-  unnest(cols = overlap_area)
-
-phasmin_nest_rng_overlap %>% pluck("overlap",1)
-```
-
-## Rank species by their area overlap with fire
-(Don't think we need this section now that we have subsetted the data down)
-May need to exclude species where computing overlap or area is NULL/NA
-
-
-```{r}
- slice_max(order_by = intersect_area,
-              n = 1) 
-```
-
-### Subset data for species of each family/class which highest range overlap
-
-(Don't think we need this section now that we have subsetted the data down)
-
-```{r}
-inverts_nest_1 %>% 
-  filter(scientific_name %in% topburnt_family) %>% 
-  mutate(concave_sf = map(points_sf,
-                          ~ concaveman(.x)),
-         overlap = map(concave_sf, 
-                      ~ st_intersection(fire_simplify, .x) %>% 
-                         mutate(intersect_area = st_area(.)))) -> topburnt
+ggplot()+
+  borders(fill = "grey60")+
+  geom_point(data = inverts_close,
+             mapping = aes(x = longitude, y = latitude))+
+  viridis::scale_color_viridis(discrete = T, name = "Flagged outlier")+
+  coord_fixed(ylim = c(-45, -5),
+              xlim = c(100, 160))+
+  theme_bw()+
+  theme(legend.position = "bottom")
 
 ```
-
-### Unnest and rename relevant columns for plotting 
-
-```{r, warnings = FALSE}
-### Unnest
-phasmid_plotready <- phasmin_nest_rng_overlap %>% 
-  select(scientific_name, overlap_area, points_sf, concave_sf, overlap) %>% 
-  unnest() %>% 
-  rename(points = geometry, 
-         concave = polygons, 
-         overlap = geometry1) %>% 
-  select(-Id)
-
-phasmid_plotready %>% 
-  filter(scientific_name %in% c("Megacrania batesii",
-                                "Anchiale spinicollis",
-                                "Ctenomorpha marginipennis")) -> test
-```
-
-## Visualise fire extent and range overlap
-
-### Create a base map
-
-```{r}
-aus <- st_transform(ozmap_country, 4326)
-
-base_map_simplify <- ggplot() + 
-  geom_sf(data = aus, colour = "black", fill = "white") +
-  geom_sf(data = fire, fill = "#FEC3A6", colour = "#FEC3A6")
-```
-
-### Add overlap of seelected species
-
-```{r}
-
-base_map_simplify + 
-  geom_sf(data = test, aes(geometry = overlap), colour = "#FF925C", fill = "#FF925C") + 
-  geom_sf(data = test, aes(geometry = concave, colour = scientific_name, fill = scientific_name), size = 1.5, alpha = 0.001) + 
-  geom_sf(data = test, aes(geometry = points, colour = scientific_name), size = 1) + 
-  scale_colour_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
-  scale_fill_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
-  coord_sf(xlim=c(130, 155),
-          ylim=c(-10,-45)) +
-  guides(colour = guide_legend(override.aes = list(alpha = 0.02))) + 
-  theme_minimal() + 
-  theme(legend.position = "bottom") 
-
-
-base_map_simplify + 
-  geom_sf(data = phasmid_plotready, aes(geometry = overlap), colour = "#FF925C", fill = "#FF925C") + 
-  geom_sf(data = phasmid_plotready, aes(geometry = concave, colour = scientific_name, fill = scientific_name), size = 1.5, alpha = 0.001) + 
-  geom_sf(data = phasmid_plotready, aes(geometry = points, colour = scientific_name), size = 1) + 
-  # scale_colour_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
-  # scale_fill_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
-  # coord_sf(xlim=c(130, 155),
-  #         ylim=c(-10,-45)) +
-  # guides(colour = guide_legend(override.aes = list(alpha = 0.02))) + 
-  theme_minimal() + 
-  theme(legend.position = "bottom") 
-```
-
-
-As an example do a family
-
-```{r}
-points <- inverts_nest_1 %>% 
-  filter(family == "buprestidae") %>% 
-  slice(1:5) %>% 
-  select(scientific_name:family, points_sf) %>% 
-  unnest(cols = c(points_sf)) %>% 
-  sf::st_as_sf(crs = 4326)
-
-chull <- inverts_nest_1 %>% 
-  filter(family == "buprestidae") %>% 
-  slice(1:5) %>% 
-  select(scientific_name:family, convexhull_sf) %>% 
-  unnest(cols = c(convexhull_sf)) %>% 
-  sf::st_as_sf(crs = 4326)
-
-base_map + 
-  geom_sf(data = points, colour = "black", alpha = 0.1) + 
-  geom_sf(data = chull, colour = "black", fill = NA)
-```
-
-
-```{r}
-#Remove Z and M values
-fire_simplify <- fire %>% st_zm()
-
-base_map_simplify <- ggplot() + 
-  geom_sf(data = aus, colour = "black", fill = "white") +
-  geom_sf(data = fire_simplify, fill = "cadetblue", colour = "cadetblue")
-
-
-overlap <- st_intersection(fire_simplify, chull)
-
-base_map_simplify + 
-  geom_sf(data = overlap, colour = 'goldenrod') +
-  geom_sf(data = chull, aes(colour = scientific_name), fill = NA, size = 1.5) + 
-  geom_sf(data = points, aes(colour = scientific_name), size = 1) + 
-    scale_fill_manual(values = wes_palette("Moonrise2", 5, type = "continuous")) + 
-  scale_colour_manual(values = wes_palette("Moonrise2", 5, type = "continuous")) + 
-  theme(legend.position = "bottom") 
-
-
-# Calculate area and tidy up
-overlap %>% 
-  mutate(intersect_area = st_area(.)) 
-```
-
-
-```{r}
-inverts_nest_1 %>% 
-  filter(family == "buprestidae") %>% 
-  slice(1:5) %>%  # Takes a long time for all 
-  mutate(concave_sf = map(points_sf,
-                          ~ concaveman(.x))
-  ) -> inverts_nest_2_5
-
-
-concave <- inverts_nest_2_5 %>% 
-  select(scientific_name:family, concave_sf) %>% 
-  unnest(cols = c(concave_sf)) %>% 
-  sf::st_as_sf(crs = 4326)
-
-
-# Compute overlap
-overlap <- st_intersection(fire_simplify, concave)  %>% 
-  mutate(intersect_area = st_area(.)) 
-overlap
-
-base_map_simplify + 
-  geom_sf(data = overlap, colour = 'goldenrod') +
-  geom_sf(data = concave, aes(colour = scientific_name), size = 1.5, alpha = 0.2) + 
-  geom_sf(data = points, aes(colour = scientific_name), size = 1) + 
-  scale_fill_manual(values = wes_palette("Moonrise2", 5, type = "continuous")) + 
-  scale_colour_manual(values = wes_palette("Moonrise2", 5, type = "continuous")) + 
-  theme(legend.position = "bottom") 
-
-```
-
