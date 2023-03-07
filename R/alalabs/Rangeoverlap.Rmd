@@ -202,6 +202,8 @@ bess_nest_rng_overlap <- bees_nest %>%
                               )
   ) %>% 
   unnest(cols = c(overlap_area, percent_overlap))
+
+bess_nest_rng_overlap <- saveRDS(bess_nest_rng_overlap, "output/rds/bess_nest_rng_overlap")
 ```
 
 Have a look at what of these elements look like using `purrr::pluck`
@@ -429,6 +431,21 @@ vplant_nest_concave <- vplant_nest %>%
                             ~ concaveman(.x)
            )
            )
+
+job::job({
+  vplant_overlap <- vplant_nest_concave %>% 
+  mutate(overlap_sf = map(concave_sf, 
+                       possibly(~ st_intersection(fire, .x)
+                       )),
+         overlap_area = map(overlap_sf,
+                              possibly(~ st_area(.x))
+                            ),
+         percent_overlap = map2(.x = overlap_area,
+                                .y = concave_sf,
+                              possibly( ~ (.x / st_area(.y))*100)
+         ))
+  
+})
 
 # Unnest the data
 vplant_species_concave <- vplant_nest_concave %>% 
