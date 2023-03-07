@@ -40,11 +40,8 @@ Once you have unzipped the download, we can read the curated datasets into R:
 inverts <- read_csv(here("data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
 ```
 ```{r loaddatalocal, eval = TRUE, echo = FALSE, include = FALSE}
-inverts <- read_csv(here("ignore", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
+inverts <- read_csv(here("R", "alalabs", "ignore", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
   
-write_parquet(inverts,
-              sink = here("ignore", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.parquet"),
-)
 ```
 
 ## Get fire layer
@@ -62,7 +59,7 @@ fire <- st_read(here("shapefile", "NIAFED_v20200623", "NIAFED_20190701_20200622_
 ```
 
 ```{r firelayerlocal, eval = TRUE, echo = FALSE, include = FALSE}
-fire <- st_read(here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
+fire <- st_read(here("R", "alalabs", "ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
   st_transform(crs = 4326) %>% 
   st_zm() %>%   #Remove Z or M values
   ms_simplify() # Simplify the fire layer for efficient plotting
@@ -129,9 +126,9 @@ job::job(
   )
   
 
-saveRDS(inverts_nest_concave, here("output", "processed_data", "inverts_nest_concave"))
+saveRDS(inverts_nest_concave, here("R", "alalabs","output", "processed_data", "inverts_nest_concave"))
 
-inverts_nest_concave <- readRDS(here("output", "processed_data", "inverts_nest_concave"))
+inverts_nest_concave <- readRDS(here("R", "alalabs", "output", "processed_data", "inverts_nest_concave"))
 ```
 
 ## A glimpse of the spatial distributions of the Invertebrate dataset
@@ -161,9 +158,10 @@ subset <- all_species_concave %>%
 # Plotting 1% of the dataset
 all_concave <- ggplot() + 
   geom_sf(data = aus, colour = "black", fill = "white") +
-  geom_sf(data = overall, 
+  geom_sf(data = subset, 
           fill = "#609966", colour = NA, alpha = 0.3, lwd = 0) + 
   theme_void() 
+all_concave
 
 # Don't print in Viewer pane, preview in your Finder
 ggsave("all_concave.png", device = "png", 
@@ -179,7 +177,7 @@ This next part of th walk through takes a fair bit of memory and processing timi
 
 ```{r}
 bees_nest <- inverts_nest_concave %>% 
-  filter(family == "apidae") 
+  filter(family == "Apidae") 
 ```
 
 ### Compute fire overlap and calculate the area of overlap
@@ -202,6 +200,9 @@ bess_nest_rng_overlap <- bees_nest %>%
                               )
   ) %>% 
   unnest(cols = c(overlap_area, percent_overlap))
+
+bess_nest_rng_overlap <- readRDS(here("R", "alalabs", "ignore", "bees_overlap", "bess_nest_rng_overlap"))
+
 ```
 
 Have a look at what of these elements look like using `purrr::pluck`
@@ -285,7 +286,7 @@ inset <- main_map +
     ) + 
    theme_void() +
    theme(legend.position = "none",
-         panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6))
+         panel.border = element_rect(colour = "black", fill = NA, ))
 
 inset
 ```
@@ -316,7 +317,7 @@ Now we will repeat the above workflow using the vascular plant dataset. We know 
 
 ```{r}
 # Read in data
-vplants <- read_csv(here("ignore","Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
+vplants <- read_csv(here("R", "alalabs","ignore","Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
 
 # Precleaning
 ## Rename columns for consistency
@@ -347,35 +348,40 @@ pea_nest_concave <- pea_subset %>%
     mutate(points_sf = map(.x = coords,
                            ~ st_as_sf(.x, coords = c("longitude", "latitude"),
                                       crs = 4326)
-                           ), 
-           concave_sf = map(points_sf,
+                           ),
+          concave_sf = map(points_sf,
                             ~ concaveman(.x)
            )
            )
 
+
+
 ## Compute overlap and calculate area and percentage overlap
 sf_use_s2(FALSE) 
 
-pea_nest_rng_overlap <- pea_nest_concave %>% 
-  mutate(overlap_sf = map(concave_sf, 
-                       possibly(~ st_intersection(fire, .x)
-                       )),
-         overlap_area = map(overlap_sf,
-                              possibly(~ st_area(.x))
-                            ),
-         percent_overlap = map2(.x = overlap_area,
-                                .y = concave_sf,
-                              possibly( ~ (.x / st_area(.y))*100)
-                               )
-  ) %>% 
-  unnest(cols = c(percent_overlap))
+# pea_nest_rng_overlap <- pea_nest_concave %>% 
+#   mutate(overlap_sf = map(concave_sf, 
+#                        possibly(~ st_intersection(fire, .x)
+#                        )),
+#          overlap_area = map(overlap_sf,
+#                               possibly(~ st_area(.x))
+#                             ),
+#          percent_overlap = map2(.x = overlap_area,
+#                                 .y = concave_sf,
+#                               possibly( ~ (.x / st_area(.y))*100)
+#                                )
+#   ) %>% 
+#   unnest(cols = c(percent_overlap))
+
+## all plant overlap
+vplant_overlap <- readRDS(here("R", "alalabs", "ignore", "vplant_overlap", "vplant_overlap")) %>% unnest(cols = c(overlap_area, percent_overlap))
 
 ## Rank species by highest percentage range overlap with fire
 ### There were more 5 species tied with 100% range overlap 
 ### So we will randomly sample 3 of these
 set.seed(4)
 
-top3 <- pea_nest_rng_overlap %>% 
+top3 <- vplant_overlap %>% 
   slice_max(order_by = percent_overlap,
               n = 3)  %>% 
   slice_sample(n = 3)
@@ -474,6 +480,7 @@ main_map <- base_map +
   theme_minimal() + 
   theme(legend.title= element_blank(),
         legend.position = "bottom") 
+main_map
 
 # Preview in Finder
 ggsave("pea_main.png", device = "png", 
