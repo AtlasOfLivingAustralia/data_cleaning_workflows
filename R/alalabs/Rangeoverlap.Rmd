@@ -8,7 +8,10 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      eval = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE)
 ```
 
 The full force of the 2019/2020 Australian bush fires had a devastating impact on the natural landscape, threatening our native biodiversity. More than ever, decision makers need curated, open access biodiversity data to help respond effectively to future bush fires. Our team at the Atlas of Living Australia (ALA) have been working with experts in the field to collate biodiversity datasets that can be used for off-the-shelf bush fire assessments. The two datasets are of taxonomic groups that are often overlooked during bush fires, Australian [invertebrates](link to ALA page?) (insects, snails, spiders) and  Australian [vascular plants](link to ALA page?). We are thrilled to announce that both datasets are now publicly available from [CSIRO's data access portal](https://data.csiro.au/collection/csiro:56679).
@@ -24,36 +27,36 @@ This post expands our previous post on [spatial polgyons for conservation mappin
 
 Let's start by installing and loading the packages we need.
 
-```{r, loadpkg, eval = FALSE}
+```{r, loadpkg}
 # install.packages("pacman")
-pacman::p_load(tidyverse, here, arrow, rmapshaper, sf, ozmaps, concaveman, job, cowplot)
+pacman::p_load(tidyverse, here, rmapshaper, sf, ozmaps, concaveman, job, cowplot)
 ```
 
 Next, we will go to the Data Access Portal to [download the invertebrate and vascular plant data](https://data.csiro.au/collection/csiro:56679) 
 
 Click on the "Download" button on the top right corner and select "Download all files as Zip archive". Locate the zip file and move it to an appropriate folder and then double click on it to unzip the download. 
 
-![]( `r here("R/","alalabs", "images", "DAP.png")` ) 
+![]( `r here("images", "DAP.png")` ) 
 
 Once you have unzipped the download, we can read the curated datasets into R:
 ```{r loaddata, eval = FALSE}
 inverts <- read_csv(here("data", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
 ```
-```{r loaddatalocal, eval = TRUE, echo = FALSE, include = FALSE}
+```{r loaddatalocal, echo = FALSE, include = FALSE}
 inverts <- read_csv(here("ignore", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.data.csv"))
-  
-write_parquet(inverts,
-              sink = here("ignore", "Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "invertebrate.parquet"),
-)
 ```
 
 ## Get fire layer
 
-Now we will go to [this website](https://www.environment.gov.au/fed/catalog/search/resource/details.page?uuid=%7B9ACDCB09-0364-4FE8-9459-2A56C792C743%7D) to download the fire shapefile
+Now we will go to [this website](https://www.environment.gov.au/fed/catalog/search/resource/details.page?uuid=%7B9ACDCB09-0364-4FE8-9459-2A56C792C743%7D) to download the fire shapefile.
 
-(Walk through instructions of download and unzip)
+Click on the "Download Data" button on the first filename ("NIAFED_v20200623.zip") to download the .zip file. 
 
-Once the fire shapefile has been downloaded, we can read it into R and set the projection to EPSG:4326 and remove elevation values as we are only interested in the extent of fire.
+![]( `r here("images", "Firelayer.png")` ) 
+
+Similar to above, move the downloaded .zip to an appropriate folder and then double click on it to unzip its contents. Once that is done, we can read it into R.
+
+We will also  set the projection to EPSG:4326, remove elevation values as we are only interested in the extent of fire and simplify the polygon.
 
 ```{r firelayer, eval = FALSE}
 fire <- st_read(here("shapefile", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
@@ -61,7 +64,7 @@ fire <- st_read(here("shapefile", "NIAFED_v20200623", "NIAFED_20190701_20200622_
   st_zm()   #Remove Z or M values
 ```
 
-```{r firelayerlocal, eval = TRUE, echo = FALSE, include = FALSE}
+```{r firelayerlocal, echo = FALSE, include = FALSE}
 fire <- st_read(here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
   st_transform(crs = 4326) %>% 
   st_zm() %>%   #Remove Z or M values
@@ -70,7 +73,7 @@ fire <- st_read(here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20
 
 ## Precleaning
 
-First we will focus on the inverts data..
+First we will focus on the inverts data
 
 There is no need to remove duplicates or NA as there are none in curated dataset. 
 
@@ -85,7 +88,7 @@ more_than_4_obs <- inverts %>%
   filter(n_obs > 4) %>% 
   pull(scientific_name)
 
-more_than_4_obs
+more_than_4_obs %>% head()
 ```
 
 Once we have the names for the species we want we can extract data for species that have more than 4 observations and exclude the surrounding islands of Australia as they drastically alter the shape and form of concave hulls
@@ -111,12 +114,11 @@ inverts_nest
 
 ###  Transform coordinates into a `sf` object and compute concave hull
 
-This part may takes around 10 minutes if you apply it to the whole dataset. We recommend submitting it as a RStudio background job using the `job` function  Note that the code we want to run going within the `{}`.  We also suggest  saving the output locally so you don't want to run this step every time and load it into R using `readRDS`
+This part may takes around 10 minutes if you apply it to the whole dataset. We recommend submitting it as a RStudio background job using the `job` function. Note that the code we want to run going within the `{}`.  We also suggest saving the output locally so you don't want to run this step every time and load it into R directly using `readRDS`
 
 
 ```{r}
-job::job(
-  {inverts_nest_concave <- inverts_nest %>%
+inverts_nest_concave <- inverts_nest %>%
     mutate(points_sf = map(.x = coords,
                            ~ st_as_sf(.x, coords = c("longitude", "latitude"),
                                       crs = 4326)
@@ -125,13 +127,22 @@ job::job(
                             ~ concaveman(.x)
            )
            )
-  }
-  )
-  
 
-saveRDS(inverts_nest_concave, here("output", "processed_data", "inverts_nest_concave"))
+# job(
+#   {
+#     inverts_nest_concave <- inverts_nest %>%
+#       mutate(points_sf = map(.x = coords,
+#                              ~ st_as_sf(.x, coords = c("longitude", "latitude"),
+#                                         crs = 4326)
+#       ), 
+#       concave_sf = map(points_sf,
+#                        ~ concaveman(.x)
+#       )
+#       )
+#     
+#   })
 
-inverts_nest_concave <- readRDS(here("output", "processed_data", "inverts_nest_concave"))
+# saveRDS(inverts_nest_concave, here("output", "processed_data", "inverts_nest_concave"))
 ```
 
 ## A glimpse of the spatial distributions of the Invertebrate dataset
@@ -161,19 +172,14 @@ subset <- all_species_concave %>%
 # Plotting 1% of the dataset
 all_concave <- ggplot() + 
   geom_sf(data = aus, colour = "black", fill = "white") +
-  geom_sf(data = overall, 
+  geom_sf(data = subset, 
           fill = "#609966", colour = NA, alpha = 0.3, lwd = 0) + 
   theme_void() 
 
-# Don't print in Viewer pane, preview in your Finder
-ggsave("all_concave.png", device = "png", 
-       path = here("output", "fig"),
-       bg = "white")
+all_concave
 ```
 
-<!-- ![](here("output", "fig", "all_concave.png")) -->
-
-## Subset a family
+## Subset a taxonomic group
 
 This next part of th walk through takes a fair bit of memory and processing timing so we will only do the computation and visualisation for the bee family in this walk through.
 
@@ -203,10 +209,10 @@ bess_nest_rng_overlap <- bees_nest %>%
   ) %>% 
   unnest(cols = c(overlap_area, percent_overlap))
 
-bess_nest_rng_overlap <- saveRDS(bess_nest_rng_overlap, "output/rds/bess_nest_rng_overlap")
+#bess_nest_rng_overlap <- saveRDS(bess_nest_rng_overlap, "output/rds/bess_nest_rng_overlap")
 ```
 
-Have a look at what of these elements look like using `purrr::pluck`
+Have a look at the first element of each of these new variables look like using `purrr::pluck`
 
 ```{r}
 bess_nest_rng_overlap
@@ -217,7 +223,7 @@ bess_nest_rng_overlap %>% pluck("percent_overlap", 1)
 
 ### Rank species by their area overlap with fire and take the top 3
 
-Now we can rank all bee species by the percentage range overlap with fire extent, then we will take the top 3 species with the highest overlap
+Now we can rank all bee species by the percentage range overlap with fire extent, then take the top 3 species with the highest overlap
 
 ```{r}
 bess_nest_rng_overlap %>% 
@@ -316,83 +322,9 @@ ggdraw(main_bbox) +
 
 Now we will repeat the above workflow using the vascular plant dataset. We know that the top 3 bee species with the highest percent range overlap make their hives in pithy plants like ferns, so lets try make the same map but for ferns.
 
-```{r}
-# Read in data
-vplants <- read_csv(here("ignore","Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
+### A glimpse of spatial distributions of the Vascular plant dataset
 
-# Precleaning
-## Rename columns for consistency
-vplants <- vplants %>% 
-  rename(latitude = latitude_used,
-         longitude = longitude_used)
-
-## Identify species that have more than 4 observations 
-more_than_4_obs <- vplants %>% 
-  group_by(scientific_name) %>% 
-  summarise(n_obs = n()) %>% 
-  filter(n_obs > 4) %>% 
-  pull(scientific_name)
-
-more_than_4_obs
-
-## Subset species with more than 4 observations,  exclude Australia's neighbouring islands and 
-pea_subset <- vplants %>%
-  filter(scientific_name %in% more_than_4_obs) %>% 
-  filter(latitude < -10, latitude >= -45,
-         longitude >= 113, longitude <= 155) %>% 
-  select(scientific_name:genus, longitude, latitude) %>%
-  filter(family == "Fabaceae") %>% 
-  nest(coords = c(longitude, latitude))
-
-## Compute concave hulls
-pea_nest_concave <- pea_subset %>%
-    mutate(points_sf = map(.x = coords,
-                           ~ st_as_sf(.x, coords = c("longitude", "latitude"),
-                                      crs = 4326)
-                           ), 
-           concave_sf = map(points_sf,
-                            ~ concaveman(.x)
-           )
-           )
-
-## Compute overlap and calculate area and percentage overlap
-sf_use_s2(FALSE) 
-
-pea_nest_rng_overlap <- pea_nest_concave %>% 
-  mutate(overlap_sf = map(concave_sf, 
-                       possibly(~ st_intersection(fire, .x)
-                       )),
-         overlap_area = map(overlap_sf,
-                              possibly(~ st_area(.x))
-                            ),
-         percent_overlap = map2(.x = overlap_area,
-                                .y = concave_sf,
-                              possibly( ~ (.x / st_area(.y))*100)
-                               )
-  ) %>% 
-  unnest(cols = c(percent_overlap))
-
-## Rank species by highest percentage range overlap with fire
-### There were more 5 species tied with 100% range overlap 
-### So we will randomly sample 3 of these
-set.seed(4)
-
-top3 <- pea_nest_rng_overlap %>% 
-  slice_max(order_by = percent_overlap,
-              n = 3)  %>% 
-  slice_sample(n = 3)
-
-## Prepare for plotting
-pea_plotready <- top3 %>% 
-  select(scientific_name, overlap_area, percent_overlap, points_sf, concave_sf, overlap_sf) %>% 
-  unnest() %>% 
-  rename(points = geometry, 
-         concave = polygons, 
-         overlap = geometry1) %>% 
-  select(-Id)
-```
-
-### A glimpse of the spatial distributions of the Invertebrate dataset
+(Consider moving this put in intro)
 
 ```{r}
 # Read in data
@@ -411,7 +343,7 @@ more_than_4_obs <- vplants %>%
   filter(n_obs > 4) %>% 
   pull(scientific_name)
 
-more_than_4_obs
+more_than_4_obs %>% head()
 
 ## Subset species with more than 4 observations,  exclude Australia's neighbouring islands and 
 vplant_nest <- vplants %>%
@@ -431,21 +363,6 @@ vplant_nest_concave <- vplant_nest %>%
                             ~ concaveman(.x)
            )
            )
-
-job::job({
-  vplant_overlap <- vplant_nest_concave %>% 
-  mutate(overlap_sf = map(concave_sf, 
-                       possibly(~ st_intersection(fire, .x)
-                       )),
-         overlap_area = map(overlap_sf,
-                              possibly(~ st_area(.x))
-                            ),
-         percent_overlap = map2(.x = overlap_area,
-                                .y = concave_sf,
-                              possibly( ~ (.x / st_area(.y))*100)
-         ))
-  
-})
 
 # Unnest the data
 vplant_species_concave <- vplant_nest_concave %>% 
@@ -469,21 +386,63 @@ plant_concave <- ggplot() +
            ylim = c(-23, -43)) +
   theme_void() 
 
-# Don't print in Viewer pane, preview in your Finder
-ggsave("plant_concave.png", device = "png", 
-       path = here("output", "fig"),
-       bg = "white")
+plant_concave
 ```
 
+### Subset a taxonomic group
 
-### Visualise the Pea family
+```{r, warning=FALSE}
+## Compute overlap and calculate area and percentage overlap
+sf_use_s2(FALSE) 
+
+vplant_overlap <- vplant_nest_concave %>% 
+  mutate(overlap_sf = map(concave_sf, 
+                       possibly(~ st_intersection(fire, .x)
+                       )),
+         overlap_area = map(overlap_sf,
+                              possibly(~ st_area(.x))
+                            ),
+         percent_overlap = map2(.x = overlap_area,
+                                .y = concave_sf,
+                              possibly( ~ (.x / st_area(.y))*100)
+                              )
+         )
+
+# saveRDS(vplant_overlap, "output/rds/vplant_overlap")
+
+
+## Subset
+subset_nest_concave <- vplant_overlap %>%
+  filter(class == "Polypodiopsida")
+
+## Rank species by highest percentage range overlap with fire
+### There were more 5 species tied with 100% range overlap 
+### So we will randomly sample 3 of these
+set.seed(4)
+
+top3 <- subset_nest_concave %>% 
+  slice_max(order_by = percent_overlap,
+              n = 3)  %>% 
+  slice_sample(n = 3)
+
+## Prepare for plotting
+plant_plotready <- top3 %>% 
+  select(scientific_name, overlap_area, percent_overlap, points_sf, concave_sf, overlap_sf) %>% 
+  unnest() %>% 
+  rename(points = geometry, 
+         concave = polygons, 
+         overlap = geometry1) %>% 
+  select(-Id)
+```
+
+### Visualise the ferns/subgroup/XX
 
 ```{r}
 # Overlap map
 main_map <- base_map + 
-  geom_sf(data = pea_plotready, aes(geometry = overlap), colour = "#FF925C", fill = "#FF925C") + 
-  geom_sf(data = pea_plotready, aes(geometry = concave, colour = scientific_name, fill = scientific_name), size = 1.5, alpha = 0.0045) + 
-  geom_sf(data = pea_plotready, aes(geometry = points, colour = scientific_name), size = 1) + 
+  geom_sf(data = plant_plotready, aes(geometry = overlap), colour = "#FF925C", fill = "#FF925C") + 
+  geom_sf(data = plant_plotready, aes(geometry = concave, colour = scientific_name, fill = scientific_name), size = 1.5, alpha = 0.0045) + 
+  geom_sf(data = plant_plotready, aes(geometry = points, colour = scientific_name), size = 1) + 
   scale_colour_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
   scale_fill_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
   guides(colour = guide_legend(override.aes = list(alpha = 1))) + 
@@ -492,24 +451,26 @@ main_map <- base_map +
   theme(legend.title= element_blank(),
         legend.position = "bottom") 
 
-# Preview in Finder
-ggsave("pea_main.png", device = "png", 
-       path = here("output", "fig"),
-       bg = "white")
+main_map
 ```
 
 ```{r}
-# Inset
-main_map + 
-   coord_sf(
-    xlim = c(142.8 , 145.3),
-    ylim = c(-15.9, -13.25),
-    expand = FALSE
-    ) + 
-   theme_void() +
-   theme(legend.position = "none",
-         panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6))
+# # Preview in Finder
+# ggsave("plant_main.png", device = "png", 
+#        path = here("output", "fig"),
+#        bg = "white")
 
-inset
+# # Inset TBC
+# main_map + 
+#    coord_sf(
+#     xlim = c(142.8 , 145.3),
+#     ylim = c(-15.9, -13.25),
+#     expand = FALSE
+#     ) + 
+#    theme_void() +
+#    theme(legend.position = "none",
+#          panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6))
+# 
+# inset
 ```
 
