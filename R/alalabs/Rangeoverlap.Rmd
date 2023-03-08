@@ -298,7 +298,6 @@ main_bbox <- main_map +
    geom_rect(aes(xmin = 142.8, xmax = 145.3,
              ymin = -15.9, ymax = -13.25),
              colour = "black",
-             linewidth = 0.2, 
              fill = NA) 
 ```
 
@@ -376,12 +375,18 @@ sf_use_s2(FALSE)
 ## all plant overlap
 vplant_overlap <- readRDS(here("R", "alalabs", "ignore", "vplant_overlap", "vplant_overlap")) %>% unnest(cols = c(overlap_area, percent_overlap))
 
+##filter to Fabaceae 
+
+pea_subset <- vplant_overlap %>%
+  filter(family == "Fabaceae") 
+
+
 ## Rank species by highest percentage range overlap with fire
 ### There were more 5 species tied with 100% range overlap 
 ### So we will randomly sample 3 of these
 set.seed(4)
 
-top3 <- vplant_overlap %>% 
+top3 <- myrt_subset %>% 
   slice_max(order_by = percent_overlap,
               n = 3)  %>% 
   slice_sample(n = 3)
@@ -400,7 +405,7 @@ pea_plotready <- top3 %>%
 
 ```{r}
 # Read in data
-vplants <- read_csv(here("ignore","Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
+vplants <- read_csv(here("R", "alalabs", "ignore","Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling", "vascularplant.data.csv"))
 
 # Precleaning
 ## Rename columns for consistency
@@ -458,6 +463,8 @@ plant_concave <- ggplot() +
            ylim = c(-23, -43)) +
   theme_void() 
 
+plant_concave
+
 # Don't print in Viewer pane, preview in your Finder
 ggsave("plant_concave.png", device = "png", 
        path = here("output", "fig"),
@@ -468,38 +475,120 @@ ggsave("plant_concave.png", device = "png",
 ### Visualise the Pea family
 
 ```{r}
+### lets try other peas
+set.seed(4)
+
+top3 <- pea_subset %>% 
+  slice_max(order_by = percent_overlap,
+              n = 3)  %>% 
+  slice_sample(n = 3)
+
+Daviesia<-pea_subset %>%
+  filter(genus == "Daviesia")
+
+top3 <- Gompholobium %>% 
+  slice_max(order_by = percent_overlap,
+              n = 3)  %>% 
+  slice_sample(n = 3)
+
+## Prepare for plotting
+pea_plotready <- Daviesia %>% 
+  select(scientific_name, overlap_area, percent_overlap, points_sf, concave_sf, overlap_sf) %>% 
+  unnest() %>% 
+  rename(points = geometry, 
+         concave = polygons, 
+         overlap = geometry1) %>% 
+  select(-Id)
+
+myrt_plotready <- top3 %>% 
+  select(scientific_name, overlap_area, percent_overlap, points_sf, concave_sf, overlap_sf) %>% 
+  unnest() %>% 
+  rename(points = geometry, 
+         concave = polygons, 
+         overlap = geometry1) %>% 
+  select(-Id)
+```
+
+
+
+```{r}
 # Overlap map
-main_map <- base_map + 
+main_map2 <- base_map + 
   geom_sf(data = pea_plotready, aes(geometry = overlap), colour = "#FF925C", fill = "#FF925C") + 
   geom_sf(data = pea_plotready, aes(geometry = concave, colour = scientific_name, fill = scientific_name), size = 1.5, alpha = 0.0045) + 
   geom_sf(data = pea_plotready, aes(geometry = points, colour = scientific_name), size = 1) + 
-  scale_colour_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
+  scale_colour_manual(values = c("#023E50", "#7B8A6A", "#3C908E" )) + 
   scale_fill_manual(values = c("#023E50", "#7B8A6A", "#3C908E")) + 
   guides(colour = guide_legend(override.aes = list(alpha = 1))) + 
   coord_sf(xlim = c(140, 158)) +
   theme_minimal() + 
   theme(legend.title= element_blank(),
         legend.position = "bottom") 
-main_map
+
+main_map2
 
 # Preview in Finder
-ggsave("pea_main.png", device = "png", 
-       path = here("output", "fig"),
+ggsave("Dav3_pea_main.png", device = "png", 
+       path = here("R", "alalabs",  "output", "fig"),
        bg = "white")
 ```
 
 ```{r}
 # Inset
-main_map + 
+inset2<-main_map2 + 
    coord_sf(
-    xlim = c(142.8 , 145.3),
-    ylim = c(-15.9, -13.25),
+    xlim = c(145.5 , 150.3),
+    ylim = c(-35, -37.95),
     expand = FALSE
     ) + 
    theme_void() +
    theme(legend.position = "none",
-         panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.6))
+         panel.border = element_rect(colour = "black", fill = NA))
 
-inset
+
+inset2
+
+inset3<-main_map2 +
+     coord_sf(
+    xlim = c(151.5 , 153),
+    ylim = c(-28.3, -31.5),
+    expand = FALSE
+    ) + 
+   theme_void() +
+   theme(legend.position = "none",
+         panel.border = element_rect(colour = "black", fill = NA))
+
+inset3
+```
+
+
+```{r}
+main_bbox2 <- main_map2 + 
+   geom_rect(aes(xmin = 145.5, xmax = 150.3,
+             ymin = -35, ymax = -37.95),
+             colour = "black",
+             fill = NA) + 
+  geom_rect(aes(xmin = 151.5, xmax = 153,
+             ymin = -28.3, ymax = -31.5),
+             colour = "black",
+             fill = NA)
+
+```
+
+ 
+### Put it all together
+
+```{r}
+ggdraw(main_bbox2) +
+  draw_plot(inset2, x = 0.46, y = 0.18, 
+            width =0.4, height = 0.2) +
+  draw_plot(inset3, x = 0.44, y = 0.51, 
+            width =0.4, height = 0.2)
+  
+
+
+ggsave("Dav3_pea_main.inset2.png", device = "png", 
+       path = here("R", "alalabs",  "output", "fig"),
+       bg = "white")
 ```
 
