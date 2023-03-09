@@ -483,13 +483,11 @@ top3 <- pea_nest_rng_overlap %>%
               n = 3)  %>% 
   slice_sample(n = 3)
 
+#Daviesia
+
 Daviesia<-pea_nest_rng_overlap %>%
   filter(genus == "Daviesia")
 
-top3 <- Gompholobium %>% 
-  slice_max(order_by = percent_overlap,
-              n = 3)  %>% 
-  slice_sample(n = 3)
 
 ## Prepare for plotting
 pea_plotready <- Daviesia %>% 
@@ -500,13 +498,6 @@ pea_plotready <- Daviesia %>%
          overlap = geometry1) %>% 
   select(-Id)
 
-myrt_plotready <- top3 %>% 
-  select(scientific_name, overlap_area, percent_overlap, points_sf, concave_sf, overlap_sf) %>% 
-  unnest() %>% 
-  rename(points = geometry, 
-         concave = polygons, 
-         overlap = geometry1) %>% 
-  select(-Id)
 ```
 
 
@@ -562,6 +553,7 @@ inset3
 ```
 
 
+
 ```{r}
 main_bbox2 <- main_map2 + 
    geom_rect(aes(xmin = 145.5, xmax = 150.3,
@@ -576,7 +568,7 @@ main_bbox2 <- main_map2 +
 ```
 
  
-### Put it all together
+### Daviesia plot with insets 
 
 ```{r}
 ggdraw(main_bbox2) +
