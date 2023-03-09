@@ -201,7 +201,7 @@ bess_nest_rng_overlap <- bees_nest %>%
   ) %>% 
   unnest(cols = c(overlap_area, percent_overlap))
 
-bess_nest_rng_overlap <- readRDS(here("R", "alalabs", "ignore", "bees_overlap", "bess_nest_rng_overlap"))
+#bess_nest_rng_overlap <- readRDS(here("R", "alalabs", "ignore", "bees_overlap", "bess_nest_rng_overlap"))
 
 ```
 
@@ -286,7 +286,7 @@ inset <- main_map +
     ) + 
    theme_void() +
    theme(legend.position = "none",
-         panel.border = element_rect(colour = "black", fill = NA, ))
+         panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.2 ))
 
 inset
 ```
@@ -358,22 +358,22 @@ pea_nest_concave <- pea_subset %>%
 ## Compute overlap and calculate area and percentage overlap
 sf_use_s2(FALSE) 
 
-# pea_nest_rng_overlap <- pea_nest_concave %>% 
-#   mutate(overlap_sf = map(concave_sf, 
-#                        possibly(~ st_intersection(fire, .x)
-#                        )),
-#          overlap_area = map(overlap_sf,
-#                               possibly(~ st_area(.x))
-#                             ),
-#          percent_overlap = map2(.x = overlap_area,
-#                                 .y = concave_sf,
-#                               possibly( ~ (.x / st_area(.y))*100)
-#                                )
-#   ) %>% 
-#   unnest(cols = c(percent_overlap))
+ pea_nest_rng_overlap <- pea_nest_concave %>% 
+   mutate(overlap_sf = map(concave_sf, 
+                        possibly(~ st_intersection(fire, .x)
+                        )),
+          overlap_area = map(overlap_sf,
+                               possibly(~ st_area(.x))
+                             ),
+          percent_overlap = map2(.x = overlap_area,
+                                 .y = concave_sf,
+                               possibly( ~ (.x / st_area(.y))*100)
+                                )
+   ) %>% 
+   unnest(cols = c(percent_overlap))
 
 ## all plant overlap
-vplant_overlap <- readRDS(here("R", "alalabs", "ignore", "vplant_overlap", "vplant_overlap")) %>% unnest(cols = c(overlap_area, percent_overlap))
+#vplant_overlap <- readRDS(here("R", "alalabs", "ignore", "vplant_overlap", "vplant_overlap")) %>% unnest(cols = c(overlap_area, percent_overlap))
 
 ##filter to Fabaceae 
 
@@ -478,12 +478,12 @@ ggsave("plant_concave.png", device = "png",
 ### lets try other peas
 set.seed(4)
 
-top3 <- pea_subset %>% 
+top3 <- pea_nest_rng_overlap %>% 
   slice_max(order_by = percent_overlap,
               n = 3)  %>% 
   slice_sample(n = 3)
 
-Daviesia<-pea_subset %>%
+Daviesia<-pea_nest_rng_overlap %>%
   filter(genus == "Daviesia")
 
 top3 <- Gompholobium %>% 
@@ -543,7 +543,7 @@ inset2<-main_map2 +
     ) + 
    theme_void() +
    theme(legend.position = "none",
-         panel.border = element_rect(colour = "black", fill = NA))
+         panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.2))
 
 
 inset2
@@ -556,7 +556,7 @@ inset3<-main_map2 +
     ) + 
    theme_void() +
    theme(legend.position = "none",
-         panel.border = element_rect(colour = "black", fill = NA))
+         panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.2))
 
 inset3
 ```
@@ -567,11 +567,11 @@ main_bbox2 <- main_map2 +
    geom_rect(aes(xmin = 145.5, xmax = 150.3,
              ymin = -35, ymax = -37.95),
              colour = "black",
-             fill = NA) + 
+             fill = NA, linewidth = 0.2) + 
   geom_rect(aes(xmin = 151.5, xmax = 153,
              ymin = -28.3, ymax = -31.5),
              colour = "black",
-             fill = NA)
+             fill = NA, linewidth = 0.2)
 
 ```
 
@@ -580,7 +580,7 @@ main_bbox2 <- main_map2 +
 
 ```{r}
 ggdraw(main_bbox2) +
-  draw_plot(inset2, x = 0.46, y = 0.18, 
+  draw_plot(inset2, x = 0.5, y = 0.2, 
             width =0.4, height = 0.2) +
   draw_plot(inset3, x = 0.44, y = 0.51, 
             width =0.4, height = 0.2)
