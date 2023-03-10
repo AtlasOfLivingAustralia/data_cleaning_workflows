@@ -424,6 +424,100 @@ vplant_nest <- vplants %>%
 ## Compute concave hulls
 vplant_nest_concave <- vplant_nest %>%
     mutate(points_sf = map(.x = coords,
+library(arrow)
+library(here)
+library(tidyverse)
+
+plants <- open_dataset("~/Dropbox/1 - ALA/Projects/data_cleaning_workflows/ignore/Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling/vascularplant.data.csv", format = "csv")
+
+# Saving the Myrtles as a parquet
+plants %>%
+  filter(family == "Myrtaceae") %>%
+  select(record_id:longitude_used) %>%
+  rename(latitude = latitude_used,
+         longitude = longitude_used) %>%
+  write_parquet(sink = here("data/dap/myrtles.parquet"))
+
+# Read parquet
+myrtles <- read_parquet("data/dap/myrtles.parquet")
+
+# Check for NA character in genus
+myrtles %>% 
+  filter(is.na(genus))
+
+myrtles %>% 
+  filter(genus == NA)
+
+# Filter by character
+myrtles %>% 
+  filter(genus == "NA")
+
+# Table of counts for genus - note 55 NA
+myrtles$genus %>% table()
+
+# Saving myrtles as csv
+plants %>%
+  filter(family == "Myrtaceae") %>%
+  select(record_id:longitude_used) %>%
+  rename(latitude = latitude_used,
+         longitude = longitude_used) %>% 
+  write_csv("data/dap/myrtles.csv")
+
+# Read in csv
+myrtles_csv <- read_csv("data/dap/myrtles.csv")
+
+# Check for NA character in genus
+myrtles_csv %>% 
+  filter(is.na(genus))
+
+myrtles_csv %>% 
+  filter(genus == NA)
+
+# Filter by character
+myrtles_csv %>% 
+  filter(genus == "NA")
+
+# Table of counts for genus - note no NA
+myrtles_csv$genus %>% table()
+
+# Original plant dataset
+
+
+# As parquet
+plants_parquet <- read_parquet("~/Dropbox/1 - ALA/Projects/data_cleaning_workflows/ignore/Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling/vascularplant.data.parquet")
+
+# Check for NA character in genus
+plants_parquet %>% 
+  filter(is.na(genus))
+
+plants_parquet %>% 
+  filter(genus == NA)
+
+# Filter by character
+plants_parquet %>% 
+  filter(genus == "NA")
+
+# Table of counts for genus - note no NA
+plants_parquet$genus %>% table()
+
+# As csv
+plants <- read_csv("~/Dropbox/1 - ALA/Projects/data_cleaning_workflows/ignore/Curated_Plant_and_Invertebrate_Data_for_Bushfire_Modelling/vascularplant.data.csv")
+
+# Check for NA character in genus
+plants %>% 
+  filter(is.na(genus))
+
+plants %>% 
+  filter(genus == NA)
+
+# Filter by character
+plants %>% 
+  filter(genus == "NA")
+
+# Table of counts for genus - note no NA
+plants$genus %>% table()
+
+
                            ~ st_as_sf(.x, coords = c("longitude", "latitude"),
                                       crs = 4326)
                            ), 
