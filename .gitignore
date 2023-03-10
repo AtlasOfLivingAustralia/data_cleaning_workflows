@@ -9,6 +9,7 @@ doc/
 data/galah/
 data/plants/
 data/inverts/
+ignore/
 
 # R files #
 ###########
