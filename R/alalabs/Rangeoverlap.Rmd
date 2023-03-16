@@ -537,7 +537,7 @@ daviesia_bbox <- daviesia_main_map +
              fill = NA, linewidth = 0.2) 
 
 # Daviesia plot with insets 
-ggdraw(daviesia_main_map) +
+ggdraw(daviesia_bbox) +
   draw_plot(daviesia_inset_1, x = 0.51, y = 0.16, 
             width = 0.45, height = 0.30) +
   draw_plot(daviesia_inset_2, x = 0.48, y = 0.51, 
