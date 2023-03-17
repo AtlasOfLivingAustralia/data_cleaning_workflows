@@ -23,7 +23,7 @@ Let's start by installing and loading the packages we need.
 
 ```{r, loadpkg}
 # install.packages("pacman")
-pacman::p_load(tidyverse, here, rmapshaper, sf, ggpointdensity, viridis, ozmaps, concaveman, job, cowplot, patchwork)
+pacman::p_load(tidyverse, here, rmapshaper, sf, ggpointdensity, viridis, ozmaps, concaveman, job, cowplot, patchwork, tibble, gt)
 ```
 
 Next, we will go to the Data Access Portal to [download the invertebrate and vascular plant data](https://data.csiro.au/collection/csiro:56679)
@@ -74,27 +74,22 @@ fire <- st_read(here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20
 
 ## Precleaning
 
-
 Note that there is no need to remove duplicates or NAs as there are none in the curated data-sets. However there are still a few things that need to be done to the data so that we can compute the hulls. Concave hulls can be best estimate with at least 4 observations, for both data-sets we will filter out any species that has less than 4 observations.
 
 After all the cleaning is done, we will then nest the coordinate data into a [list column](https://jennybc.github.io/purrr-tutorial/ls13_list-columns.html). List columns are a very useful data structure for iterative analysis. In this case, each specie's coordinate data is condensed down into sub-tables. This is useful as we will make computing concave hulls and range overlap with fire extent at the species level.
 
-*select each tab to see the cleaning steps* 
-
+*select each tab to see the cleaning steps*
 
 ```{r panelset}
 #| echo: false
 xaringanExtra::use_panelset()
 ```
 
-
-::::: {.panelset}
-
-::: {.panel}
-
+::: panelset
+::: panel
 ## Invertebrates {.panel-name}
 
-### remove species with less than 4 observations 
+### remove species with less than 4 observations
 
 We will extract species that fit this criteria by calculating the number of observations for each species, then we pulling out the names for species that have more than 4 observations. Once we have the names for the species we will extract their respective data.
 
@@ -111,7 +106,7 @@ inverts_subset <- inverts %>%
   filter(scientific_name %in% more_than_4_obs)
 ```
 
-The invertebrate data includes islands records, these offshore islands can drastically skew the shape of the a species' concave hull, for the purpose of this analysis we are therefore going to remove these points. We have chosen to do this by cropping the data as close as possible to mainland Australia. You will notice this leaves the islands of the coral sea off the Queensland coast, as they are located close to the mainland this is ok for our purposes.  
+The invertebrate data includes islands records, these offshore islands can drastically skew the shape of the a species' concave hull, for the purpose of this analysis we are therefore going to remove these points. We have chosen to do this by cropping the data as close as possible to mainland Australia. You will notice this leaves the islands of the coral sea off the Queensland coast, as they are located close to the mainland this is ok for our purposes.
 
 ```{r}
 subset_mainland <- inverts_subset %>% 
@@ -134,15 +129,12 @@ You can inspect the list column like this:
 ```{r}
 inverts_nest %>% pluck("coords", 1) # 1 refers to the first element of the list column
 ```
-
-
 :::
 
-::: {.panel}
-
+::: panel
 ## Vascular plants {.panel-name}
 
-Note that we are using `species` instead of `scientific_name` in the plants dataset
+Note that we are using `species` instead of `scientific_name` in the plants dataset. The plant data is already cropped, and therefore no points are located off the mainland, which means we don't need to crop this dataset like the invertebrates.
 
 ```{r}
 ## Identify species that have more than 4 observations 
@@ -162,10 +154,7 @@ vplant_mainland <- vplants %>%
          longitude >= 113, longitude <= 155) %>% 
   select(species, class:genus, longitude, latitude) 
 
-
-
 ```
-
 
 ```{r}
 ## Nest the dataset
@@ -175,19 +164,47 @@ vplant_nest <-  vplant_mainland %>%
 vplant_nest
 
 #inspec the list columns 
-vplants_nest %>% pluck("coords", 1) # 1 refers to the first element of the list column
+vplant_nest %>% pluck("coords", 1) # 1 refers to the first element of the list column
 ```
-
-
 :::
-
-:::::
+:::
 
 ## A glimpse of spatial distributions in both datasets
 
 \[Note sure if we want to put plants up here so readers get and idea of both datasets at the beginning? alternatively, we move this right at the beginning then we talk about precleaning\]
 
-There are over \[description of datasets summary of class/families/species/n_records per species\], so its impossible to visualise all data points and concave hulls at once. Instead, we will plot all the data points and concave hulls of a random species from each class to give you a sense of the dataset.
+The datasets we are working with are large (Table 1) making it impossible to visualise all data points and concave hulls at once. Instead, we will plot all the data points and concave hulls of a random species from each class to give you a sense of the dataset.
+
+<br> **Table 1:** Summary of Invertebrate and Vascular Plant Data
+
+```{r echo=FALSE}
+
+table_df <- tibble(
+  taxon = c("Invertebrates", "Vascular Plants"),
+  class = c(46, 7),
+  family = c(2044, 76),
+  species = c(44146, 896),
+  records = c(300987, 41572)
+)
+
+table_df |>
+  gt() |>
+  cols_align(align = c("left"), columns = 1) |>
+  fmt_number(columns = 2:5,
+             sep_mark = ",",
+             decimals = 0) |>
+  cols_label(
+    taxon = md("**Taxonomic Group**"),
+    class = md("**Classes**"),
+    family = md("**Families**"),
+    species = md("**Species**"),
+    records = md("**Records**")) |>
+  tab_options(table.width = pct(90))
+```
+
+<br>
+
+### Invertebrates
 
 ```{r, collapse=TRUE}
 # Set seed so we all get the same results
@@ -245,13 +262,15 @@ inverts_points_map <- ggplot() +
 all_concave + inverts_points_map
 ```
 
-## Plant data 
+### Vascular plants 
+
+We will now repeat the above steps for the plant data, you'll notice these two datasets are very different. 
 
 ```{r, collapse=TRUE}
-
-## Subset data randomly one hull per family
+#| code-fold: true
 set.seed(123) 
 
+## Subset data randomly one hull per family
 plant_subset <- vplant_nest %>% 
   group_by(family) %>% 
   slice_sample(n = 1) 
