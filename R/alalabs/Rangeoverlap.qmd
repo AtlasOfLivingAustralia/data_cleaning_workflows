@@ -13,13 +13,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The full force of the 2019/2020 Australian bush fires had a devastating impact on the natural landscape, threatening our native biodiversity. More than ever, decision makers need curated, open access biodiversity data to help respond effectively to future bush fires. Our team at the Atlas of Living Australia (ALA) have been working with experts in the field to collate biodiversity datasets that can be used for off-the-shelf bush fire assessments. The two datasets are of taxonomic groups that are often overlooked during bush fires, Australian [invertebrates](link%20to%20ALA%20page?) (insects, snails, spiders) and Australian [vascular plants](link%20to%20ALA%20page?). We are thrilled to announce that both datasets are now publicly available from [CSIRO's data access portal](https://data.csiro.au/collection/csiro:56679).
 
-In this ALA labs post, we will showcase both datasets and show you how to calculate area of range overlap with fire extent during the 2019/2020 bush fire season.
+In this ALA labs post, we will showcase both datasets and show you how to calculate area of range overlap with fire extent during the 2019/2020 bush fire season. Calculating range overlap is a useful way to understand the impact of an event such as the fires on biodiversity. Here we'll both go through how to calculate these overlaps and how to visualize them. 
+This post expands our previous post on [Convex and alpha hulls for conservation mapping](https://labs.ala.org.au/posts/2022-10-12_alpha-hulls/post.html), where we discussed the applications of convex and alpha hulls to visualise spatial distributions of data deficient species. Here, we will learn how to plot a new form of spatial polygon - a [*concave hull*](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.676.6258&rep=rep1&type=pdf). Unlike its counterparts, concave hulls have the added flexibility to adjust its concavity which enables a more accurate estimation of species range.
 
-This post expands our previous post on [sConvex and alpha hulls for conservation mapping](https://labs.ala.org.au/posts/2022-10-12_alpha-hulls/post.html), where we discussed the applications of convex and alpha hulls to visualise spatial distributions of data deficient species. Here, we will learn how to plot a new form of spatial polygon - a [*concave hull*](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.676.6258&rep=rep1&type=pdf). Unlike its counterparts, concave hulls have the added flexibility to adjust its concavity which enables a more accurate estimation of species range.
+## Download biodiversity data
 
-## Get biodiversity data
-
-Let's start by installing and loading the packages we need.
+Before we get started we need to install and load the R packages:
 
 ```{r, loadpkg}
 # install.packages("pacman")
@@ -30,7 +29,7 @@ Next, we will go to the Data Access Portal to [download the invertebrate and vas
 
 Click on the "Download" button on the top right corner and select "Download all files as Zip archive". Locate the zip file and move it to an appropriate folder and then double click on it to unzip the download.
 
-![](R/alalabs/images/DAP.png)
+![](images/DAP.png)
 
 Once you have unzipped the download, we can read the curated datasets into R:
 
@@ -53,32 +52,44 @@ vplants <- read_csv(here("ignore","Curated_Plant_and_Invertebrate_Data_for_Bushf
          longitude = longitude_used)
 ```
 
-## Get fire layer
+## Precleaning and data overview 
 
-The National Indicative Aggregated Fire Extent Dataset for the 2019-2020 fire season is publicly available and can be found on [this website](https://www.environment.gov.au/fed/catalog/search/resource/details.page?uuid=%7B9ACDCB09-0364-4FE8-9459-2A56C792C743%7D). You'll need to click the "Download Data" tab near the top of the page, and then click on "NIAFED_v20200623.zip" to download the zipped fire shapefile. Open the zipped folder, and ensure the folder is saved in a location that can be read into R.
-
-Once the fire shapefile has been downloaded, we can read it into R and set the projection to EPSG:4326. We will also remove elevation values as we are only interested in the extent of fire.
-
-```{r firelayer, eval = FALSE}
-fire <- st_read(here("shapefile", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
-  st_transform(crs = 4326) %>% 
-  st_zm()   #Remove Z or M values
-```
-
-```{r firelayerlocal, eval = TRUE, echo = FALSE, include = FALSE}
-fire <- st_read(here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
-  st_transform(crs = 4326) %>% 
-  st_zm() %>%   #Remove Z or M values
-  ms_simplify() # Simplify the fire layer for efficient plotting
-```
-
-## Precleaning
-
-Note that there is no need to remove duplicates or NAs as there are none in the curated data-sets. However there are still a few things that need to be done to the data so that we can compute the hulls. Concave hulls can be best estimate with at least 4 observations, for both data-sets we will filter out any species that has less than 4 observations.
+Note that there is no need to remove duplicates or NAs as there are none in the curated data-sets. However there are still a few things that need to be done to the data so that we can compute the hulls. Concave hulls can be best estimated with at least 4 observations, for both data-sets we will filter out any species that have less than 4 observations.
 
 After all the cleaning is done, we will then nest the coordinate data into a [list column](https://jennybc.github.io/purrr-tutorial/ls13_list-columns.html). List columns are a very useful data structure for iterative analysis. In this case, each specie's coordinate data is condensed down into sub-tables. This is useful as we will make computing concave hulls and range overlap with fire extent at the species level.
 
-*select each tab to see the cleaning steps*
+We can then visualise the data, the datasets we are working with are large (Table 1) making it impossible to visualise all data points and concave hulls at once. In order to produce something meaningful we will plot all the data points and concave hulls of a random species from each class to give you a sense of the dataset, to accompany this we can also plot a density point map to better illustrate the biodiversity hot-spots. You'll notice that the invertebrate dataset is country wide (hence the above island cropping) whereas the vascular plant data is restricted to South-Eastern Australia. The vascular plant data is also restricted to species whose range was more than 50% impacted by the fires. These elements help to explain the disparity between number of records and species. 
+
+<br> **Table 1:** Summary of Invertebrate and Vascular Plant Data
+
+```{r echo=FALSE}
+
+table_df <- tibble(
+  taxon = c("Invertebrates", "Vascular Plants"),
+  class = c(46, 7),
+  family = c(2044, 76),
+  species = c(44146, 896),
+  records = c(300987, 41572)
+)
+
+table_df |>
+  gt() |>
+  cols_align(align = c("left"), columns = 1) |>
+  fmt_number(columns = 2:5,
+             sep_mark = ",",
+             decimals = 0) |>
+  cols_label(
+    taxon = md("**Taxonomic Group**"),
+    class = md("**Classes**"),
+    family = md("**Families**"),
+    species = md("**Species**"),
+    records = md("**Records**")) |>
+  tab_options(table.width = pct(90))
+```
+
+<br>
+
+*select each tab to see the cleaning steps and overview data visualization for the Invertebrate and Vascular plant data*
 
 ```{r panelset}
 #| echo: false
@@ -89,7 +100,9 @@ xaringanExtra::use_panelset()
 ::: panel
 ## Invertebrates {.panel-name}
 
-### remove species with less than 4 observations
+### Precleaning 
+
+#### Remove species with less than 4 observations
 
 We will extract species that fit this criteria by calculating the number of observations for each species, then we pulling out the names for species that have more than 4 observations. Once we have the names for the species we will extract their respective data.
 
@@ -129,84 +142,14 @@ You can inspect the list column like this:
 ```{r}
 inverts_nest %>% pluck("coords", 1) # 1 refers to the first element of the list column
 ```
-:::
 
-::: panel
-## Vascular plants {.panel-name}
+### Spatial distribution 
 
-Note that we are using `species` instead of `scientific_name` in the plants dataset. The plant data is already cropped, and therefore no points are located off the mainland, which means we don't need to crop this dataset like the invertebrates.
-
-```{r}
-## Identify species that have more than 4 observations 
-more_than_4_obs_plants <- vplants %>% 
-  group_by(scientific_name) %>% 
-  summarise(n_obs = n()) %>% 
-  filter(n_obs > 4) %>% 
-  pull(scientific_name)
-
-more_than_4_obs_plants %>% head()
-
-## Subset species with more than 4 observations 
-
-vplant_mainland <- vplants %>%
-  filter(scientific_name %in% more_than_4_obs_plants) %>% 
-  filter(latitude < -10, latitude >= -45,
-         longitude >= 113, longitude <= 155) %>% 
-  select(species, class:genus, longitude, latitude) 
-
-```
-
-```{r}
-## Nest the dataset
-vplant_nest <-  vplant_mainland %>% 
-   nest(coords = c(longitude, latitude))
-
-vplant_nest
-
-#inspec the list columns 
-vplant_nest %>% pluck("coords", 1) # 1 refers to the first element of the list column
-```
-:::
-:::
-
-## A glimpse of spatial distributions in both datasets
-
-\[Note sure if we want to put plants up here so readers get and idea of both datasets at the beginning? alternatively, we move this right at the beginning then we talk about precleaning\]
-
-The datasets we are working with are large (Table 1) making it impossible to visualise all data points and concave hulls at once. Instead, we will plot all the data points and concave hulls of a random species from each class to give you a sense of the dataset.
-
-<br> **Table 1:** Summary of Invertebrate and Vascular Plant Data
-
-```{r echo=FALSE}
-
-table_df <- tibble(
-  taxon = c("Invertebrates", "Vascular Plants"),
-  class = c(46, 7),
-  family = c(2044, 76),
-  species = c(44146, 896),
-  records = c(300987, 41572)
-)
-
-table_df |>
-  gt() |>
-  cols_align(align = c("left"), columns = 1) |>
-  fmt_number(columns = 2:5,
-             sep_mark = ",",
-             decimals = 0) |>
-  cols_label(
-    taxon = md("**Taxonomic Group**"),
-    class = md("**Classes**"),
-    family = md("**Families**"),
-    species = md("**Species**"),
-    records = md("**Records**")) |>
-  tab_options(table.width = pct(90))
-```
-
-<br>
-
-### Invertebrates
+In order to visualise this data 
 
 ```{r, collapse=TRUE}
+#| code-fold: true
+#| fig-align: center
 # Set seed so we all get the same results
 set.seed(123) 
 
@@ -262,12 +205,55 @@ inverts_points_map <- ggplot() +
 all_concave + inverts_points_map
 ```
 
-### Vascular plants 
 
-We will now repeat the above steps for the plant data, you'll notice these two datasets are very different. 
+:::
 
+::: panel
+## Vascular plants {.panel-name}
+
+### Precleaning
+
+Note that we are using `species` instead of `scientific_name` in the plants dataset. The plant data is already cropped, and therefore no points are located off the mainland, which means we don't need to crop this dataset like the invertebrates.
+
+```{r}
+## Identify species that have more than 4 observations 
+more_than_4_obs_plants <- vplants %>% 
+  group_by(scientific_name) %>% 
+  summarise(n_obs = n()) %>% 
+  filter(n_obs > 4) %>% 
+  pull(scientific_name)
+
+more_than_4_obs_plants %>% head()
+
+## Subset species with more than 4 observations 
+
+vplant_mainland <- vplants %>%
+  filter(scientific_name %in% more_than_4_obs_plants) %>% 
+  filter(latitude < -10, latitude >= -45,
+         longitude >= 113, longitude <= 155) %>% 
+  select(species, class:genus, longitude, latitude) 
+
+```
+
+### Nest occurrence data
+
+```{r}
+## Nest the dataset
+vplant_nest <-  vplant_mainland %>% 
+   nest(coords = c(longitude, latitude))
+
+vplant_nest
+
+#inspec the list columns 
+vplant_nest %>% pluck("coords", 1) # 1 refers to the first element of the list column
+```
+
+### Spatial distribution
+
+Now that we have cleaned the plant data we can visualise it!
 ```{r, collapse=TRUE}
 #| code-fold: true
+#| fig-align: center
 set.seed(123) 
 
 ## Subset data randomly one hull per family
@@ -320,18 +306,42 @@ plants_points_map <- ggplot() +
 plant_concave + plants_points_map
 ```
 
+:::
+:::
+
+## Get fire layer
+
+The National Indicative Aggregated Fire Extent Dataset for the 2019-2020 fire season is publicly available and can be found on [this website](https://www.environment.gov.au/fed/catalog/search/resource/details.page?uuid=%7B9ACDCB09-0364-4FE8-9459-2A56C792C743%7D). You'll need to click the "Download Data" tab near the top of the page, and then click on "NIAFED_v20200623.zip" to download the zipped fire shapefile. Open the zipped folder, and ensure the folder is saved in a location that can be read into R.
+
+Once the fire shapefile has been downloaded, we can read it into R and set the projection to EPSG:4326. We will also remove elevation values as we are only interested in the extent of fire.
+
+```{r firelayer, eval = FALSE}
+fire <- st_read(here("shapefile", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
+  st_transform(crs = 4326) %>% 
+  st_zm()   #Remove Z or M values
+```
+
+```{r firelayerlocal, eval = TRUE, echo = FALSE, include = FALSE}
+fire <- st_read(here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20200623.shp")) %>% 
+  st_transform(crs = 4326) %>% 
+  st_zm() %>%   #Remove Z or M values
+  ms_simplify() # Simplify the fire layer for efficient plotting
+```
+
+
 ## Species range overlap with fire extent
 
-Computation of range overlap with fire extent takes a lot of memory and processing time so we will do the next part of the walk through with the bee family (Apidae) as an example.
+Computation of range overlap with fire extent takes a lot of memory and processing time so we will do the next part of the walk through with the bee family (Apidae) from the Invertebrate dataset as an example.
 
 ```{r}
+#filter invertebrate data to Apidae
 bees <- inverts_nest %>% 
   filter(family == "Apidae") 
 ```
 
 ### Compute concave hull
 
-Here we will transform each specie's coordinates into a `sf` object and compute their concave hulls.
+Now that we have a smaller group of species to work with, we can transform each species' coordinates into a `sf` object and compute their concave hulls.
 
 ```{r}
 bees_concave <- bees %>%
@@ -351,9 +361,9 @@ We will assume that each species concave hull is representative of it's range in
 
 In order to do this, we need to set `sf_use_s2(FALSE)` which assumes the Earth is flat and not spherical. While this a limitation of the method, it still gives us a good approximation.
 
-Let's identify the overlap between each species' concave hull with fire extent using `st_intersection`. We can then use `st_area` to calculate the area (m\^2) the overlap and convert it into percentage of each specie's original range.
+Let's identify the overlap between each species' concave hull with fire extent using `st_intersection`. We can then use `st_area` to calculate the area (m\^2) of overlap and convert it into percentage of each species' original range. Calculating percentage allows you to understand what species was most effected in relation to it's range, rather than what species had the largest amount of it's range burnt- as this will skew towards species with large ranges. 
 
-Notice that we are unnesting `overlap_area` and `percent_overlap` so they can be seen in the main tibble
+Notice that we are un-nesting `overlap_area` and `percent_overlap` so they can be seen in the main tibble
 
 ```{r message=FALSE, warning=FALSE}
 sf_use_s2(FALSE) 
@@ -391,11 +401,28 @@ top3 <- bees_overlap %>%
 top3
 ```
 
+
+:::{layout-ncol=3 style="width=120px;"}
+
+<img class = "clipped" src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/a/6/8/0/30410bf3-d717-45c4-bdb7-8cde5c6b086a/original"></img>
+
+<img class = "clipped"src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/e/6/3/7/a0e69e32-1d1a-4598-b113-8c42ee76736e/original"></img>
+
+<img class = "clipped"src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/5/e/9/5/24035fb7-0548-44b6-b933-3bcd58c959e5/original"></img>
+:::
+::: {.figure-caption}
+Left: [*Austroplebeia* (Geoffbyrne CC-BY-NC 4.0)](https://images.ala.org.au/image/viewer?imageId=30410bf3-d717-45c4-bdb7-8cde5c6b086a), Middle: [*Exoneura* (Campbell Matt CC BY-NC 4.0))](https://images.ala.org.au/image/viewer?imageId=a0e69e32-1d1a-4598-b113-8c42ee76736e), Right: [*Xylocopa (koptortosoma) aruana* (zig madycki CC BY 3.0))](https://images.ala.org.au/image/viewer?imageId=24035fb7-0548-44b6-b933-3bcd58c959e5)
+:::
+
+
+
+
+
 ## Visualise fire extent and range overlap
 
 ### Prepare data for plotting
 
-Now that we have selected the top three species , we will select the variables we need for plotting then unnest the list column structure. Once we have the data we want, we will rename the columns to variable names that are more intuitive for plotting.
+Now that we have selected the top three species, we will select the variables we need for plotting then un-nest the list column structure. Once we have the data we want, we will rename the columns to variable names that are more intuitive for plotting.
 
 ```{r, warnings = FALSE}
 bee_map_data <- top3 %>% 
@@ -408,22 +435,23 @@ bee_map_data <- top3 %>%
 
 ### Create a base map
 
-We will first make the base map of Australia and the fire extent
+We will first make the base map of Australia and add the fire extent to it. You'll see a concentration of the burnt area on the South-East coast and Northern Australia 
 
 ```{r}
 base_map <- ggplot() + 
-  geom_sf(data = aus, colour = "black", fill = NA) +
+  geom_sf(data = aus, colour = "black", fill = "white") +
   geom_sf(data = fire, fill = "#FEC3A6", colour = "#FEC3A6") + 
-  theme_minimal()
+  theme_bw()
 
 base_map
 ```
 
 ### Add overlap of selected species
 
-We will then add on the top 3 species' concave hull and their range overlap. Note that we are using `geometry =` within `aes()` to specify which variable from `bee_map_data` we want to plot.
+To the base map we can then add on the top 3 species' concave hulls with the largest percentage overlap. We will plot this so that the species range that overlaps with the burt area is highlighted.  Note that we are using `geometry =` within `aes()` to specify which variable from `bee_map_data` we want to plot.
 
 ```{r}
+#| fig-height: 7
 main_map <- base_map + 
   geom_sf(data = bee_map_data, 
           aes(geometry = concave, 
@@ -449,7 +477,7 @@ main_map
 
 ### Add inset map
 
-We will make an enlarged inset paper so we can see the navy blue hull of *Austroplebeia cassiae* is better
+The navy blue hull of *Austroplebeia cassiae* is quite hard to see, so we will make an enlarged inset paper to give us a better idea of what it looks like. 
 
 ```{r}
 inset <- main_map + 
@@ -467,7 +495,7 @@ inset
 
 #### Draw a box around the inset area
 
-Next we will draw a box around the area of interest on in the enlarged map.
+Next we will draw a box around the area of interest in the enlarged map.
 
 ```{r}
 main_bbox <- main_map + 
@@ -482,7 +510,7 @@ main_bbox
 
 ### Put it all together
 
-Finally, we can put it all together!
+Finally, we can put it all together! You'll notice that the top 3 species with highest percentage overlap have ranges restricted to South-Eastern and Northern Australia. 
 
 ```{r}
 ggdraw(main_bbox) +
@@ -493,7 +521,19 @@ ggdraw(main_bbox) +
 
 ## Vascular plant dataset
 
-Now we will repeat the above workflow using the vascular plant dataset. \[Describe data smaller spatial scope, descriptive stats about data set number of observations/fam/class etc\] \[Talk about the peas\] Instead of taking top 3 species...we will be look at the bitterpeas
+Now we will repeat the above workflow using the vascular plant dataset. As we mentioned above this dataset is more restricted in spatial scope and only cover South-Eastern Australia and only has species whose ranges were more than 50% impacted by the fires. The vascular plant dataset and Invertebrate data are very different, bees plotted above in the invertebrate dataset are pollinators, a link to vascular plants. As the vascular plant data is restricted to South-Eastern Australia we decided to look into *Exoneura (Exoneura) hackeri*, a reed bee, to learn a bit more about what types of native plants it pollinates. Some research done by the ANU on [reed bees](https://fennerschool.anu.edu.au/files/Rubus%20berry%20pollinator%20infosheet.pdf) indicates they forage in native pea flowers in January. As the fires burnt through a lot of this area during December/January we decided to plot some native peas! Instead of taking the top 3 species as we did for the Invertebrates we will plot the genus *Daviesia*, known commonly as bitterpeas, which only has 3 species in this dataset. 
+
+:::{layout-ncol=3 style="width=120px;"}
+
+<img class = "clipped" src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/7/7/0/b/0a95413d-25aa-4889-9c7d-39dd898eb077/original"></img>
+
+<img class = "clipped"src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/d/c/7/a/d8c159a6-1aa6-45f7-9f3d-b60da4eaa7cd/original"></img>
+
+<img class = "clipped"src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/d/e/f/f/a5ad9e21-5ce5-450b-baf7-d52ea3a6ffed/original"></img>
+:::
+::: {.figure-caption}
+Left: [*Daviesa buxifolia* (Betty and Don Wood CC BY 3.0)](https://images.ala.org.au/image/viewer?imageId=0a95413d-25aa-4889-9c7d-39dd898eb077), Middle: [*Daviesa nova-anglica* (Janeteveh CC BY-NC 4.0))](https://images.ala.org.au/image/viewer?imageId=d8c159a6-1aa6-45f7-9f3d-b60da4eaa7cd), Right: [*Daviesa suaveolens* (Crisp, M.D. CC BY 3.0))](https://images.ala.org.au/image/viewer?imageId=a5ad9e21-5ce5-450b-baf7-d52ea3a6ffed)
+:::
 
 ### Visualise the range overlap of *Daviesia* peas with fire extent
 
@@ -556,11 +596,16 @@ daviesia_main_map <- base_map +
   guides(colour = guide_legend(override.aes = list(alpha = 1))) + 
   coord_sf(xlim = c(140, 158),
            ylim = c(-23, -43)) +
-  theme_void() +
   theme(legend.title= element_blank(),
         legend.position = "bottom") 
 
 daviesia_main_map
+```
+### add inset map
+
+Now that we have the 3 *Daviesa* hulls plotted, we will make some insets like we did for the bees, as these species ranges are all quite small, we will make mutliple and then add them all onto the maiin map at the end. 
+
+```{r}
 
 # Inset 1
 daviesia_inset_1 <- daviesia_main_map + 
@@ -604,3 +649,8 @@ ggdraw(daviesia_bbox) +
   draw_plot(daviesia_inset_2, x = 0.48, y = 0.51, 
             width = 0.5, height = 0.4)
 ```
+
+
+
+
+
