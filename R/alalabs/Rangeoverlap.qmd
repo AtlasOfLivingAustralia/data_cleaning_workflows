@@ -578,7 +578,8 @@ daviesia_overlap <- daviesia_concave %>%
   unnest(cols = c(overlap_area, percent_overlap))
 ```
 
-You'll might notice that *Daviesia buxifolia* has a range percentage overlap of 37% which is below the 50% overlap of the data. This is likely caused by a variation in the way that species range overlaps are being calculated, with hulls being coarse, and tending to over-estimate range, you can end up with an underestimation of range overlap. We'll take a look at *D. Buxifolia* when it's plotted below to see if this could be the case. 
+You'll might notice that *Daviesia buxifolia* has a range percentage overlap of 37% which is below the 50% overlap of the data. This is likely caused by a variation in the way that species range overlaps are being calculated, with hulls being coarse, and tending to over-estimate range, you can end up with an underestimation of range overlap. We'll take a look at *D. Buxifolia* when it's plotted below to see if this could be the case.
+
 ```{r}
 daviesia_overlap
 ```
@@ -649,7 +650,7 @@ daviesia_inset_2 <- daviesia_main_map +
 daviesia_inset_1 + daviesia_inset_2 
 ```
 
-Inset 1 in dark blue is *D. buxifolia*, if you look at where the majority of the points are located compared with the hull, there is a lot of un-burnt land included in it's range. Now this range isn't necessarily wrong, it's purely an estimate, however it can help to explain disparity in findings when different methods are used.  
+Inset 1 in dark blue is *D. buxifolia*, if you look at where the majority of the points are located compared with the hull, there is a lot of un-burnt land included in it's range. Now this range isn't necessarily wrong, it's purely an estimate, however it can help to explain disparity in findings when different methods are used.
 
 ### Put it all together
 
@@ -674,4 +675,3 @@ ggdraw(daviesia_bbox) +
 ```
 
 ## Final thoughts
-
