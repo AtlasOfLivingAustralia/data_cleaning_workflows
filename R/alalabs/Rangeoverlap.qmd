@@ -1,5 +1,6 @@
 ---
-title: "Range overlap"
+title: "Estimating species range fire overlap with concave hulls"
+description: Calculating range overlaps with concave hulls is a useful way to understand how natural disasters, such as fires, have impacted biodiversity. Here we'll use curated invertebrate and vascular plant datasets to show the impact of the 2019/2020 fires on *Apidae* and *Daviesia* (Bitterpeas) by computing their concave hulls and range overlap with the burnt area of the Black Summer. 
 format: html
 author:
   - name: "Margot Schneider"
@@ -11,14 +12,15 @@ editor: visual
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-The full force of the 2019/2020 Australian bush fires had a devastating impact on the natural landscape, threatening our native biodiversity. More than ever, decision makers need curated, open access biodiversity data to help respond effectively to future bush fires. Our team at the Atlas of Living Australia (ALA) have been working with experts in the field to collate biodiversity datasets that can be used for off-the-shelf bush fire assessments. The two datasets are of taxonomic groups that are often overlooked during bush fires, Australian [invertebrates](link%20to%20ALA%20page?) (insects, snails, spiders) and Australian [vascular plants](link%20to%20ALA%20page?). We are thrilled to announce that both datasets are now publicly available from [CSIRO's data access portal](https://data.csiro.au/collection/csiro:56679).
+The full force of the 2019/2020 Australian bush fires had a devastating impact on the natural landscape, threatening our native biodiversity. More than ever, decision makers need curated, open access biodiversity data to help respond effectively to future bush fires. Our team at the Atlas of Living Australia (ALA) have been working with experts in the field to collate biodiversity datasets that can be used for off-the-shelf bush fire assessments. The two datasets are of taxonomic groups that are often severely impacted during bush fires, Australian [invertebrates](link%20to%20ALA%20page?) (insects, snails, spiders) and Australian [vascular plants](link%20to%20ALA%20page?). We are thrilled to announce that both datasets are now publicly available from [CSIRO's data access portal](https://data.csiro.au/collection/csiro:56679).
 
-In this ALA labs post, we will showcase both datasets and show you how to calculate area of range overlap with fire extent during the 2019/2020 bush fire season. Calculating range overlap is a useful way to understand the impact of an event such as the fires on biodiversity. Here we'll both go through how to calculate these overlaps and how to visualize them. 
-This post expands our previous post on [Convex and alpha hulls for conservation mapping](https://labs.ala.org.au/posts/2022-10-12_alpha-hulls/post.html), where we discussed the applications of convex and alpha hulls to visualise spatial distributions of data deficient species. Here, we will learn how to plot a new form of spatial polygon - a [*concave hull*](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.676.6258&rep=rep1&type=pdf). Unlike its counterparts, concave hulls have the added flexibility to adjust its concavity which enables a more accurate estimation of species range.
+In this ALA labs post, we will showcase both datasets to calculate area of range overlap with fire extent during the 2019/2020 bush fire season. Calculating range overlap is a useful way to understand the impact of an event such as the fires on biodiversity. Here we'll both go through how to calculate these overlaps and how to visualize them.
+
+This post expands our previous post on [Convex and alpha hulls for conservation mapping](https://labs.ala.org.au/posts/2022-10-12_alpha-hulls/post.html), where we discussed the applications of convex and alpha hulls to visualise spatial distributions of data deficient species. Here, we will learn how to plot a new form of spatial polygon - a [*concave hull*](https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.676.6258&rep=rep1&type=pdf). Unlike its counterparts, concave hulls have the added flexibility to adjust its concavity which enables a more accurate estimation of species range. This is a useful feature when using species ranges for overlap calculations.
 
 ## Download biodiversity data
 
-Before we get started we need to install and load the R packages:
+First we will load the R packages we need:
 
 ```{r, loadpkg}
 # install.packages("pacman")
@@ -27,9 +29,17 @@ pacman::p_load(tidyverse, here, rmapshaper, sf, ggpointdensity, viridis, ozmaps,
 
 Next, we will go to the Data Access Portal to [download the invertebrate and vascular plant data](https://data.csiro.au/collection/csiro:56679)
 
-Click on the "Download" button on the top right corner and select "Download all files as Zip archive". Locate the zip file and move it to an appropriate folder and then double click on it to unzip the download.
-
 ![](images/DAP.png)
+
+Click on the "Download" button on the top right corner and select "Download all files as Zip archive". Save this downloaded zip folder in a local folder inside your current [R project](https://r4ds.had.co.nz/workflow-projects.html).
+
+If you need to unzip the folder, you can do so with the following code:
+
+```{r}
+zip_folder <- here("folder-name", "shapefile-folder-name.zip")
+output_dir <- "folder-name-to-save-unzipped-files" 
+unzip(zip_folder, exdir = output_dir) 
+```
 
 Once you have unzipped the download, we can read the curated datasets into R:
 
@@ -52,13 +62,13 @@ vplants <- read_csv(here("ignore","Curated_Plant_and_Invertebrate_Data_for_Bushf
          longitude = longitude_used)
 ```
 
-## Precleaning and data overview 
+## Precleaning and data overview
 
-Note that there is no need to remove duplicates or NAs as there are none in the curated data-sets. However there are still a few things that need to be done to the data so that we can compute the hulls. Concave hulls can be best estimated with at least 4 observations, for both data-sets we will filter out any species that have less than 4 observations.
+Note that there is no need to remove duplicates or NAs as there are none in the curated data-sets. However there are still a few things that need to be done in order to compute the hulls. Concave hulls can be best estimated with at least 4 observations, for both data-sets we will filter out any species that have less than 4 observations.
 
 After all the cleaning is done, we will then nest the coordinate data into a [list column](https://jennybc.github.io/purrr-tutorial/ls13_list-columns.html). List columns are a very useful data structure for iterative analysis. In this case, each specie's coordinate data is condensed down into sub-tables. This is useful as we will make computing concave hulls and range overlap with fire extent at the species level.
 
-We can then visualise the data, the datasets we are working with are large (Table 1) making it impossible to visualise all data points and concave hulls at once. In order to produce something meaningful we will plot all the data points and concave hulls of a random species from each class to give you a sense of the dataset, to accompany this we can also plot a density point map to better illustrate the biodiversity hot-spots. You'll notice that the invertebrate dataset is country wide (hence the above island cropping) whereas the vascular plant data is restricted to South-Eastern Australia. The vascular plant data is also restricted to species whose range was more than 50% impacted by the fires. These elements help to explain the disparity between number of records and species. 
+We can then visualise the data, the datasets we are working with are large (Table 1) making it impossible to visualise all data points and concave hulls at once. In order to produce something meaningful we will plot all the data points and concave hulls of a random species from each class to give you a sense of the dataset, to accompany this we can also plot a density point map to better illustrate the biodiversity hot-spots. You'll notice that the invertebrate dataset is country wide (hence the above island cropping) whereas the vascular plant data is restricted to South-Eastern Australia. The vascular plant data is also restricted to species whose range was more than 50% impacted by the fires. These elements help to explain the disparity between number of records and species.
 
 <br> **Table 1:** Summary of Invertebrate and Vascular Plant Data
 
@@ -94,17 +104,18 @@ table_df |>
 ```{r panelset}
 #| echo: false
 xaringanExtra::use_panelset()
+xaringanExtra::style_panelset_tabs(active_foreground = "honeydew", active_background = "seagreen")
 ```
 
 ::: panelset
 ::: panel
 ## Invertebrates {.panel-name}
 
-### Precleaning 
+### Precleaning
 
 #### Remove species with less than 4 observations
 
-We will extract species that fit this criteria by calculating the number of observations for each species, then we pulling out the names for species that have more than 4 observations. Once we have the names for the species we will extract their respective data.
+We will extract species that fit this criteria by calculating the number of observations for each species, then by pulling out the names for species that have more than 4 observations. Once we have the names for the species can extract their respective data.
 
 ```{r}
 more_than_4_obs <- inverts %>% 
@@ -143,13 +154,14 @@ You can inspect the list column like this:
 inverts_nest %>% pluck("coords", 1) # 1 refers to the first element of the list column
 ```
 
-### Spatial distribution 
+### Spatial distribution
 
-In order to visualise this data 
+In order to visualise this data we will plot a subset a random species from each class, we can then un-nest the data and create a plot of concave hulls. We can also create a density point map n order to better visualise biodiversity hotspots of the data. 
 
 ```{r, collapse=TRUE}
 #| code-fold: true
 #| fig-align: center
+#| fig-width: 10
 # Set seed so we all get the same results
 set.seed(123) 
 
@@ -204,8 +216,6 @@ inverts_points_map <- ggplot() +
   
 all_concave + inverts_points_map
 ```
-
-
 :::
 
 ::: panel
@@ -213,7 +223,9 @@ all_concave + inverts_points_map
 
 ### Precleaning
 
-Note that we are using `species` instead of `scientific_name` in the plants dataset. The plant data is already cropped, and therefore no points are located off the mainland, which means we don't need to crop this dataset like the invertebrates.
+#### Remove species with less than 4 observations 
+
+Note that we are using `species` instead of `scientific_name` in the plants dataset. The plant data is already cropped, and therefore no points are located off the mainland. 
 
 ```{r}
 ## Identify species that have more than 4 observations 
@@ -251,9 +263,11 @@ vplant_nest %>% pluck("coords", 1) # 1 refers to the first element of the list c
 ### Spatial distribution
 
 Now that we have cleaned the plant data we can visualise it!
+
 ```{r, collapse=TRUE}
 #| code-fold: true
 #| fig-align: center
+#| fig-width: 10
 set.seed(123) 
 
 ## Subset data randomly one hull per family
@@ -305,7 +319,6 @@ plants_points_map <- ggplot() +
   
 plant_concave + plants_points_map
 ```
-
 :::
 :::
 
@@ -327,7 +340,6 @@ fire <- st_read(here("ignore", "NIAFED_v20200623", "NIAFED_20190701_20200622_v20
   st_zm() %>%   #Remove Z or M values
   ms_simplify() # Simplify the fire layer for efficient plotting
 ```
-
 
 ## Species range overlap with fire extent
 
@@ -361,7 +373,7 @@ We will assume that each species concave hull is representative of it's range in
 
 In order to do this, we need to set `sf_use_s2(FALSE)` which assumes the Earth is flat and not spherical. While this a limitation of the method, it still gives us a good approximation.
 
-Let's identify the overlap between each species' concave hull with fire extent using `st_intersection`. We can then use `st_area` to calculate the area (m\^2) of overlap and convert it into percentage of each species' original range. Calculating percentage allows you to understand what species was most effected in relation to it's range, rather than what species had the largest amount of it's range burnt- as this will skew towards species with large ranges. 
+Let's identify the overlap between each species' concave hull with fire extent using `st_intersection`. We can then use `st_area` to calculate the area (m\^2) of overlap and convert it into percentage of each species' original range. Calculating percentage allows you to understand what species was most effected in relation to it's range, rather than what species had the largest amount of it's range burnt- as this will skew towards species with large ranges.
 
 Notice that we are un-nesting `overlap_area` and `percent_overlap` so they can be seen in the main tibble
 
@@ -401,22 +413,17 @@ top3 <- bees_overlap %>%
 top3
 ```
 
+::: {layout-ncol="3" style="width=120px;"}
+<img src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/a/6/8/0/30410bf3-d717-45c4-bdb7-8cde5c6b086a/original" class="clipped"/></img>
 
-:::{layout-ncol=3 style="width=120px;"}
+<img src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/e/6/3/7/a0e69e32-1d1a-4598-b113-8c42ee76736e/original" class="clipped"/></img>
 
-<img class = "clipped" src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/a/6/8/0/30410bf3-d717-45c4-bdb7-8cde5c6b086a/original"></img>
-
-<img class = "clipped"src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/e/6/3/7/a0e69e32-1d1a-4598-b113-8c42ee76736e/original"></img>
-
-<img class = "clipped"src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/5/e/9/5/24035fb7-0548-44b6-b933-3bcd58c959e5/original"></img>
+<img src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/5/e/9/5/24035fb7-0548-44b6-b933-3bcd58c959e5/original" class="clipped"/></img>
 :::
-::: {.figure-caption}
+
+::: figure-caption
 Left: [*Austroplebeia* (Geoffbyrne CC-BY-NC 4.0)](https://images.ala.org.au/image/viewer?imageId=30410bf3-d717-45c4-bdb7-8cde5c6b086a), Middle: [*Exoneura* (Campbell Matt CC BY-NC 4.0))](https://images.ala.org.au/image/viewer?imageId=a0e69e32-1d1a-4598-b113-8c42ee76736e), Right: [*Xylocopa (koptortosoma) aruana* (zig madycki CC BY 3.0))](https://images.ala.org.au/image/viewer?imageId=24035fb7-0548-44b6-b933-3bcd58c959e5)
 :::
-
-
-
-
 
 ## Visualise fire extent and range overlap
 
@@ -435,7 +442,7 @@ bee_map_data <- top3 %>%
 
 ### Create a base map
 
-We will first make the base map of Australia and add the fire extent to it. You'll see a concentration of the burnt area on the South-East coast and Northern Australia 
+We will first make the base map of Australia and add the fire extent to it. You'll see a concentration of the burnt area on the South-East coast and Northern Australia
 
 ```{r}
 base_map <- ggplot() + 
@@ -448,7 +455,7 @@ base_map
 
 ### Add overlap of selected species
 
-To the base map we can then add on the top 3 species' concave hulls with the largest percentage overlap. We will plot this so that the species range that overlaps with the burt area is highlighted.  Note that we are using `geometry =` within `aes()` to specify which variable from `bee_map_data` we want to plot.
+To the base map we can then add on the top 3 species' concave hulls with the largest percentage overlap. We will plot this so that the species range that overlaps with the burt area is highlighted. Note that we are using `geometry =` within `aes()` to specify which variable from `bee_map_data` we want to plot.
 
 ```{r}
 #| fig-height: 7
@@ -477,7 +484,7 @@ main_map
 
 ### Add inset map
 
-The navy blue hull of *Austroplebeia cassiae* is quite hard to see, so we will make an enlarged inset paper to give us a better idea of what it looks like. 
+The navy blue hull of *Austroplebeia cassiae* is quite hard to see, so we will make an enlarged inset paper to give us a better idea of what it looks like.
 
 ```{r}
 inset <- main_map + 
@@ -510,7 +517,7 @@ main_bbox
 
 ### Put it all together
 
-Finally, we can put it all together! You'll notice that the top 3 species with highest percentage overlap have ranges restricted to South-Eastern and Northern Australia. 
+Finally, we can put it all together! You'll notice that the top 3 species with highest percentage overlap have ranges restricted to South-Eastern and Northern Australia.
 
 ```{r}
 ggdraw(main_bbox) +
@@ -521,17 +528,17 @@ ggdraw(main_bbox) +
 
 ## Vascular plant dataset
 
-Now we will repeat the above workflow using the vascular plant dataset. As we mentioned above this dataset is more restricted in spatial scope and only cover South-Eastern Australia and only has species whose ranges were more than 50% impacted by the fires. The vascular plant dataset and Invertebrate data are very different, bees plotted above in the invertebrate dataset are pollinators, a link to vascular plants. As the vascular plant data is restricted to South-Eastern Australia we decided to look into *Exoneura (Exoneura) hackeri*, a reed bee, to learn a bit more about what types of native plants it pollinates. Some research done by the ANU on [reed bees](https://fennerschool.anu.edu.au/files/Rubus%20berry%20pollinator%20infosheet.pdf) indicates they forage in native pea flowers in January. As the fires burnt through a lot of this area during December/January we decided to plot some native peas! Instead of taking the top 3 species as we did for the Invertebrates we will plot the genus *Daviesia*, known commonly as bitterpeas, which only has 3 species in this dataset. 
+Now we will repeat the above workflow using the vascular plant dataset. As we mentioned above this dataset is more restricted in spatial scope and only cover South-Eastern Australia and only has species whose ranges were more than 50% impacted by the fires. The vascular plant dataset and Invertebrate data are very different, bees plotted above in the invertebrate dataset are pollinators, a link to vascular plants. As the vascular plant data is restricted to South-Eastern Australia we decided to look into *Exoneura (Exoneura) hackeri*, a reed bee, to learn a bit more about what types of native plants it pollinates. Some research done by the ANU on [reed bees](https://fennerschool.anu.edu.au/files/Rubus%20berry%20pollinator%20infosheet.pdf) indicates they forage in native pea flowers in January. As the fires burnt through a lot of this area during December/January we decided to plot some native peas! Instead of taking the top 3 species as we did for the Invertebrates we will plot the genus *Daviesia*, known commonly as bitterpeas, which only has 3 species in this dataset.
 
-:::{layout-ncol=3 style="width=120px;"}
+::: {layout-ncol="3" style="width=120px;"}
+<img src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/7/7/0/b/0a95413d-25aa-4889-9c7d-39dd898eb077/original" class="clipped"/></img>
 
-<img class = "clipped" src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/7/7/0/b/0a95413d-25aa-4889-9c7d-39dd898eb077/original"></img>
+<img src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/d/c/7/a/d8c159a6-1aa6-45f7-9f3d-b60da4eaa7cd/original" class="clipped"/></img>
 
-<img class = "clipped"src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/d/c/7/a/d8c159a6-1aa6-45f7-9f3d-b60da4eaa7cd/original"></img>
-
-<img class = "clipped"src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/d/e/f/f/a5ad9e21-5ce5-450b-baf7-d52ea3a6ffed/original"></img>
+<img src="https://ala-images.s3.ap-southeast-2.amazonaws.com/store/d/e/f/f/a5ad9e21-5ce5-450b-baf7-d52ea3a6ffed/original" class="clipped"/></img>
 :::
-::: {.figure-caption}
+
+::: figure-caption
 Left: [*Daviesa buxifolia* (Betty and Don Wood CC BY 3.0)](https://images.ala.org.au/image/viewer?imageId=0a95413d-25aa-4889-9c7d-39dd898eb077), Middle: [*Daviesa nova-anglica* (Janeteveh CC BY-NC 4.0))](https://images.ala.org.au/image/viewer?imageId=d8c159a6-1aa6-45f7-9f3d-b60da4eaa7cd), Right: [*Daviesa suaveolens* (Crisp, M.D. CC BY 3.0))](https://images.ala.org.au/image/viewer?imageId=a5ad9e21-5ce5-450b-baf7-d52ea3a6ffed)
 :::
 
@@ -601,15 +608,15 @@ daviesia_main_map <- base_map +
 
 daviesia_main_map
 ```
+
 ### add inset map
 
-Now that we have the 3 *Daviesa* hulls plotted, we will make some insets like we did for the bees, as these species ranges are all quite small, we will make mutliple and then add them all onto the maiin map at the end. 
+Now that we have the 3 *Daviesa* hulls plotted, we will make some insets like we did for the bees, as these species ranges are all quite small, we will make mutliple and then add them all onto the maiin map at the end.
 
-```{r}
-
+```{r, warning=FALSE, message = FALSE}
 # Inset 1
-daviesia_inset_1 <- daviesia_main_map + 
-  coord_sf(
+daviesia_inset_1 <- daviesia_main_map +
+coord_sf(
     xlim = c(145.5 , 150.3),
     ylim = c(-35, -37.95),
     expand = FALSE
@@ -629,8 +636,17 @@ daviesia_inset_2 <- daviesia_main_map +
   theme(legend.position = "none",
         panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.2))
 
-daviesia_inset_2
 
+```
+
+<aside>
+```{r, echo=FALSE}
+daviesia_inset_2 
+```
+
+</aside>
+
+```{r}
 # Drawing the inset boxes on main map
 daviesia_bbox <- daviesia_main_map + 
    geom_rect(aes(xmin = 145.5, xmax = 150.3, # Inset 1
@@ -649,8 +665,4 @@ ggdraw(daviesia_bbox) +
   draw_plot(daviesia_inset_2, x = 0.48, y = 0.51, 
             width = 0.5, height = 0.4)
 ```
-
-
-
-
 
