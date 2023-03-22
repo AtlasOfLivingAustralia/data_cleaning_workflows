@@ -156,7 +156,7 @@ inverts_nest %>% pluck("coords", 1) # 1 refers to the first element of the list 
 
 ### Spatial distribution
 
-In order to visualise this data we will plot a subset a random species from each class, we can then un-nest the data and create a plot of concave hulls. We can also create a density point map n order to better visualise biodiversity hotspots of the data. 
+In order to visualise this data we will plot a subset a random species from each class, we can then un-nest the data and create a plot of concave hulls. We can also create a density point map n order to better visualise biodiversity hotspots of the data.
 
 ```{r, collapse=TRUE}
 #| code-fold: true
@@ -223,9 +223,9 @@ all_concave + inverts_points_map
 
 ### Precleaning
 
-#### Remove species with less than 4 observations 
+#### Remove species with less than 4 observations
 
-Note that we are using `species` instead of `scientific_name` in the plants dataset. The plant data is already cropped, and therefore no points are located off the mainland. 
+Note that we are using `species` instead of `scientific_name` in the plants dataset. The plant data is already cropped, and therefore no points are located off the mainland.
 
 ```{r}
 ## Identify species that have more than 4 observations 
@@ -448,7 +448,7 @@ We will first make the base map of Australia and add the fire extent to it. You'
 base_map <- ggplot() + 
   geom_sf(data = aus, colour = "black", fill = "white") +
   geom_sf(data = fire, fill = "#FEC3A6", colour = "#FEC3A6") + 
-  theme_bw()
+  theme_void()
 
 base_map
 ```
@@ -544,7 +544,9 @@ Left: [*Daviesa buxifolia* (Betty and Don Wood CC BY 3.0)](https://images.ala.or
 
 ### Visualise the range overlap of *Daviesia* peas with fire extent
 
-```{r, collapse=TRUE, warning=FALSE, message=FALSE}
+Just like we did for the invertebrate data, we need to compute concave hulls for our chosen species, in this case we will just do the 3 *Daviesia* species. We can then compute the range with the bush-fire layer followed plotting our outputs.
+
+```{r, collapse=TRUE, warning=FALSE, message = FALSE}
 # Extract candidate genus
 daviesia <- vplant_nest %>% 
   filter(genus == "Daviesia")
@@ -574,7 +576,14 @@ daviesia_overlap <- daviesia_concave %>%
                               )
   ) %>% 
   unnest(cols = c(overlap_area, percent_overlap))
+```
 
+You'll might notice that *Daviesia buxifolia* has a range percentage overlap of 37% which is below the 50% overlap of the data. This is likely caused by a variation in the way that species range overlaps are being calculated, with hulls being coarse, and tending to over-estimate range, you can end up with an underestimation of range overlap. We'll take a look at *D. Buxifolia* when it's plotted below to see if this could be the case. 
+```{r}
+daviesia_overlap
+```
+
+```{r, collapse=TRUE, warning=FALSE, message=FALSE}
 ## Prepare for plotting and rename variables
 daviesia_map_data <- daviesia_overlap %>% 
   select(species, overlap_area, percent_overlap, points_sf, concave_sf, overlap_sf) %>% 
@@ -609,9 +618,9 @@ daviesia_main_map <- base_map +
 daviesia_main_map
 ```
 
-### add inset map
+### Add inset maps
 
-Now that we have the 3 *Daviesa* hulls plotted, we will make some insets like we did for the bees, as these species ranges are all quite small, we will make mutliple and then add them all onto the maiin map at the end.
+Now that we have the 3 *Daviesa* hulls plotted, we will make some insets like we did for the bees, as these species ranges are all quite small, we can make multiple and then add them all onto the main map at the end. The insets provide a good idea of jsut how burnt
 
 ```{r, warning=FALSE, message = FALSE}
 # Inset 1
@@ -637,14 +646,12 @@ daviesia_inset_2 <- daviesia_main_map +
         panel.border = element_rect(colour = "black", fill = NA, linewidth = 0.2))
 
 
+daviesia_inset_1 + daviesia_inset_2 
 ```
 
-<aside>
-```{r, echo=FALSE}
-daviesia_inset_2 
-```
+Inset 1 in dark blue is *D. buxifolia*, if you look at where the majority of the points are located compared with the hull, there is a lot of un-burnt land included in it's range. Now this range isn't necessarily wrong, it's purely an estimate, however it can help to explain disparity in findings when different methods are used.  
 
-</aside>
+### Put it all together
 
 ```{r}
 # Drawing the inset boxes on main map
@@ -665,4 +672,6 @@ ggdraw(daviesia_bbox) +
   draw_plot(daviesia_inset_2, x = 0.48, y = 0.51, 
             width = 0.5, height = 0.4)
 ```
+
+## Final thoughts
 
