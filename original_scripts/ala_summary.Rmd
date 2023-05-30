@@ -1,0 +1,1055 @@
+
+
+```r
+## Summarise ALA data
+
+
+## Set working environment ####
+rm(list = ls())
+gc()
+```
+
+```
+##           used (Mb) gc trigger  (Mb) limit (Mb) max used  (Mb)
+## Ncells 1110651 59.4    2090595 111.7         NA  2090595 111.7
+## Vcells 2699748 20.6    8388608  64.0      16384  8166239  62.4
+```
+
+```r
+# system("ps")
+# system("pkill -f R")
+
+x <- c("data.table")
+lapply(x, require, character.only = TRUE)
+```
+
+```
+## [[1]]
+## [1] TRUE
+```
+
+```r
+rm(x)
+
+## Server paths
+output_dir = file.path(getwd(), "nesp_bugs", "outputs")
+source(file.path(getwd(),"nesp_bugs", "scripts/get_ala_taxondata.R"))
+```
+
+```
+## Warning in file(filename, "r", encoding = encoding): cannot open file '/Users/fontikar/Dropbox/1 - ALA/Projects/
+## data_cleaning_workflows/scripts/nesp_bugs/scripts/get_ala_taxondata.R': No such file or directory
+```
+
+```
+## Error in file(filename, "r", encoding = encoding): cannot open the connection
+```
+
+```r
+# ## Local paths
+# output_dir = "/Volumes/uom_data/nesp_bugs_data/outputs"
+# source(file.path(getwd(), "scripts/get_ala_taxondata.R"))
+
+## Functions
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
+## Load AFD taxonomic checklist
+afd_taxonomy <- fread(file.path(output_dir, "afd_species_clean.csv"))
+```
+
+```
+## Taking input= as a system command ('/Users/fontikar/Dropbox/1 - ALA/Projects/data_cleaning_workflows/scripts/nesp_bugs/outputs/afd_species_clean.csv') and a variable has been used in the expression passed to `input=`. Please use fread(cmd=...). There is a security concern if you are creating an app, and the app could have a malicious user, and the app is not running in a secure environment; e.g. the app is running as root. Please read item 5 in the NEWS file for v1.11.6 for more information and for the option to suppress this message.
+```
+
+```
+## Warning in (if (.Platform$OS.type == "unix") system else shell)(paste0("(", : error in running command
+```
+
+```
+## Warning in fread(file.path(output_dir, "afd_species_clean.csv")): File '/var/folders/fk/
+## 9s3srn850qj90zp4t67zc0fm0000gq/T//Rtmp4IEnEb/filea11c560b0268' has size 0. Returning a NULL data.table.
+```
+
+```r
+afd_species <- sort(unique(afd_taxonomy$VALID_NAME))
+message(cat("Number of species in AFD checklist: "),
+        length(afd_species))
+```
+
+```
+## Number of species in AFD checklist:
+```
+
+```
+## 0
+```
+
+```r
+## Load ALA data
+ala_raw <- readRDS(file.path(output_dir, "merged_ala_2020-10-02.rds"))
+```
+
+```
+## Warning in gzfile(file, "rb"): cannot open compressed file '/Users/fontikar/Dropbox/1 - ALA/Projects/
+## data_cleaning_workflows/scripts/nesp_bugs/outputs/merged_ala_2020-10-02.rds', probable reason 'No such file or
+## directory'
+```
+
+```
+## Error in gzfile(file, "rb"): cannot open the connection
+```
+
+```r
+ala_dat <- list.files(output_dir, 
+                      pattern = "clean2_ala*.*.csv$", 
+                      full.names = TRUE)
+ala_dat <- fread(ala_dat)
+```
+
+```
+## Error in fread(ala_dat): input= must be a single character string containing a file name, a system command containing at least one space, a URL starting 'http[s]://', 'ftp[s]://' or 'file://', or, the input data itself containing at least one \n or \r
+```
+
+```r
+ala_species <- sort(unique(ala_dat$scientificName))
+```
+
+```
+## Error in ala_dat$scientificName: $ operator is invalid for atomic vectors
+```
+
+```r
+message(cat("Number of unique species in ALA data: "),
+        length(ala_species))
+```
+
+```
+## Number of unique species in ALA data:
+```
+
+```
+## Error in lapply(list(...), as.character): object 'ala_species' not found
+```
+
+```r
+## Data cleaning summary ####
+## Raw ALA data overview
+message(cat("Number of records in raw ALA data: "),
+        dim(ala_raw)[1])
+```
+
+```
+## Number of records in raw ALA data:
+```
+
+```
+## Error in lapply(list(...), as.character): object 'ala_raw' not found
+```
+
+```r
+message(cat("Number of species in raw ALA data: "),
+        length(unique(ala_raw$scientificName)))
+```
+
+```
+## Number of species in raw ALA data:
+```
+
+```
+## Error in unique(ala_raw$scientificName): object 'ala_raw' not found
+```
+
+```r
+message(cat("Raw ALA data file: \n"),
+        paste0(list.files(output_dir, 
+                          pattern = "merged_ala", 
+                          full.names = TRUE), sep = "\n"))
+```
+
+```
+## Raw ALA data file:
+```
+
+```
+## 
+```
+
+```r
+## Cleaned ALA data overview
+message(cat("Number of records in cleaned ALA data: "),
+        dim(ala_dat)[1])
+```
+
+```
+## Number of records in cleaned ALA data:
+```
+
+```
+## 
+```
+
+```r
+message(cat("Number of species in cleaned ALA data: "),
+        length(unique(ala_dat$scientificName)))
+```
+
+```
+## Number of species in cleaned ALA data:
+```
+
+```
+## Error in ala_dat$scientificName: $ operator is invalid for atomic vectors
+```
+
+```r
+message(cat("Cleaned ALA data file: \n"),
+        paste0(list.files(output_dir, 
+                          pattern = "clean2_ala", 
+                          full.names = TRUE), sep = "\n"))
+```
+
+```
+## Cleaned ALA data file:
+```
+
+```
+## 
+```
+
+```r
+## Data lost in cleaning
+message(cat("Proportion of records lost in cleaning ALA data: "),
+        (dim(ala_raw)[1] - dim(ala_dat)[1])/(dim(ala_raw)[1]))
+```
+
+```
+## Proportion of records lost in cleaning ALA data:
+```
+
+```
+## Error in lapply(list(...), as.character): object 'ala_raw' not found
+```
+
+```r
+message(cat("Proportion of species lost in cleaning ALA data: "),
+        (length(unique(ala_raw$scientificName)) - 
+           length(unique(ala_dat$scientificName)))/
+          (length(unique(ala_raw$scientificName))))
+```
+
+```
+## Proportion of species lost in cleaning ALA data:
+```
+
+```
+## Error in unique(ala_raw$scientificName): object 'ala_raw' not found
+```
+
+```r
+## Number of species in AFD and ALA
+message(cat("Number of species in AFD checklist: "),
+        length(afd_species))
+```
+
+```
+## Number of species in AFD checklist:
+```
+
+```
+## 0
+```
+
+```r
+message(cat("Number of unique species in ALA data: "),
+        length(ala_species))
+```
+
+```
+## Number of unique species in ALA data:
+```
+
+```
+## Error in lapply(list(...), as.character): object 'ala_species' not found
+```
+
+```r
+## AFD species with data in ALA
+message(cat("Number of AFD species found in ALA: "),
+        sum(afd_species %in% ala_species))
+```
+
+```
+## Number of AFD species found in ALA:
+```
+
+```
+## Error in afd_species %in% ala_species: object 'ala_species' not found
+```
+
+```r
+message(cat("Proportion of AFD species found in ALA: "),
+        sum(afd_species %in% ala_species)/length(afd_species))
+```
+
+```
+## Proportion of AFD species found in ALA:
+```
+
+```
+## Error in afd_species %in% ala_species: object 'ala_species' not found
+```
+
+```r
+## AFD species without data in ALA
+message(cat("Number of AFD species not found in ALA: "),
+        sum(afd_species %!in% ala_species))
+```
+
+```
+## Number of AFD species not found in ALA:
+```
+
+```
+## Error in x %in% y: object 'ala_species' not found
+```
+
+```r
+message(cat("Proportion of AFD species not found in ALA: "),
+        sum(afd_species %!in% ala_species)/length(afd_species))
+```
+
+```
+## Proportion of AFD species not found in ALA:
+```
+
+```
+## Error in x %in% y: object 'ala_species' not found
+```
+
+```r
+## Cleaned ALA data summary ####
+## Species with 0 records (i.e. AFD species not found in ALA)
+count0 <- afd_species[afd_species %!in% ala_species]
+```
+
+```
+## Error in x %in% y: object 'ala_species' not found
+```
+
+```r
+message(cat("Number of AFD species without records in cleaned ALA data: "),
+        length(count0))
+```
+
+```
+## Number of AFD species without records in cleaned ALA data:
+```
+
+```
+## Error in lapply(list(...), as.character): object 'count0' not found
+```
+
+```r
+write.csv(count0, file = file.path(output_dir, "nodata_AFDspecies.csv"), row.names = FALSE)
+```
+
+```
+## Error in is.data.frame(x): object 'count0' not found
+```
+
+```r
+## ALA species by number of records (> 0)
+counts <- ala_dat[,.N,by = scientificName]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'scientificName' not found
+```
+
+```r
+nrow(counts) == length(ala_species)
+```
+
+```
+## Error in nrow(counts): object 'counts' not found
+```
+
+```r
+write.csv(counts, file = file.path(output_dir, "datacounts_ALAspecies.csv"), row.names = FALSE)
+```
+
+```
+## Error in is.data.frame(x): object 'counts' not found
+```
+
+```r
+count1 <- counts[which(counts$N == 1)]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'counts' not found
+```
+
+```r
+message(cat("Number of species with 1 record in cleaned ALA data: "),
+        nrow(count1))
+```
+
+```
+## Number of species with 1 record in cleaned ALA data:
+```
+
+```
+## Error in nrow(count1): object 'count1' not found
+```
+
+```r
+countLTE20 <- counts[which(counts$N > 1 & counts$N <= 20) , ]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'counts' not found
+```
+
+```r
+message(cat("Number of species with more than 1 and less than or equal to 20 records in cleaned ALA data: "),
+        nrow(countLTE20))
+```
+
+```
+## Number of species with more than 1 and less than or equal to 20 records in cleaned ALA data:
+```
+
+```
+## Error in nrow(countLTE20): object 'countLTE20' not found
+```
+
+```r
+countMT20 <- counts[which(counts$N > 20)]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'counts' not found
+```
+
+```r
+message(cat("Number of species with more than 20 records in cleaned ALA data: "),
+        nrow(countMT20))
+```
+
+```
+## Number of species with more than 20 records in cleaned ALA data:
+```
+
+```
+## Error in nrow(countMT20): object 'countMT20' not found
+```
+
+```r
+nrow(count1) + nrow(countLTE20) + nrow(countMT20) == nrow(counts)
+```
+
+```
+## Error in nrow(count1): object 'count1' not found
+```
+
+```r
+nrow(count1) + nrow(countLTE20) + nrow(countMT20) == length(afd_species)
+```
+
+```
+## Error in nrow(count1): object 'count1' not found
+```
+
+```r
+## because we have additional species in ALA compared to AFD checklist
+## see names3.csv and names2.csv
+
+## List for ALA mapping (Oct 2020)
+countMTE5 <- counts[which(counts$N >= 5)]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'counts' not found
+```
+
+```r
+countMTE5 <- countMTE5[order(N)]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'countMTE5' not found
+```
+
+```r
+range(countMTE5$N)
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'countMTE5' not found
+```
+
+```r
+write.csv(countMTE5, file = file.path(output_dir, "countMTE5.csv"), row.names = FALSE)
+```
+
+```
+## Error in is.data.frame(x): object 'countMTE5' not found
+```
+
+```r
+## List for DAWE
+## List of 98904 species from the cleaned ALA data that have 0 or less than 20 records
+tab1 <- data.table(scientificName = count0)
+```
+
+```
+## Error in data.table(scientificName = count0): object 'count0' not found
+```
+
+```r
+tab1[,N := rep(0, length(count0))]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'tab1' not found
+```
+
+```r
+tab1 <- rbind(tab1, count1, countLTE20[order(countLTE20$N), ])
+```
+
+```
+## Error in rbind(tab1, count1, countLTE20[order(countLTE20$N), ]): object 'tab1' not found
+```
+
+```r
+write.csv(tab1, file = file.path(output_dir, "ALAsp_sparsedata.csv"), row.names = FALSE)
+```
+
+```
+## Error in is.data.frame(x): object 'tab1' not found
+```
+
+```r
+## ALA species by year
+age <- ala_dat[,.N, by = as.numeric(format(ala_dat$eventDate,'%Y'))]
+```
+
+```
+## Error in ala_dat$eventDate: $ operator is invalid for atomic vectors
+```
+
+```r
+names(age) <- c("year", "N")
+```
+
+```
+## Error in names(age) <- c("year", "N"): object 'age' not found
+```
+
+```r
+age <- age[order(year)]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'age' not found
+```
+
+```r
+write.csv(age, file = file.path(output_dir, "yearcounts_ALAspecies.csv"), row.names = FALSE)
+```
+
+```
+## Error in is.data.frame(x): object 'age' not found
+```
+
+```r
+message(cat("Number of records without date in cleaned ALA data: "),
+        age[is.na(year)]$N)
+```
+
+```
+## Number of records without date in cleaned ALA data:
+```
+
+```
+## Error in lapply(list(...), as.character): object 'age' not found
+```
+
+```r
+message(cat("Number of old records (before 1990) in cleaned ALA data: "),
+        sum(age[year < 1990]$N))
+```
+
+```
+## Number of old records (before 1990) in cleaned ALA data:
+```
+
+```
+## Error in lapply(list(...), as.character): object 'age' not found
+```
+
+```r
+message(cat("Number of recent records (after 1990) in cleaned ALA data: "),
+        sum(age[year >= 1990]$N))
+```
+
+```
+## Number of recent records (after 1990) in cleaned ALA data:
+```
+
+```
+## Error in lapply(list(...), as.character): object 'age' not found
+```
+
+```r
+age[is.na(year)]$N + sum(age[year < 1990]$N) + sum(age[year >= 1990]$N) == sum(age$N)
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'age' not found
+```
+
+```r
+sum(age$N) == dim(ala_dat)[1]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'age' not found
+```
+
+```r
+## Obervation versus specimen data in ALA database ####
+## Get counts from ALA database
+# typecounts <- lapply(afd_species, get_ala_taxondata, 
+#                         get_counts_only = TRUE, 
+#                         specimens_only = TRUE)
+# 
+# typecounts <- t(as.data.frame(typecounts))
+# typecounts <- cbind(afd_species, typecounts)
+# typecounts <- typecounts[ order(typecounts$species), ]
+# typecounts <- as.data.table(typecounts)
+# colnames(typecounts)[1] <- "species"
+# saveRDS(typecounts, file.path(output_dir, "typecounts.rds"))
+# write.csv(typecounts, file.path(output_dir, "typecounts.csv"), row.names = FALSE)
+typecounts <- as.data.table(readRDS(file.path(output_dir, "typecounts.rds")))
+```
+
+```
+## Warning in gzfile(file, "rb"): cannot open compressed file '/Users/fontikar/Dropbox/1 - ALA/Projects/
+## data_cleaning_workflows/scripts/nesp_bugs/outputs/typecounts.rds', probable reason 'No such file or directory'
+```
+
+```
+## Error in gzfile(file, "rb"): cannot open the connection
+```
+
+```r
+## Summarise: All data
+message(cat("Number of species with 0 records in ALA db: "),
+        nrow(typecounts[all == 0]))
+```
+
+```
+## Number of species with 0 records in ALA db:
+```
+
+```
+## Error in nrow(typecounts[all == 0]): object 'typecounts' not found
+```
+
+```r
+message(cat("Number of species with 1 record in ALA db: "),
+        nrow(typecounts[all == 1]))
+```
+
+```
+## Number of species with 1 record in ALA db:
+```
+
+```
+## Error in nrow(typecounts[all == 1]): object 'typecounts' not found
+```
+
+```r
+message(cat("Number of species with more than 1 and less than or equal to 20 records in ALA db: "),
+        nrow(typecounts[all > 1 & all <= 20]))
+```
+
+```
+## Number of species with more than 1 and less than or equal to 20 records in ALA db:
+```
+
+```
+## Error in nrow(typecounts[all > 1 & all <= 20]): object 'typecounts' not found
+```
+
+```r
+message(cat("Number of species with more than 20 records in ALA db: "),
+        nrow(typecounts[all > 20]))
+```
+
+```
+## Number of species with more than 20 records in ALA db:
+```
+
+```
+## Error in nrow(typecounts[all > 20]): object 'typecounts' not found
+```
+
+```r
+## Summarise: Observation data
+message(cat("Number of species with 0 observation records in ALA db: "),
+        nrow(typecounts[observation == 0]))
+```
+
+```
+## Number of species with 0 observation records in ALA db:
+```
+
+```
+## Error in nrow(typecounts[observation == 0]): object 'typecounts' not found
+```
+
+```r
+message(cat("Number of species with 1 observation record in ALA db: "),
+        nrow(typecounts[observation == 1]))
+```
+
+```
+## Number of species with 1 observation record in ALA db:
+```
+
+```
+## Error in nrow(typecounts[observation == 1]): object 'typecounts' not found
+```
+
+```r
+message(cat("Number of species with more than 1 and less than or equal to 20 observation records in ALA db: "),
+        nrow(typecounts[observation > 1 & observation <= 20]))
+```
+
+```
+## Number of species with more than 1 and less than or equal to 20 observation records in ALA db:
+```
+
+```
+## Error in nrow(typecounts[observation > 1 & observation <= 20]): object 'typecounts' not found
+```
+
+```r
+message(cat("Number of species with more than 20 observation records in ALA db: "),
+        nrow(typecounts[observation > 20]))
+```
+
+```
+## Number of species with more than 20 observation records in ALA db:
+```
+
+```
+## Error in nrow(typecounts[observation > 20]): object 'typecounts' not found
+```
+
+```r
+## Summarise: Specimen data
+message(cat("Number of species with 0 specimen records in ALA db: "),
+        nrow(typecounts[specimen == 0]))
+```
+
+```
+## Number of species with 0 specimen records in ALA db:
+```
+
+```
+## Error in nrow(typecounts[specimen == 0]): object 'typecounts' not found
+```
+
+```r
+message(cat("Number of species with 1 specimen record in ALA db: "),
+        nrow(typecounts[specimen == 1]))
+```
+
+```
+## Number of species with 1 specimen record in ALA db:
+```
+
+```
+## Error in nrow(typecounts[specimen == 1]): object 'typecounts' not found
+```
+
+```r
+message(cat("Number of species with more than 1 and less than or equal to 20 specimen records in ALA db: "),
+        nrow(typecounts[specimen > 1 & specimen <= 20]))
+```
+
+```
+## Number of species with more than 1 and less than or equal to 20 specimen records in ALA db:
+```
+
+```
+## Error in nrow(typecounts[specimen > 1 & specimen <= 20]): object 'typecounts' not found
+```
+
+```r
+message(cat("Number of species with more than 20 specimen records in ALA db: "),
+        nrow(typecounts[specimen > 20]))
+```
+
+```
+## Number of species with more than 20 specimen records in ALA db:
+```
+
+```
+## Error in nrow(typecounts[specimen > 20]): object 'typecounts' not found
+```
+
+```r
+## Explore data issues ####
+## >> Load list of data issues
+qa <- as.data.frame(read.csv(file.path(output_dir, "qa_assertions.csv")))
+```
+
+```
+## Warning in file(file, "rt"): cannot open file '/Users/fontikar/Dropbox/1 - ALA/Projects/data_cleaning_workflows/
+## scripts/nesp_bugs/outputs/qa_assertions.csv': No such file or directory
+```
+
+```
+## Error in file(file, "rt"): cannot open the connection
+```
+
+```r
+## >> Check for unusable long lat vals #### 
+message(cat("Number of records with unusable lat-long:"),
+        nrow(ala_dat[longitude < -180 |
+                       longitude > 180 |
+                       latitude < -90 |
+                       latitude > 90, ]))
+```
+
+```
+## Number of records with unusable lat-long:
+```
+
+```
+## Error in nrow(ala_dat[longitude < -180 | longitude > 180 | latitude < : object 'longitude' not found
+```
+
+```r
+## >> Check for records with geospatial issues ####
+x <- grep("geo|Geo" , qa$name, value = TRUE)
+```
+
+```
+## Error in is.factor(x): object 'qa' not found
+```
+
+```r
+for(i in x){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'x' not found
+```
+
+```r
+## >> Check for records without date ####
+message(cat("Number of records without date: "),
+        sum(is.na(ala_dat$eventDate)))
+```
+
+```
+## Number of records without date:
+```
+
+```
+## Error in ala_dat$eventDate: $ operator is invalid for atomic vectors
+```
+
+```r
+x <- grep("date|Date" , qa$name, value = TRUE)
+```
+
+```
+## Error in is.factor(x): object 'qa' not found
+```
+
+```r
+for(i in x){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'x' not found
+```
+
+```r
+## >> Sensitive species ####
+## TO BE RESOLVED LATER BY SPECIES
+grep("General|sensitive", names(ala_dat), value = TRUE)
+```
+
+```
+## character(0)
+```
+
+```r
+ala_dat[,.N,by = sensitive]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'sensitive' not found
+```
+
+```r
+unique(ala_dat$dataAreGeneralised)
+```
+
+```
+## Error in ala_dat$dataAreGeneralised: $ operator is invalid for atomic vectors
+```
+
+```r
+sum(ala_dat$dataAreGeneralised)
+```
+
+```
+## Error in ala_dat$dataAreGeneralised: $ operator is invalid for atomic vectors
+```
+
+```r
+ala_dat[,.N,by = dataAreGeneralised]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'dataAreGeneralised' not found
+```
+
+```r
+unique(ala_dat$dataGeneralizationsOriginal)
+```
+
+```
+## Error in ala_dat$dataGeneralizationsOriginal: $ operator is invalid for atomic vectors
+```
+
+```r
+ala_dat[,.N,by = dataGeneralizationsOriginal]
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'dataGeneralizationsOriginal' not found
+```
+
+```r
+sum(grepl("Coordinate precision generalised", ala_dat$dataGeneralizationsOriginal))
+```
+
+```
+## Error in ala_dat$dataGeneralizationsOriginal: $ operator is invalid for atomic vectors
+```
+
+```r
+# ## Remove generalised data (as much as possible)/Sensitive
+# if(any(grepl("dataGeneralizations", names(ala_df)))) {
+#   ala_df <- ala_df[ala_df$dataGeneralizationsOriginal == FALSE,]
+# }
+
+## >> Summary of by QA assertions ####
+## Issues as commented by JM
+exclude <- qa[which(qa$exclude == 1),]$name
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'qa' not found
+```
+
+```r
+for(i in exclude){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'exclude' not found
+```
+
+```r
+keep <- qa[which(qa$keep == 1),]$name
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'qa' not found
+```
+
+```r
+for(i in keep){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'keep' not found
+```
+
+```r
+drop_qa <- qa[which(qa$not_relevant == 1),]$name
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'qa' not found
+```
+
+```r
+for(i in drop_qa){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'drop_qa' not found
+```
+
+```r
+## List all issues with corresponding number of records
+x <- qa$name
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'qa' not found
+```
+
+```r
+for(i in x){
+  message(cat(paste0("Number of records with issue - ", i, ": ")),
+          eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+}
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'x' not found
+```
+
+```r
+## Only list issues with > 0 records associated
+for(i in x){
+  if(eval(parse(text = paste0("sum(ala_dat$", i, ")"))) > 0){
+    message(cat(paste0("Number of records with issue - ", i, ": ")),
+            eval(parse(text = paste0("sum(ala_dat$", i, ")"))))
+  }
+}
+```
+
+```
+## Error in eval(expr, envir, enclos): object 'x' not found
+```
+
