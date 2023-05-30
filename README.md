@@ -11,12 +11,19 @@ The original code from IA's project can be found at [this repository](https://gi
 The key data cleaning steps and files in this repo:
 
 1.	Clean AFD checklist (i.e. species name list): 
-  *	[Remove improper names]()
+  *	[Remove improper names](https://github.com/AtlasOfLivingAustralia/data_cleaning_workflows/blob/develop/functions/remove_improper_names_v2.R)
   * Remove invasive species (species on GRIIS list)
-  * Remove marine species (using World Register of Marine Species)
+  * Remove marine species (using World Register of Marine Species, WoRMS)
   * Identifying duplicates in AFD
+  
+1.1. [Excluding invasive species using GRIIS v1.6](https://github.com/AtlasOfLivingAustralia/data_cleaning_workflows/blob/develop/workflow/griis.Rmd)
+  
+1.2. [Querying WoRMS database + excluding marine species](https://github.com/AtlasOfLivingAustralia/data_cleaning_workflows/blob/develop/workflow/worrms.Rmd)
+  * Query WoRMS API in console
+  * Query WoRMS API as RStudio background job
+  * Marine species exclusion
 
-2.	[Download and clean ALA data]()
+2.	[Download and clean ALA data](https://github.com/AtlasOfLivingAustralia/data_cleaning_workflows/blob/develop/workflow/download_ALA_data.Rmd)
   * Configure `{galah}` settings
   * Retrieve counts of occurrences 
   * Filter data by assertions

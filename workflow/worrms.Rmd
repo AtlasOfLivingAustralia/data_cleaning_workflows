@@ -16,14 +16,16 @@ https://mmisw.org/ont/ioos/marine_biogeography
 ```{r}
 # install.packages("worrms") https://docs.ropensci.org/worrms/index.html
 
-pacman::p_load(tidyverse, worrms, here, job)
+pacman::p_load(tidyverse, arrow, worrms, here, job)
 ```
 
 ### Read in AFD list
 
 ```{r}
-afd_taxonomy <- read_csv("output/afd_species_clean.csv")
-afd_species <- unique(afd_taxonomy$VALID_NAME) 
+afd_species <- open_dataset("data/AFD_splist") |> 
+  select(VALID_NAME) |> 
+  distinct() |> 
+  pull(VALID_NAME) 
 ```
 
 
