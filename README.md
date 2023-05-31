@@ -1,6 +1,6 @@
 # Data cleaning workflows
 
-This work was done as a collaboration between [Atlas of Living Australia](https://www.ala.org.au/) (ALA) and [Invertebrates Australia](https://invertebratesaustralia.org/) (IA) and was funded by the Australia Research Data Commons as part of the Bushfire Data Challenges program.
+This work was done as a collaboration between [Atlas of Living Australia](https://www.ala.org.au/) (ALA) and [Invertebrates Australia](https://invertebratesaustralia.org/) (IA) and was funded by the Australia Research Data Commons as part of the [Bushfire Data Challenges program](https://ardc.edu.au/program/bushfire-data-challenges/).
 
 The goal of this collaboration was to streamline data retrieval and data cleaning of biodiversity data from data infrastructures, like the ALA.
 
@@ -36,13 +36,15 @@ The key data cleaning steps and files in this repo:
       * Identify and remove coordinate values that are in the ocean
 
 ## ALA team
-Margot Scheider - Project Officer
-Dr. Fonti Kar - Data Analyst
-Dr. Martin Westgate - Project Lead
+
+- Margot Schneider - Project Officer
+- Dr. Fonti Kar - Data Analyst
+- Dr. Martin Westgate - Project Lead
 
 ## IA team
-Dr. Payal Bal
-Dr. Jess Marsh
-Hannah Smart
+
+- Dr. Payal Bal
+- Dr. Jess Marsh
+- Hannah Smart
 
   
