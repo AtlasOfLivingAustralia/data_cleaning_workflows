@@ -1,12 +1,15 @@
 
 # Specific files/folders #
-##########################
-data/
 output/
 docs/
 scripts/archive/
 scripts/mbraby/
 scripts/extras/
+doc/
+data/galah/
+data/plants/
+data/inverts/
+ignore/
 
 # R files #
 ###########
@@ -18,7 +21,7 @@ scripts/extras/
 *.RData
 *.Ruserdata
 *.RDataTmp
-*.Rmd
+*.html
 
 # Generic file extensions from: https://gist.github.com/octocat/9257657 #
 # Compiled source #

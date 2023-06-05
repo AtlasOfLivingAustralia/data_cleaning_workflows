@@ -1,0 +1,651 @@
+---
+title: "Download ALA data"
+author: "Fonti Kar"
+date: "2023-05-25"
+output: html_document
+---
+
+Code to download occurrence records from ALA using `{galah}` using a user-supplied species list. In this case, a species list from the naming authority - Australian Fauna Directory (AFD). 
+
+**Note: to avoid parallel process this step to avoid crashes to API system**
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      eval = FALSE)
+```
+
+### Install and load packages we need
+
+```{r}
+# For CoordinateCleaner to currently work!  Uncomment and install once
+# devtools::install_github("ropensci/rnaturalearth")
+# devtools::install_github("ropensci/rnaturalearthdata")
+# devtools::install_github("ropensci/rnaturalearthhires")
+
+# install.packages("pacmac")
+pacman::p_load(galah, dplyr, CoordinateCleaner, sf, ozmaps, job, arrow, purrr, data.table, ggplot2)
+```
+
+### Configure ALA account
+
+```{r}
+galah_config(email = Sys.getenv("ALA_EMAIL"), # Put your email here or use usethis::usethis::edit_r_environ() to save email as enviroment variable
+             atlas = "Australia",
+             download_reason_id = 10 # 10 = Testing
+             )
+```
+
+### Reading in the AFD species list
+
+The list is requested from AFD and is in `.csv` format. Unfortunately, this file type makes it too large (66.2MB) it for GitHub. Here I have saved it as a `.parquet` thereby reducing its size to 17.3MB so that this workflow is more reproducible. One benefit of using `.parquet` is that the data needed is not read into memory until you call `collect()`.
+
+```{r}
+# afd_taxonomy <- fread("output/afd_splist_full.csv")
+# afd_taxonomy |> write_parquet("data/AFD_splist")
+
+afd_phylum <- open_dataset("data/AFD_splist") |> 
+  select(PHYLUM) |> 
+  distinct() |> 
+  rename(phylum = PHYLUM) |>  #Rename phylum to lower case for search_taxa() 
+  collect()
+
+nrow(afd_phylum)
+```
+
+### Obtain count of number of occurence records for each Invertebrate Phylum  and write as .csv 
+
+Fields for [`basisOfRecord`](https://github.com/AtlasOfLivingAustralia/ala-dataquality/wiki/basisOfRecord)
+
+**Note:** ALA has collapsed `EnvironmentalDNA`, `GenomicDNA`" into `Material_Sample` 
+ALA has added [`contentTypes`](https://github.com/AtlasOfLivingAustralia/ala-dataquality/wiki/contentTypes) to further delineate these categories
+
+```{r}
+results <- search_taxa(afd_phylum) # Issues with ACANTHOCEPHALA its technically a Phylum but recorded as a class in here https://bie.ala.org.au/species/NZOR-6-53977
+
+# Obtain counts for each phylum, equivalent to n.all 
+n.all <- galah_call() |> 
+  galah_identify(results) |> 
+  group_by(phylum) |> 
+  atlas_counts() 
+
+# To view more rows
+n.all |> print(n = 50) # Change n for view more
+
+# Obtain counts for human observations for each phylum, equivalent to n.obs
+n.obs <- galah_call() |>
+  galah_identify(results) |> 
+  galah_filter(
+    basisOfRecord == "HUMAN_OBSERVATION" # Filters to human observed records
+  )  |> 
+  galah_group_by(phylum) |> 
+  atlas_counts() 
+
+n.obs |> print(n = 50)
+
+# Obtain counts for records that are associated with a specimen by each phylum, equivalent to n.spec
+specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
+                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
+
+n.spec <- galah_call() |>
+  galah_identify(results) |> 
+  galah_filter(
+    basisOfRecord == specimen_only #  Filters to specimen only
+  )  |> 
+  galah_group_by(phylum)|> 
+  atlas_counts()  
+
+# Format data to save as a .csv
+# Rename
+n.all <- n.all |> rename(n.all = count)
+n.obs <- n.obs |> rename(n.obs = count)
+n.spec <- n.spec |> rename(n.spec = count) 
+
+# Join all counts
+phylum_counts <- left_join(n.all, n.obs) |> 
+  left_join(., n.spec) 
+
+# Save as .csv
+# write.csv(taxon.counts, "output/taxon_counts.csv")
+```
+
+### Filter query by assertions
+
+Assertions are used to filter down records ensure the data is fit for use. 
+
+To display all assertion fields use:
+
+```{r}
+assertions <- show_all("assertions") |> print(n = 250)
+
+# Save assertion data as .csv
+# write_csv(assertions, "output/assertions.csv")
+```
+
+Users can filter records using `galah_filter()`
+This method can also applied to downloading records as well as obtaining counts as we did above for `basisOfRecord`
+
+Note that assertions are logicals (TRUE/FALSE) and are generally framed negatively e.g `identificationIncorrect`, TRUE is where identification was incorrect and FALSE is where identification was NOT incorrect
+
+Below, replace`identificationIncorrect` with whatever assertion name you’d like to use. 
+
+Alternatively, to exclude by multiple assertions, use `c()` 
+
+```{r}
+# For single assertion exclusions
+galah_call() |>
+  galah_identify(results) |> 
+  galah_filter(
+    basisOfRecord == specimen_only, # Filters to specimen only
+    identificationIncorrect == FALSE # Keep correctly identified records
+  ) |> 
+  galah_group_by(phylum) |> 
+  atlas_counts() 
+
+# For exclusions using multiple assertions
+IA_assertions <- c("UNKNOWN_KINGDOM", "identificationIncorrect",
+                   "COORDINATE_PRECISION_MISMATCH", "MISSING_GEODETICDATUM")
+
+galah_call() |>
+  galah_identify(results) |> 
+  galah_filter(
+    basisOfRecord == specimen_only, # Filters to specimen only
+    assertions != IA_assertions
+  ) |> 
+  galah_group_by(phylum) |> 
+  atlas_counts()
+```
+
+#### Download occurrence records with assertion fields
+
+To download assertion fields with occurrence records using `galah_select()`. Note that due changes to the ALA API systems means that there are limits to query size so this approach is recommended for smaller queries (e.g for a particular year == 2022). 
+
+Alternatively, you can select for specific assertions by specifying their name in 
+`galah_select()`
+```{r}
+# Getting all assertions for a small query
+inverts_with_assertions <- galah_call() |>
+  galah_identify(results) |> 
+  galah_filter(
+    basisOfRecord == specimen_only, # Filters to specimen only
+    identificationIncorrect == FALSE, # Keep correctly identified records
+    year == 2022)  |> # Limiting to 2022 for now
+  galah_select(group = c("basic", "assertions")) |>
+  atlas_occurrences() 
+
+# Getting a few selected assertions for a larger query
+# IA_assertions <- c("UNKNOWN_KINGDOM", "COORDINATE_PRECISION_MISMATCH", "MISSING_GEODETICDATUM")
+# 
+# inverts_with_selected_assertions <- galah_call() |>
+#   galah_identify("ANNELIDA") |> 
+#   galah_filter(
+#     basisOfRecord == "HUMAN_OBSERVATION", 
+#     identificationIncorrect == FALSE, 
+#     year == 2000)  |> 
+#   galah_select(group = "basic", IA_assertions) |>
+#   atlas_occurrences() 
+```
+
+### Extra fields for a `galah` query
+
+Note some fields have been renamed. Unable to find equivalent fields for: 
+
+- `taxonomic_kosher`
+
+Some fields did not have an exact match but here are my best guess to find an approximate match i.e. original ~ best guess
+
+-raw_taxon_name ~ raw_scientificName
+-raw_datum ~ raw_geodeticDatum
+-taxon_name ~ scientificName
+-common_name ~ vernacularName
+-rank ~ taxonRank
+-state ~ locality
+-min_elevation_d not sure what _d represents ~ minimumElevationInMeters
+-max_elevation_d not sure what _d represents ~ maximumElevationInMeters
+-min_depth_d not sure what _d represents  ~  minimumDepthInMeters
+-max_depth_d not sure what _d represents ~ maximumDepthInMeters
+-collector ~ recordedBy
+-occurrence_date ~ eventDate
+-geospatial_kosher ~ spatiallyValid
+
+#### Fields in ALA
+
+Since the list of fields needed for the IA project exceeds the allowable query length of the ALA Biocache API, I have split the fields into 3 parts for the queries. These are subsequently joined back together.
+
+```{r}
+# Show all fields
+ALA_fields <- show_all(fields)
+
+ALA_fields |> print(n = 100)
+
+# Search fields
+search_all(fields, "coordinate") # Searching for fields containing coordinate
+```
+
+```{r}
+# Fields that IA want
+IA_fields<- c("recordID","dataResourceUid","dataResourceName",
+              "institutionID","institutionName",
+              "collectionID", "collectionUid","collectionName",
+              "contentTypes", 
+              "license", 
+              "taxonConceptID",
+              "raw_scientificName" ,"raw_vernacularName", 
+              "scientificName", 
+              "vernacularName", 
+              "taxonRank", 
+              "kingdom","phylum","class","order", 
+              "family","genus","species","subspecies",
+              "institutionCode","collectionCode",
+              "locality", 
+              "raw_geodeticDatum", 
+              "raw_decimalLatitude","raw_decimalLongitude", 
+              "decimalLatitude","decimalLongitude",
+              "coordinatePrecision","coordinateUncertaintyInMeters",
+              "country","stateProvince", 
+              "cl959","cl21","cl1048",
+              "minimumElevationInMeters", "maximumElevationInMeters", 
+              "minimumDepthInMeters", "maximumDepthInMeters",
+              "individualCount",
+              "recordedBy",
+              "eventDate",
+              "year","month",
+              "verbatimEventDate",
+              "basisOfRecord","raw_basisOfRecord",
+              "occurrenceStatus",
+              "raw_sex", "sex",
+              "preparations",
+              "outlierLayer",
+              "spatiallyValid", "catalogNumber") 
+
+length(IA_fields)
+
+# Split into 2 parts
+IA_fields_split <- split(IA_fields, ceiling(seq_along(IA_fields)/20))
+
+# We want to eventually join by recordID so need to add this to the 2-4 parts
+IA_fields_split$`2` <- c("recordID", IA_fields_split$`2`)
+IA_fields_split$`3` <- c("recordID", IA_fields_split$`3`)
+
+# Sub-downloads for each part of the fields
+ invert_2022_p1 <- galah_call() |>
+  galah_identify(results) |> 
+  galah_filter(basisOfRecord == specimen_only,
+               year == 2022, 
+               identificationIncorrect == FALSE) |>  
+  galah_select(all_of(IA_fields_split$`1`)) |>
+  atlas_occurrences()
+
+invert_2022_p2 <- galah_call() |>
+  galah_identify(results) |> 
+  galah_filter(basisOfRecord == specimen_only,
+               year == 2022, 
+               identificationIncorrect == FALSE) |>  
+  galah_select(all_of(IA_fields_split$`2`)) |> 
+  atlas_occurrences() 
+
+invert_2022_p3 <- galah_call() |>
+  galah_identify(results) |> 
+  galah_filter(basisOfRecord == specimen_only,
+               year == 2022, 
+               identificationIncorrect == FALSE) |>  
+  galah_select(all_of(IA_fields_split$`3`)) |> 
+  atlas_occurrences() 
+```
+
+#### Join the different parts together
+
+```{r}
+# Left join these together
+# 2022 version
+colnames(invert_2022_p1); ncol(invert_2022_p1)
+colnames(invert_2022_p2); ncol(invert_2022_p2)
+colnames(invert_2022_p3); ncol(invert_2022_p3)
+
+length(IA_fields)
+
+# 2022 version
+invert_2022 <- left_join(invert_2022_p1, invert_2022_p2, by = "recordID") |> 
+  left_join(invert_2022_p3, by = "recordID") 
+
+write_parquet(invert_2022, "output/invert_2022")
+```
+
+#### RStudio job of query with required fields 
+
+```{r}
+job({
+invert_2022_p1 <- galah_call() |>
+  galah_identify(results) |> 
+  galah_filter(basisOfRecord == specimen_only,
+               year == 2022, 
+               identificationIncorrect == FALSE) |>  
+  galah_select(all_of(IA_fields_split$`1`)) |>
+  atlas_occurrences()
+
+write_parquet(invert_2022_p1, "output/invert_2022_p1")
+
+invert_2022_p2 <- galah_call() |>
+  galah_identify(results) |> 
+  galah_filter(basisOfRecord == specimen_only,
+               year == 2022, 
+               identificationIncorrect == FALSE) |>  
+  galah_select(all_of(IA_fields_split$`2`)) |> 
+  atlas_occurrences() 
+
+write_parquet(invert_2022_p2, "output/invert_2022_p2")
+
+invert_2022_p3 <- galah_call() |>
+  galah_identify(results) |> 
+  galah_filter(basisOfRecord == specimen_only,
+               year == 2022, 
+               identificationIncorrect == FALSE) |>  
+  galah_select(all_of(IA_fields_split$`3`)) |> 
+  atlas_occurrences() 
+
+write_parquet(invert_2022_p3, "output/invert_2022_p3")
+})
+```
+
+#### Download as an arrow::parquet fie using purrr::map
+
+I've set this is a background RStudio job for the download. `Sys.sleep(600)` is for taking a 10 minute break so to not overload the API
+
+```{r}
+# Fields that IA want
+y <- tibble(name = 
+                   c("dataResourceUid",
+                     "dataResourceName",
+                     "institutionID",
+                     "institutionName",
+                     "collectionID",
+                     "collectionUid",
+                     "collectionName",
+                     "contentTypes",
+                     "license",
+                     "taxonConceptID",
+                     "raw_scientificName",
+                     "raw_vernacularName",
+                     "scientificName",
+                     "vernacularName",
+                     "taxonRank",
+                     "kingdom",
+                     "phylum",
+                     "class",
+                     "order",
+                     "family",
+                     "genus",
+                     "species",
+                     "subspecies",
+                     "institutionCode",
+                     "collectionCode",
+                     "locality",
+                     "raw_geodeticDatum",
+                     "raw_decimalLatitude",
+                     "raw_decimalLongitude",
+                     "decimalLatitude",
+                     "decimalLongitude",
+                     "coordinatePrecision",
+                     "coordinateUncertaintyInMeters",
+                     "country",
+                     "stateProvince",
+                     "cl959",
+                     "cl21",
+                     "cl1048",
+                     "minimumElevationInMeters",
+                     "maximumElevationInMeters",
+                     "minimumDepthInMeters",
+                     "maximumDepthInMeters",
+                     "individualCount",
+                     "recordedBy",
+                     "eventDate",
+                     "year",
+                     "month",
+                     "verbatimEventDate",
+                     "basisOfRecord",
+                     "raw_basisOfRecord",
+                     "occurrenceStatus",
+                     "raw_sex",
+                     "sex",
+                     "preparations",
+                     "outlierLayer",
+                     "spatiallyValid", 
+                     "catalogNumber"),
+                 type = "field") 
+
+# Set the call as galah_select
+attr(y, "call") <- "galah_select"
+
+# Split fields into 5 parts for download
+y_ls <- split(y, f = ceiling(seq_along(y$name)/10))
+
+# Add id so output can all be joined later by id
+y_ls <- map(y_ls,
+    ~bind_rows(tibble(name = "recordID",
+                      type = "field"),
+                      .x)
+)
+
+y_ls$`3` <- bind_rows(tibble(name = "recordID",
+                             type = "field"),
+                      y_ls$`3`)
+
+
+# The rest of the galah_call as a function
+get_occ <- function(y){
+  
+# Phylums
+  afd_phylum <- c("ANNELIDA",
+                  "ARTHROPODA",
+                  "BRACHIOPODA",
+                  "BRYOZOA",
+                  "CHAETOGNATHA",
+                  "GASTROTRICHA",
+                  "GNATHOSTOMULIDA",
+                  "MOLLUSCA",       
+                  "NEMATODA",        
+                  "NEMATOMORPHA",    
+                  "NEMERTEA",       
+                  "ONYCHOPHORA",    
+                  "PLATYHELMINTHES",
+                  "PORIFERA",        
+                  "ROTIFERA",        
+                  "TARDIGRADA")
+  
+  
+  # basisOfRecord filters
+  specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
+                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
+  x <- 
+  galah_call() |>
+  galah_identify(afd_phylum) |>
+  galah_filter(basisOfRecord == specimen_only, 
+               identificationIncorrect == FALSE)
+  
+  x$select <- y
+  
+   x |> 
+    atlas_occurrences() |> 
+    arrow::write_parquet(sink = paste0("data/galah/IA_", Sys.time()))
+   
+   Sys.sleep(600)
+}
+
+## Background R Studio Job for all lists 
+job({
+  walk(y_ls,
+    get_occ)
+})
+```
+
+#### Read in parquet and join 4 parts together
+
+Joining the different parquets together and then save as a mass download
+
+```{r}
+# This opens the meta-data of each part
+p1 <- open_dataset("data/galah/IA_2023-01-09 12:24:35")
+p2 <- open_dataset("data/galah/IA_2023-01-09 12:41:56")
+p3 <- open_dataset("data/galah/IA_2023-01-09 12:57:59")
+
+# Calling the object will show you what columns are in here
+p1
+p2
+
+# Joining by recordID
+p1 |> 
+  left_join(p2, by = "recordID") |> 
+  left_join(p3, by = "recordID") |> 
+  write_parquet("output/IA_mass_download")
+```
+
+## Working with parquets
+
+```{r}
+IA_data <- open_dataset("output/IA_mass_download")
+IA_data
+
+# Obtain several key variables for cleaning occurrence records
+# use collect() to load into memory once you have selected what you
+IA_1940onward <- IA_data |> 
+  select(recordID, scientificName, starts_with("decimal"), year) |>
+  filter(year >1940) |> 
+  collect()
+
+write_parquet(IA_1940onward, "output/IA_1940onwards") 
+```
+
+## To get the assertions for the bulk download
+
+We have to break it down for each phylum as the query gets too big! The query for arthropods are separate too there is over 3 mil records to retrieve. Can be used as a background job!
+
+Getting all the assertions for all records may not be so feasible. Perhaps limiting to a set amount of years, first deciding which assertions are important then running the query. The idea is similar to above with required fields and joining by `recordID`
+
+Update: Not the best use of time to try get all the assertions for every record. Instead IA will preselect the required assertions and then formulate their query
+
+```{r}
+# Try mapping for each taxa
+# Phylums
+afd_phylum <- tibble(phylum = c("ANNELIDA",
+                                "ARTHROPODA",
+                                "BRACHIOPODA",
+                                "BRYOZOA",
+                                "CHAETOGNATHA",
+                                "GASTROTRICHA",
+                                "GNATHOSTOMULIDA",
+                                "MOLLUSCA",       
+                                "NEMATODA",        
+                                "NEMATOMORPHA",    
+                                "NEMERTEA",       
+                                "ONYCHOPHORA",    
+                                "PLATYHELMINTHES",
+                                "PORIFERA",        
+                                "ROTIFERA",        
+                                "TARDIGRADA")
+)
+                     
+
+get_occ <- function(taxa){
+
+  # basisOfRecord filters
+  specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
+                     "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
+  
+  x <- 
+    galah_call() |>
+    galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572") |> 
+    galah_filter(basisOfRecord == specimen_only, 
+                 identificationIncorrect == FALSE) |> 
+    galah_select(group = "assertions")
+
+  
+  x |> 
+    atlas_occurrences() |> 
+    arrow::write_parquet(sink = paste0("data/galah/IA_ACANTOCEPHALA"))
+  
+ Sys.sleep(600)
+}
+
+ map(afd_taxon_phylums,
+     get_occ)
+
+```
+#### Acantocephala 
+
+Needs to queried seperately at the moment 
+```{r}
+ specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
+                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
+  
+  x <- 
+  galah_call() |>
+  galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572") |> 
+  galah_filter(basisOfRecord == specimen_only, 
+               identificationIncorrect == FALSE) |> 
+    galah_select(group = "assertions")
+  
+   x |> 
+    atlas_occurrences() |> 
+    arrow::write_parquet(sink = paste0("data/galah/IA_ACANTOCEPHALA"))
+```
+
+#### Arthropoda 
+
+Needs to be split by year or another categorical variable. Currently implementing but want to touch base first.
+
+```{r}
+specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
+                   "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
+  
+galah_call() |>
+  galah_identify("ARTHROPODA") |>
+  galah_filter(basisOfRecord == specimen_only,
+               identificationIncorrect == FALSE) |>
+  galah_select(group = "assertions") |>
+  galah_group_by(year) |> 
+  atlas_counts()
+  
+```
+
+## Clean ALA records using {Coordinate Cleaner}
+
+Check out https://docs.ropensci.org/CoordinateCleaner/
+
+An really powerful too to remove occurrence records that are in the seas! Not a perfect solution but a great first pass
+
+There was an issue with removing sea coordinates: https://github.com/ropensci/CoordinateCleaner/issues/77
+
+### Precleaning
+
+Removing missing values and d-eduplication
+
+```{r}
+#Removing missing data
+IA_1940onwards |> 
+  filter(is.na(decimalLongitude), is.na(decimalLatitude)) |> 
+  nrow() # Removing  82176 rows
+
+#De-duplication
+IA_1940onwards |> 
+  filter(duplicated(decimalLongitude), duplicated(decimalLatitude)) |> 
+  nrow() # Removing   3128992 rows
+
+IA_1940onwards_preclean <- IA_1940onwards |> 
+  filter(!is.na(decimalLongitude), !is.na(decimalLatitude)) |> 
+  filter(!duplicated(decimalLongitude), !duplicated(decimalLatitude)) 
+```
+
+### Removing records in the sea
+
+```{r}
+cc_flags <- IA_1940onwards_preclean |> 
+  cc_sea(lon = "decimalLongitude", lat = "decimalLatitude", value = "flagged") 
+
+summary(cc_flags)
+plot(cc_flags, lon = "decimalLongitude", lat = "decimalLatitude")
+
+# Subset sea records
+IA_1940onwards_preclean |> filter(cc_flags) |> nrow()
+
+# Exclude sea records
+IA_1940onwards_searemoved <- IA_1940onwards_preclean |> filter(!cc_flags)
+```

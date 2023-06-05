@@ -1,0 +1,148 @@
+---
+title: "Querying WORMS database"
+author: "Fonti Kar"
+date: "2022-08-30"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Resources: 
+https://www.marinespecies.org/aphia.php?p=webservice&type=r
+https://mmisw.org/ont/ioos/marine_biogeography
+```{r}
+# install.packages("worrms") https://docs.ropensci.org/worrms/index.html
+
+pacman::p_load(tidyverse, arrow, worrms, here, job)
+```
+
+### Read in AFD list
+
+```{r}
+afd_species <- open_dataset("data/AFD_splist") |> 
+  select(VALID_NAME) |> 
+  distinct() |> 
+  pull(VALID_NAME) 
+```
+
+
+## Code for for loop to query their API - slow, 1hr 
+
+```{r}
+# The AFD species we want to check with WoRMS
+afd_species <- unique(afd_taxonomy$VALID_NAME) 
+
+# Split the species list to chunks of 120 species
+afd_species_chunks <- split(afd_species, ceiling(seq_along(afd_species)/120))
+
+# Create empty list to populate
+worms_ls <- list()
+
+for (i in 1:length(afd_species_chunks[1:5])) {
+  
+message(cat("Working on", names(afd_species_chunks)[i], "/", length(afd_species_chunks)))
+  
+try(worrms::wm_records_names(afd_species_chunks[[i]]) -> tmp)
+    
+    tmp |> bind_rows() -> worms_ls[[i]]
+    
+}
+
+# Collapse the list down
+worms_afd_query_results <- worms_ls %>% bind_rows()
+
+# Save as a .csv
+write_csv(worms_afd_query_results, "output/worms_afd_query_results.csv")
+```
+
+## Make the loop into a background RStudio job
+
+This took 1hr and 6 mins
+
+```{r}
+job({
+  # Create empty list to populate
+worms_ls <- list()
+
+for (i in 1:length(afd_species_chunks)) {
+  
+message(cat("Working on", names(afd_species_chunks)[i], "/", length(afd_species_chunks)))
+  
+try(worrms::wm_records_names(afd_species_chunks[[i]]) -> tmp)
+    
+    tmp |> bind_rows() -> worms_ls[[i]]
+    
+}
+
+# Collapse the list down
+worms_afd_query_results <- worms_ls %>% bind_rows()
+
+# Save as a .csv
+write_csv(worms_afd_query_results, "output/worms_afd_query_results.csv")
+})
+```
+
+### Exclude marine species found by WoRMs by VALID_NAME with API query data
+
+Options to exclude by scientificname or valid name
+
+```{r}
+worms_afd_query_results <- read_csv("output/worms_afd_query_results.csv")
+
+# Clean the list
+worms_afd_query_results %>% filter(duplicated(AphiaID)) %>% nrow()
+worms_afd_query_results %>% filter(!duplicated(AphiaID)) -> worms_afd_query_results
+
+worms_afd_query_results$scientificname |> length()
+worms_afd_query_results$valid_name |> length()
+
+(worms_afd_query_results$scientificname == worms_afd_query_results$valid_name) |> janitor::tabyl()
+
+# Exclude the matches
+afd_taxonomy |> filter(! VALID_NAME %in% worms_afd_query_results$scientificname) # 91,577
+afd_taxonomy |> filter(! VALID_NAME %in% worms_afd_query_results$valid_name) # 94,147:
+
+## The excluded taxa
+afd_taxonomy |> 
+  filter(VALID_NAME %in% worms_afd_query_results$scientificname) %>% 
+  pull(VALID_NAME)# 21,019 species excluded
+
+
+afd_taxonomy |> 
+  filter(VALID_NAME %in% worms_afd_query_results$valid_name) %>% 
+  pull(VALID_NAME) # 18,448  species excluded
+```
+
+
+## Looking at bulk download
+
+You can request a download of WoRMS here: https://www.marinespecies.org/usersrequest.php. 
+Looks like they update once a month!
+
+No valid name just scientific name
+
+```{r}
+species <- fread(here("ignore", "WoRMS_download_2022-10-01", "speciesprofile.txt"), quote = "")
+taxa <- fread(here("ignore", "WoRMS_download_2022-10-01", "taxon.txt"), quote = "")
+
+# create a GRIIS list
+worms_list <- taxa |>  
+  full_join(species, by = "taxonID") 
+
+worms_list
+names(worms_list)
+
+## Number of strictly marine species
+worms_list %>%
+  filter(!specificEpithet == "",
+         taxonomicStatus == "accepted",
+         isMarine == 1,
+         isTerrestrial == 0, isFreshwater == 0, isExtinct == 0) -> accepted_marine_worms  # 57,414 specie
+
+
+afd_species |> filter(VALID_NAME %in% accepted_marine_worms$scientificName) # 6,108 matched
+```
+
