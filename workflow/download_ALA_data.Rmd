@@ -353,22 +353,21 @@ I've set this is a background RStudio job for the download. `Sys.sleep(600)` is 
 ```{r}
 # Fields that IA want
 y <- tibble(name = 
-                   c("recordID",
-                     "dataResourceUid",
+                   c("dataResourceUid",
                      "dataResourceName",
                      "institutionID",
                      "institutionName",
-                     "collectionID", 
+                     "collectionID",
                      "collectionUid",
                      "collectionName",
-                     "contentTypes", 
-                     "license", 
+                     "contentTypes",
+                     "license",
                      "taxonConceptID",
                      "raw_scientificName",
-                     "raw_vernacularName", 
-                     "scientificName", 
-                     "vernacularName", 
-                     "taxonRank", 
+                     "raw_vernacularName",
+                     "scientificName",
+                     "vernacularName",
+                     "taxonRank",
                      "kingdom",
                      "phylum",
                      "class",
@@ -379,21 +378,21 @@ y <- tibble(name =
                      "subspecies",
                      "institutionCode",
                      "collectionCode",
-                     "locality", 
-                     "raw_geodeticDatum", 
+                     "locality",
+                     "raw_geodeticDatum",
                      "raw_decimalLatitude",
-                     "raw_decimalLongitude", 
+                     "raw_decimalLongitude",
                      "decimalLatitude",
                      "decimalLongitude",
                      "coordinatePrecision",
                      "coordinateUncertaintyInMeters",
                      "country",
-                     "stateProvince", 
+                     "stateProvince",
                      "cl959",
                      "cl21",
                      "cl1048",
-                     "minimumElevationInMeters", 
-                     "maximumElevationInMeters", 
+                     "minimumElevationInMeters",
+                     "maximumElevationInMeters",
                      "minimumDepthInMeters",
                      "maximumDepthInMeters",
                      "individualCount",
@@ -405,7 +404,7 @@ y <- tibble(name =
                      "basisOfRecord",
                      "raw_basisOfRecord",
                      "occurrenceStatus",
-                     "raw_sex", 
+                     "raw_sex",
                      "sex",
                      "preparations",
                      "outlierLayer",
@@ -416,13 +415,15 @@ y <- tibble(name =
 # Set the call as galah_select
 attr(y, "call") <- "galah_select"
 
-# Split fields into 3 parts for download
-y_ls <- split(y, f = ceiling(seq_along(y$name)/20))
+# Split fields into 5 parts for download
+y_ls <- split(y, f = ceiling(seq_along(y$name)/10))
 
-# Add id in 2nd and 3rd list so output can all be joined later by id
-y_ls$`2` <- bind_rows(tibble(name = "recordID",
-                             type = "field"),
-                      y_ls$`2`)
+# Add id so output can all be joined later by id
+y_ls <- map(y_ls,
+    ~bind_rows(tibble(name = "recordID",
+                      type = "field"),
+                      .x)
+)
 
 y_ls$`3` <- bind_rows(tibble(name = "recordID",
                              type = "field"),
@@ -432,33 +433,31 @@ y_ls$`3` <- bind_rows(tibble(name = "recordID",
 # The rest of the galah_call as a function
 get_occ <- function(y){
   
-  # Phylums
-  afd_phylum <- tibble(phylum = c("ANNELIDA",
-                                         "ARTHROPODA",
-                                         "BRACHIOPODA",
-                                         "BRYOZOA",
-                                         "CHAETOGNATHA",
-                                         "GASTROTRICHA",
-                                         "GNATHOSTOMULIDA",
-                                         "MOLLUSCA",       
-                                         "NEMATODA",        
-                                         "NEMATOMORPHA",    
-                                         "NEMERTEA",       
-                                         "ONYCHOPHORA",    
-                                         "PLATYHELMINTHES",
-                                         "PORIFERA",        
-                                         "ROTIFERA",        
-                                         "TARDIGRADA")
-  )
+# Phylums
+  afd_phylum <- c("ANNELIDA",
+                  "ARTHROPODA",
+                  "BRACHIOPODA",
+                  "BRYOZOA",
+                  "CHAETOGNATHA",
+                  "GASTROTRICHA",
+                  "GNATHOSTOMULIDA",
+                  "MOLLUSCA",       
+                  "NEMATODA",        
+                  "NEMATOMORPHA",    
+                  "NEMERTEA",       
+                  "ONYCHOPHORA",    
+                  "PLATYHELMINTHES",
+                  "PORIFERA",        
+                  "ROTIFERA",        
+                  "TARDIGRADA")
+  
   
   # basisOfRecord filters
   specimen_only <- c("PRESERVED_SPECIMEN", "LIVING_SPECIMEN", 
                    "MACHINE_OBSERVATION", "MATERIAL_SAMPLE")
   x <- 
   galah_call() |>
-  galah_identify(afd_phylum) |> 
-  galah_identify("https://biodiversity.org.au/afd/taxa/3cbb537e-ab39-4d85-864e-76cd6b6d6572",  # seperate galah_identify for acantocephala as it is a homonmym
-                 search = FALSE) |>
+  galah_identify(afd_phylum) |>
   galah_filter(basisOfRecord == specimen_only, 
                identificationIncorrect == FALSE)
   
@@ -471,9 +470,9 @@ get_occ <- function(y){
    Sys.sleep(600)
 }
 
-## Background R Studio Job for all lists (errors - can't identify afd_taxon_phylums)
+## Background R Studio Job for all lists 
 job({
-  map(y_ls,
+  walk(y_ls,
     get_occ)
 })
 ```
